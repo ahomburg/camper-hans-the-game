@@ -33,8 +33,7 @@ Auf Touch-Geräten erscheinen Buttons unten (GAS / BREMS / LINKS / RECHTS).
   `localStorage` gespeichert). Per Klick startet man eine Quest.
 - **Quest 1 – Arc de Triomphe**: 5 Runden gegen den Uhrzeigersinn um den Kreis.
   Pro Runde +5 Autos. Highscore (schnellste Zeit) wird gespeichert.
-- **Quest 2 – Hupkonzert**: 10× mit H hupen.
-- **Quest 3 – Temposünder**: 100 km/h erreichen.
+- **Quest 2 – Temposünder**: 100 km/h erreichen.
 - **Erfolgsbildschirm**: „Glückwunsch, du hast es geschafft!“ mit Zeit und
   Highscore; bei Quest 1 bleibt das Bild stehen und die Kamera fährt nach
   hinten/oben zur Außenseite des Kreises, sodass der Arc im Hintergrund sieht.

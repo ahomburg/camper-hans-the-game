@@ -4,7 +4,7 @@ import { buildArc, loadArcMonument } from './arc.js';
 import { Car } from './car.js';
 import { Controls } from './controls.js';
 import { Traffic } from './traffic.js';
-import { QuestManager, createArcLapQuest, createHonkQuest, createSpeedQuest } from './quests.js';
+import { QuestManager, createArcLapQuest, createSpeedQuest } from './quests.js';
 import { truckHonk } from './audio.js';
 import { placeBuildings } from './buildings.js';
 
@@ -52,13 +52,11 @@ traffic.setTarget(START_TRAFFIC);
 const ROUNDS_TARGET = 5;
 const quests = new QuestManager();
 quests.add(createArcLapQuest(arc, traffic, { target: ROUNDS_TARGET, startTraffic: START_TRAFFIC }));
-quests.add(createHonkQuest({ target: 10 }));
 quests.add(createSpeedQuest({ target: 100 }));
 
 // --- Spielzustand: 'menu' | 'playing' | 'success' ---
 let state = 'menu';
 let activeQuest = null;
-let honkCount = 0;
 
 const questEl = document.getElementById('quest');
 const toastEl = document.getElementById('toast');
@@ -149,7 +147,6 @@ function startQuest(q) {
   car.reset();
   traffic.setTarget(0); // alle Autos weg, damit die Verteilung 10/10/10 von vorne beginnt
   traffic.setTarget(START_TRAFFIC);
-  honkCount = 0;
   elapsed = 0;
   timerRunning = true;
   state = 'playing';
@@ -201,14 +198,10 @@ document.getElementById('btn-to-menu').addEventListener('click', toMenu);
 controls.onReset = () => {
   car.reset();
   if (activeQuest) activeQuest.onCarReset();
-  honkCount = 0;
   elapsed = 0;
   timerRunning = state === 'playing';
 };
-controls.onHonk = () => {
-  honkCount++;
-  truckHonk();
-};
+controls.onHonk = () => truckHonk();
 controls.onEscape = () => {
   if (state === 'playing' || state === 'success') toMenu(); // Quest abbrechen -> Startbildschirm
 };
@@ -267,7 +260,7 @@ function animate() {
     // Verkehrs-Colliders bewusst nicht hier: ein treffendes Auto prallt zurueck,
     // der Van wird nicht verschoben (siehe traffic.update).
     car.update(dt, controls.state, world.colliders.concat(arc.colliders), world.half, arc);
-    if (activeQuest) activeQuest.update(dt, { car, arc, honkCount }, quests);
+    if (activeQuest) activeQuest.update(dt, { car, arc }, quests);
 
     if (timerRunning) elapsed += dt;
     timeEl.textContent = `Zeit: ${fmtTime(elapsed)}`;

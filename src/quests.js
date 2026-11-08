@@ -129,33 +129,12 @@ export function createArcLapQuest(arc, traffic, { target = 10, startTraffic = 10
   return quest;
 }
 
-// Quest 2: Hupkonzert – der Spieler hupt mit H (ctx.honkCount zaehlt mit).
-export function createHonkQuest({ target = 10 } = {}) {
-  return new Quest({
-    id: 'hupkonzert',
-    title: 'Quest 2: Hupkonzert',
-    desc: `Hupe ${target} mal mit der Taste H (LKW-Hupe).`,
-    target,
-    update(dt, ctx, mgr, q) {
-      const n = Math.min(q.target, ctx.honkCount || 0);
-      if (n > q.progress) {
-        q.progress = n;
-        mgr.emit('progress', q);
-        if (q.progress >= q.target) {
-          q.completed = true;
-          mgr.emit('completed', q);
-        }
-      }
-    },
-  });
-}
-
-// Quest 3: Temposuender – erreichte Hoechstgeschwindigkeit in km/h.
+// Quest 2: Temposuender – erreichte Hoechstgeschwindigkeit in km/h.
 export function createSpeedQuest({ target = 100 } = {}) {
   const state = { max: 0 };
   return new Quest({
     id: 'temposuender',
-    title: 'Quest 3: Temposünder',
+    title: 'Quest 2: Temposünder',
     desc: `Erreiche ${target} km/h mit dem Campervan.`,
     target,
     extra: () => `Top: ${Math.floor(state.max * 3.6)} km/h`,
