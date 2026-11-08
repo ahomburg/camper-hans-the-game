@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Camper Hans – Testfahrt</title>
+  <style>
+    html, body {
+      margin: 0; height: 100%; overflow: hidden; background: #0e1116;
+      touch-action: none; overscroll-behavior: none;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    #app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+    #hud {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 5;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 12px 16px; pointer-events: none; color: #fff;
+    }
+    #speed { font-size: 30px; font-weight: 700; text-shadow: 0 2px 6px rgba(0,0,0,.6); font-variant-numeric: tabular-nums; }
+    #speed small { font-size: 14px; font-weight: 500; opacity: .8; }
+    #side { text-align: right; }
+    #hint { font-size: 12px; opacity: .8; text-shadow: 0 1px 4px rgba(0,0,0,.6); max-width: 48vw; line-height: 1.5; }
+    #time, #highscore {
+      font-size: 14px; font-weight: 600; text-shadow: 0 1px 4px rgba(0,0,0,.6);
+      font-variant-numeric: tabular-nums; margin-top: 4px;
+    }
+    #highscore { color: #ffd27a; }
+
+    #quest {
+      position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 5;
+      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    .quest {
+      background: rgba(10,14,18,.55); border: 1px solid rgba(255,255,255,.14);
+      border-radius: 12px; padding: 8px 14px 10px; color: #fff; text-align: center;
+      min-width: 250px; backdrop-filter: blur(4px);
+    }
+    .quest .q-title { font-size: 14px; font-weight: 700; color: #ffb347; }
+    .quest .q-desc { font-size: 11px; opacity: .85; margin-top: 2px; line-height: 1.4; }
+    .quest .q-bar { margin-top: 6px; height: 7px; border-radius: 4px; background: rgba(255,255,255,.15); overflow: hidden; }
+    .quest .q-fill { height: 100%; width: 0; background: #ffb347; border-radius: 4px; transition: width .25s; }
+    .quest .q-text { font-size: 11px; margin-top: 4px; font-variant-numeric: tabular-nums; opacity: .9; }
+    .quest.done { border-color: rgba(90,220,120,.55); }
+    .quest.done .q-title { color: #5adc78; }
+    .quest.done .q-fill { background: #5adc78; }
+
+    #toast {
+      position: fixed; top: 32%; left: 50%; transform: translate(-50%,-50%) scale(.92); z-index: 8;
+      background: rgba(18,32,20,.88); border: 1px solid rgba(90,220,120,.6); color: #d9ffe3;
+      padding: 14px 26px; border-radius: 14px; font-size: 18px; font-weight: 700;
+      opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; text-align: center;
+    }
+    #toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    body:not(.touch) .touch-only { display: none; }
+    body.touch .kbd-only { display: none; }
+
+    #menu {
+      position: fixed; inset: 0; z-index: 30; overflow-y: auto;
+      background: rgba(10,14,18,.93); color: #fff;
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      padding: 42px 16px;
+    }
+    #menu.hidden, #success.hidden { display: none; }
+    #menu h1 { margin: 0; font-size: 34px; color: #ffb347; text-shadow: 0 2px 8px rgba(0,0,0,.6); }
+    .menu-sub { margin: 0; opacity: .8; font-size: 14px; }
+    #menu-quests { display: flex; flex-direction: column; gap: 12px; width: min(430px, 92vw); }
+    .menu-quest {
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.15);
+      border-radius: 12px; padding: 12px 16px;
+    }
+    .menu-quest.done { border-color: rgba(90,220,120,.55); background: rgba(90,220,120,.07); }
+    .mq-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .mq-title { font-weight: 700; color: #ffb347; font-size: 15px; }
+    .menu-quest.done .mq-title { color: #5adc78; }
+    .mq-badge { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: rgba(255,255,255,.12); white-space: nowrap; }
+    .menu-quest.done .mq-badge { background: rgba(90,220,120,.22); color: #5adc78; }
+    .mq-desc { font-size: 12px; opacity: .85; margin-top: 4px; line-height: 1.45; }
+    .mq-start {
+      margin-top: 10px; width: 100%; padding: 9px; border-radius: 9px; cursor: pointer;
+      border: 1px solid rgba(255,179,71,.7); background: rgba(255,179,71,.16);
+      color: #ffd9a0; font: 600 13px system-ui, sans-serif;
+    }
+    .mq-start:hover { background: rgba(255,179,71,.32); }
+    #menu-highscore { color: #ffd27a; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .menu-hint { font-size: 11px; opacity: .55; }
+
+    #success {
+      position: fixed; inset: 0; z-index: 25;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(8,14,10,.72); padding: 16px;
+    }
+    #success .box {
+      background: rgba(18,32,20,.96); border: 1px solid rgba(90,220,120,.6); color: #d9ffe3;
+      padding: 28px 36px; border-radius: 16px; text-align: center; max-width: 92vw;
+    }
+    #success h2 { margin: 0 0 12px; color: #5adc78; font-size: 24px; }
+    #success-time, #success-highscore { font-size: 14px; margin: 4px 0; font-variant-numeric: tabular-nums; }
+    #btn-to-menu {
+      margin-top: 18px; padding: 10px 24px; border-radius: 10px; cursor: pointer;
+      border: 1px solid rgba(90,220,120,.7); background: rgba(90,220,120,.15);
+      color: #d9ffe3; font: 600 14px system-ui, sans-serif;
+    }
+    #btn-to-menu:hover { background: rgba(90,220,120,.3); }
+
+    #loading {
+      position: fixed; inset: 0; z-index: 50; background: #0e1116; color: #dfe6ee;
+      display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center;
+      transition: opacity .4s;
+    }
+    #loading.done { opacity: 0; pointer-events: none; }
+    .spinner { width: 42px; height: 42px; border: 4px solid rgba(255,255,255,.15); border-top-color: #ffb347; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #touch { display: none; }
+    body.touch #touch { display: block; }
+    .cluster { position: fixed; bottom: max(18px, env(safe-area-inset-bottom)); display: flex; gap: 14px; z-index: 6; }
+    .cluster.left { left: 18px; }
+    .cluster.right { right: 18px; flex-direction: column; }
+    .cluster button {
+      width: 70px; height: 70px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.12);
+      color: #fff; font: 600 12px system-ui, sans-serif; letter-spacing: .04em;
+      backdrop-filter: blur(4px); touch-action: none; user-select: none; -webkit-user-select: none;
+    }
+    .cluster.right button { width: 78px; height: 58px; border-radius: 16px; }
+    .cluster button.active { background: rgba(255,179,71,.45); border-color: rgba(255,179,71,.85); }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud">
+    <div id="speed">0 <small>km/h</small></div>
+    <div id="side">
+      <div id="hint">
+        <span class="kbd-only">Pfeiltasten / WASD fahren &middot; im Kreisverkehr: LINKS/RECHTS = Spurwechsel &middot; H = Hupe &middot; R = zur&uuml;cksetzen &middot; ESC = Men&uuml;</span>
+        <span class="touch-only">Buttons unten zum Fahren &middot; im Kreisverkehr wechseln LINKS/RECHTS die Spur</span>
+      </div>
+      <div id="time">Zeit: 0.0 s</div>
+      <div id="highscore">Highscore: –</div>
+    </div>
+  </div>
+
+  <div id="quest"></div>
+  <div id="toast"></div>
+
+  <div id="menu">
+    <h1>Camper Hans</h1>
+    <p class="menu-sub">W&auml;hle eine Quest:</p>
+    <div id="menu-quests"></div>
+    <div id="menu-highscore">Highscore: –</div>
+    <div class="menu-hint">ESC = Quest abbrechen &middot; H = Hupe</div>
+  </div>
+
+  <div id="success" class="hidden">
+    <div class="box">
+      <h2>Glückwunsch, du hast es geschafft!</h2>
+      <div id="success-time"></div>
+      <div id="success-highscore"></div>
+      <button id="btn-to-menu">Zurück zum Hauptmenü</button>
+    </div>
+  </div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <div id="loadtext">Lade Campervan …</div>
+  </div>
+
+  <div id="touch">
+    <div class="cluster left">
+      <button id="btn-left" aria-label="Links lenken">LINKS</button>
+      <button id="btn-right" aria-label="Rechts lenken">RECHTS</button>
+    </div>
+    <div class="cluster right">
+      <button id="btn-up" aria-label="Gas geben">GAS</button>
+      <button id="btn-down" aria-label="Bremsen / Rückwärts">BREMS</button>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
