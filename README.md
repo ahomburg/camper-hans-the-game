@@ -112,6 +112,10 @@ Auf Touch-Geräten erscheinen Buttons unten (GAS / BREMS / LINKS / RECHTS).
 
 - Reines ES-Module-Setup mit Importmap, `three` liegt lokal in `vendor/`.
 - Modelle: `Campervan.glb`, `arch.glb`, `car*_simple.glb`, `building*.glb`.
+  Texturen sind als WebP in die GLBs eingebettet (offline konvertiert mit
+  `gltf-transform webp`), dadurch ~20 MB statt ~106 MB Download.
+  Die grossen `car1/2/3.glb` werden nicht verwendet und sind per `.dockerignore`
+  aus dem Docker-Image ausgeschlossen.
 - Sounds: `car1/2/3_horn.mp3`, `campervan_horn.mp3` (WebAudio-Synthese nur als
   Fallback, falls eine Datei fehlt).
 - Persistenz: Highscore und erledigte Quests in `localStorage`.

@@ -4,3 +4,7 @@ node_modules
 .test-tmp
 *.log
 README.md
+# grosse unbenutzte Vorlagen (Spiel laedt nur car*_simple.glb)
+car1.glb
+car2.glb
+car3.glb

@@ -108,10 +108,10 @@ export class Traffic {
     this.laneRadii = laneRadii(arc);
     this.cars = [];
     this.colliders = []; // ein Eintrag pro Auto, wird in update() mitbewegt
-    this.templates = []; // GLB-Vorlagen (car1/2/3.glb), leer = Kisten-Fallback
+    this.templates = []; // GLB-Vorlagen (car*_simple.glb), leer = Kisten-Fallback
   }
 
-  // Laedt car1.glb, car2.glb, car3.glb als Vorlagen. onProgress(i, n).
+  // Laedt car1/2/3_simple.glb als Vorlagen. onProgress(i, n).
   async loadCarModels(onProgress = null) {
     const loader = new GLTFLoader();
     this.templates = [];
