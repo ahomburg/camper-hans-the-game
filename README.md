@@ -15,6 +15,59 @@ node serve.mjs
 
 Kein Build-Schritt nötig; statischer Server ohne Abhängigkeiten.
 
+## Docker
+
+```bash
+docker build -t camper-hans-the-game .
+docker run -d --name camper-hans -p 9999:9999 camper-hans-the-game
+# -> http://localhost:9999
+```
+
+Port über `-p <Host-Port>:9999` frei wählbar.
+
+### Auf einem beliebigen Docker-Server hosten
+
+Das Image ist ein normales OCI-Image und läuft auf jedem Docker-Host
+(Linux x86_64/arm64, Docker Engine oder kompatibel wie Podman, Kubernetes, Portainer etc.).
+
+**Variante A – Image über eine Registry verteilen (empfohlen für Server):**
+
+```bash
+# lokal bauen und in eine Registry pushen, z. B. Docker Hub oder eine private Registry
+docker build -t <registry>/<user>/camper-hans-the-game:latest .
+docker push <registry>/<user>/camper-hans-the-game:latest
+
+# auf dem Docker-Server nur noch pullen und starten
+docker pull <registry>/<user>/camper-hans-the-game:latest
+docker run -d --name camper-hans \
+  -p 9999:9999 \
+  --restart unless-stopped \
+  <registry>/<user>/camper-hans-the-game:latest
+# -> http://<server-ip>:9999
+```
+
+**Variante B – Projekt direkt auf dem Server bauen:**
+
+```bash
+# Repo auf den Server klonen (oder per scp/rsync kopieren) und dort bauen
+git clone <repo-url> && cd camper-hans-the-game
+docker build -t camper-hans-the-game .
+docker run -d --name camper-hans -p 9999:9999 --restart unless-stopped camper-hans-the-game
+```
+
+**Hinweise:**
+
+- `-p 9999:9999` veröffentlicht den Port auf dem Host; mit `-p 80:9999` läuft
+  das Spiel auf dem Standard-HTTP-Port.
+- `--restart unless-stopped` startet den Container nach einem Server-Neustart
+  automatisch neu.
+- Für HTTPS/Port 80 ohne Portangabe: Reverse Proxy (z. B. nginx, Traefik,
+  Caddy) davor schalten, der auf `localhost:9999` weiterleitet.
+- Das Image hat keine Volumes; Highscores liegen im Browser-localStorage,
+  es gehen also keine Daten verloren.
+- Ressourcen sind gering (statischer Server, ~150 MB Image); ein kleines
+  VPS reicht völlig.
+
 ## Steuerung
 
 | Taste | Funktion |
