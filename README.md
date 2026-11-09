@@ -10,7 +10,7 @@ mit der LKW-Hupe (H) durch den Kreisverkehr.
 
 ```bash
 node serve.mjs
-# -> http://localhost:8080
+# -> http://localhost:9999
 ```
 
 Kein Build-Schritt nötig; statischer Server ohne Abhängigkeiten.
