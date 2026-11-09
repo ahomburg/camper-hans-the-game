@@ -9,12 +9,25 @@ import { truckHonk } from './audio.js';
 import { placeBuildings } from './buildings.js';
 
 const app = document.getElementById('app');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// Auf Touch-Geraeten (Android/iOS) sparsamer rendern: MSAA + hohe Aufloesung
+// treiben mobile GPUs sonst leicht in Kontext-Verlust (weisser Bildschirm).
+const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+const renderer = new THREE.WebGLRenderer({ antialias: !isTouchDevice });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isTouchDevice ? 1 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = isTouchDevice ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 app.appendChild(renderer.domElement);
+
+// GPU-Kontext verloren (z.B. zu wenig GPU-Speicher auf dem Telefon)?
+// Statt weissem Canvas Hinweis zeigen und Neuladen anbieten.
+renderer.domElement.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  const loading = document.getElementById('loading');
+  loading.classList.remove('done');
+  document.getElementById('loadtext').textContent = 'Grafik wurde unterbrochen - bitte neu laden';
+  loading.addEventListener('click', () => location.reload(), { once: true });
+});
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x8ec3e8);
@@ -26,7 +39,7 @@ const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerH
 scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x51604a, 0.9));
 const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(isTouchDevice ? 1024 : 2048, isTouchDevice ? 1024 : 2048);
 sun.shadow.camera.near = 10;
 sun.shadow.camera.far = 220;
 const sc = 60;
