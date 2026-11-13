@@ -21,8 +21,13 @@ const app = document.getElementById('app');
 const qs = new URLSearchParams(location.search);
 const resScale = Math.min(1, parseFloat(qs.get('scale')) || 1);
 const shadowsOff = qs.has('noshadow') || (isMobile && !qs.has('shadow'));
-const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, stencil: false });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2) * resScale);
+const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, stencil: false, powerPreference: 'high-performance' });
+// Basis-Aufloesung (Mobil: auf 1x begrenkt). adaptScale (in der Hauptschleife)
+// reduziert die Aufloesung auf schwachen Geraeten automatisch weiter, statt
+// nur ruckelig zu laufen.
+const basePixelRatio = Math.min(window.devicePixelRatio, isMobile ? 1 : 2) * resScale;
+let adaptScale = 1;
+renderer.setPixelRatio(basePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = !shadowsOff;
 renderer.shadowMap.type = isMobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
@@ -70,13 +75,19 @@ renderer.domElement.addEventListener('webglcontextrestored', () => {
   debugLog('[webgl] RESTORED', new Date().toISOString());
   document.getElementById('loading').classList.add('done');
   renderer.setSize(window.innerWidth, window.innerHeight);
+  // Im Menue rendert die Hauptschleife nicht: Standbild einmal auffrischen.
+  if (state === 'menu') renderer.render(scene, camera);
 });
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x8ec3e8);
 scene.fog = new THREE.Fog(0x8ec3e8, 70, 260);
 
-const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 600);
+// Far plane knapp ueber der Nebelgrenze (scene.fog endet bei 260): alles
+// dahinter ist restlos Hintergrundfarbe und wird von der Frustum-Cullung
+// komplett weggelassen — ein massiver Gewinn auf aelteren iPad-GPUs, die
+// sonst unsichtbare Dreiecke mitladen.
+const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 300);
 
 // --- Licht ---
 scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x51604a, 0.9));
@@ -219,6 +230,9 @@ function toMenu() {
   menuEl.classList.remove('hidden');
   renderMenu();
   renderQuest();
+  // Ein Standbild hinter dem (fast deckenden) Menue genuegt; die Hauptschleife
+  // rendert im Menue-Zustand nicht weiter.
+  renderer.render(scene, camera);
 }
 
 quests.on('progress', (q) => {
@@ -267,6 +281,28 @@ renderMenu();
 
 const loading = document.getElementById('loading');
 const loadtext = document.getElementById('loadtext');
+
+// Wird nach dem Laden befüllt (siehe try-Block weiter unten).
+const allColliders = [];        // Collider-Liste, einmalig statt concat() pro Frame
+const staticCullables = [];    // Gebaeude + Monument, fuer Distanz-Culling
+let monument = null;
+
+// Distanz-Culling: der Nebel verschluckt alles ab ~260 Einheiten, weiter
+// entfernte Objekte sind also garantiert unsichtbar und muessen nicht
+// gezeichnet werden. Die Pruefung pro Frame ist O(n) und spart auf
+// aelteren Tablets den Grossteil der Draw Calls und Dreiecke.
+const CULL_DIST2 = 290 * 290; // kleiner Puffer ueber der Nebelgrenze
+function cullByDistance(px, pz) {
+  for (const o of staticCullables) {
+    const dx = o.position.x - px, dz = o.position.z - pz;
+    o.visible = dx * dx + dz * dz < CULL_DIST2;
+  }
+  for (const t of traffic.cars) {
+    const dx = t.mesh.position.x - px, dz = t.mesh.position.z - pz;
+    t.mesh.visible = dx * dx + dz * dz < CULL_DIST2;
+  }
+}
+
 try {
   await car.load('assets/campervan-optimized.glb', (e) => {
     if (e.total) loadtext.textContent = `Lade Campervan … ${Math.round((e.loaded / e.total) * 100)} %`;
@@ -275,20 +311,26 @@ try {
     loadtext.textContent = `Lade Autos … ${i}/${n}`;
   });
   loadtext.textContent = 'Lade Arc de Triomphe …';
-  await loadArcMonument(scene, arc.cx, arc.cz);
-  await placeBuildings(scene, world, arc, (i, n) => {
+  monument = await loadArcMonument(scene, arc.cx, arc.cz);
+  const { buildings } = await placeBuildings(scene, world, arc, (i, n) => {
     loadtext.textContent = `Lade Gebäude … ${i}/${n}`;
   });
+  staticCullables.push(...buildings, monument);
+  allColliders.push(...world.colliders, ...arc.colliders);
 } catch (err) {
   loadtext.textContent = 'Fehler beim Laden der Modelle: ' + err.message;
   throw err;
 }
 loading.classList.add('done');
+// Vor dem ersten Menue einmal rendern: die Hauptschleife pausiert im Menue.
+placeCameraBehindCar();
+renderer.render(scene, camera);
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (state === 'menu') renderer.render(scene, camera); // Standbild auffrischen
 });
 
 // --- Chase-Kamera ---
@@ -304,18 +346,36 @@ placeCameraBehindCar();
 
 // --- Hauptschleife ---
 const clock = new THREE.Clock();
-const speedEl = document.getElementById('speed');
+const speedValEl = document.getElementById('speed-val');
+
+// Die Km/h-Anzeige nur neu schreiben, wenn sich der gerundete Wert
+// geaendert hat (vorher: innerHTML-Neuaufbau jeden Frame, was Safari
+// auf dem iPad messbar bremsen kann).
+let lastKmh = -1;
+
+// Adaptive Aufloesung (nur Mobil): bleibt der FPS-Schnitt dauerhaft unter
+// ~45, sinkt die Render-Aufloesung stufenweise bis auf 55% ab. Ruckeln
+// wird so gegen eine etwas weichere Kante getauscht — das Bild bleibt
+// fluessig, das Geraet entscheidet selbst, wie viel Pixel es schafft.
+let perfTime = 0;
+let perfFrames = 0;
+let logTime = 0;
+let logFrames = 0;
 
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
+
+  // Das Menue ueberdeckt die Szene zu 93%: keine Simulation, kein Render.
+  // Ein Standbild genuegt (siehe toMenu()); die GPU darf Pause machen.
+  if (state === 'menu') return;
 
   // Im Menue/Erfolgsbildschirm laeuft die Simulation nicht weiter
   if (state === 'playing') {
     traffic.update(dt, car);
     // Verkehrs-Colliders bewusst nicht hier: ein treffendes Auto prallt zurueck,
     // der Van wird nicht verschoben (siehe traffic.update).
-    car.update(dt, controls.state, world.colliders.concat(arc.colliders), world.half, arc);
+    car.update(dt, controls.state, allColliders, world.half, arc);
     if (activeQuest) activeQuest.update(dt, { car, arc }, quests);
 
     if (timerRunning) elapsed += dt;
@@ -354,9 +414,40 @@ function animate() {
   sun.target.position.set(car.pos.x, 0, car.pos.z);
   sun.target.updateMatrixWorld();
 
-  speedEl.innerHTML = `${Math.round(Math.abs(car.speed) * 3.6)} <small>km/h</small>`;
+  const kmh = Math.round(Math.abs(car.speed) * 3.6);
+  if (kmh !== lastKmh) {
+    lastKmh = kmh;
+    speedValEl.textContent = kmh;
+  }
+
+  // Objekte hinter dem Nebel verstecken (spart Draw Calls und Dreiecke)
+  // und Statistik fuer ?log sammeln.
+  cullByDistance(camera.position.x, camera.position.z);
 
   renderer.render(scene, camera);
+
+  perfTime += dt;
+  perfFrames++;
+  logTime += dt;
+  logFrames++;
+  if (isMobile && perfTime >= 2) {
+    const fps = perfFrames / perfTime;
+    if (fps < 45 && adaptScale > 0.55) {
+      adaptScale = Math.max(0.55, adaptScale * 0.85);
+      renderer.setPixelRatio(basePixelRatio * adaptScale);
+    }
+    perfTime = 0;
+    perfFrames = 0;
+  }
+  if (logTime >= 5) {
+    const fps = logFrames / logTime;
+    logTime = 0;
+    logFrames = 0;
+    if (debugOnScreen) {
+      const r = renderer.info.render;
+      debugLog(`fps=${fps.toFixed(0)} draws=${r.calls} tris=${((r.triangles / 1000) | 0)}k scale=${Math.round(adaptScale * 100)}%`);
+    }
+  }
 }
 animate();
 

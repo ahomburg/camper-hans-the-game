@@ -78,28 +78,36 @@ export function buildWorld(scene) {
     arcBlocked(x, z) || Math.hypot(x, z + 100) < 12 || Math.abs(x) < ROAD_NS_W / 2 + 1.5 || Math.abs(z) < 7
     || Math.abs(Math.abs(x) - AVENUE.buildingX) < 5; // Gebaeudezeile der Allee bleibt frei
   // --- Baeume: nur Birken (Laubbaum mit runder Krone, heller Stamm) ---
+  // ~(90 Baeume) sind identisch: statt 180 einzelner Meshes/Geometrien
+  // (je Stamm + Krone) zwei InstancedMeshes = 2 Draw Calls statt ~180 —
+  // auf aelteren Tablets ein deutlicher Unterschied.
+  const birchPts = [];
   const birchTrunkMat = new THREE.MeshStandardMaterial({ color: 0xe9e7e0, roughness: 0.85 });
   const birchCrownMat = new THREE.MeshStandardMaterial({ color: 0xa9c86b, roughness: 1 });
-  const addBirch = (x, z) => {
-    const tree = new THREE.Group();
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.24, 2.4, 8), birchTrunkMat);
-    trunk.position.y = 1.2;
-    const crown = new THREE.Mesh(new THREE.SphereGeometry(1.5, 9, 7), birchCrownMat);
-    crown.scale.y = 1.15;
-    crown.position.y = 3.6;
-    trunk.castShadow = crown.castShadow = true;
-    tree.add(trunk, crown);
-    tree.position.set(x, 0, z);
-    scene.add(tree);
-    colliders.push({ x, z, r: 0.7 });
-  };
 
   // --- Champs-Elysees (Start-Strasse, Nord-Sued): Allee mit Birken in regelmaessigen Abstaenden ---
   for (let z = -half + 10; z <= half - 10; z += AVENUE.treeGap) {
     for (const x of [-AVENUE.treeX, AVENUE.treeX]) {
-      if (!blocked(x, z)) addBirch(x, z);
+      if (!blocked(x, z)) birchPts.push([x, z]);
     }
   }
+
+  const trunkGeo = new THREE.CylinderGeometry(0.15, 0.24, 2.4, 8);
+  const crownGeo = new THREE.SphereGeometry(1.5, 9, 7);
+  const trunks = new THREE.InstancedMesh(trunkGeo, birchTrunkMat, birchPts.length);
+  const crowns = new THREE.InstancedMesh(crownGeo, birchCrownMat, birchPts.length);
+  trunks.castShadow = crowns.castShadow = true;
+  const m = new THREE.Matrix4();
+  birchPts.forEach(([x, z], i) => {
+    m.identity().setPosition(x, 1.2, z); // wie vorher: trunk.position.y = 1.2
+    trunks.setMatrixAt(i, m);
+    m.makeScale(1, 1.15, 1).setPosition(x, 3.6, z); // crown.scale.y/position wie vorher
+    crowns.setMatrixAt(i, m);
+    colliders.push({ x, z, r: 0.7 });
+  });
+  trunks.instanceMatrix.needsUpdate = true;
+  crowns.instanceMatrix.needsUpdate = true;
+  scene.add(trunks, crowns);
 
   // --- Begrenzungsmauern ---
   const wallMat = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.9 });

@@ -59,7 +59,9 @@ function normalizeBuilding(model) {
   return outer;
 }
 
-// Platziert GLB-Gebaeude und gibt die Anzahl zurueck. Collider landen in world.colliders.
+// Platziert GLB-Gebaeude und gibt { count, buildings } zurueck. Collider
+// landen in world.colliders; buildings ist die Liste der platzierten
+// Gruppen (main.js blendet sie per Distanz-Culling hinter dem Nebel aus).
 export async function placeBuildings(scene, world, arc = ARC, onProgress = null) {
   const loader = new GLTFLoader();
   // Die building*-optimized.glb sind Meshopt-komprimiert (EXT_meshopt_compression)
@@ -77,11 +79,13 @@ export async function placeBuildings(scene, world, arc = ARC, onProgress = null)
   }
 
   let n = 0;
+  const placed = [];
   const place = (x, z, rotY, tplIdx) => {
     const b = templates[tplIdx % templates.length].clone(true);
     b.position.set(x, 0, z);
     b.rotation.y = rotY;
     scene.add(b);
+    placed.push(b);
     world.colliders.push({ x, z, r: 4.2 });
     n++;
   };
@@ -130,5 +134,5 @@ export async function placeBuildings(scene, world, arc = ARC, onProgress = null)
     }
   }
 
-  return n;
+  return { count: n, buildings: placed };
 }

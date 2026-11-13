@@ -136,6 +136,34 @@ zurückgeschleudert (Kapsel-Kollision, damit Nachbarspuren nicht „treffen“).
 lückenloser Gebäudezeile (`building2/3/4.glb`, Fenster nur aus den GLB-Texturen).
 - Gebäude auch direkt am Kreis, mit Freiraum an den Ausfahrten.
 
+## Performance auf Mobilgeräten (z. B. älteres iPad)
+
+Damit das Spiel auch auf älteren Tablets flüssig läuft, sind mehrere Sparebenen eingebaut:
+
+- **Schatten/Antialiasing aus** auf Mobilgeräten (`device.js`), Auflösung auf 1x begrenzt,
+  Texturen der GLBs auf 1024px verkleinert.
+- **Distanz-Culling**: Der Nebel verschluckt alles ab ~260 Einheiten — Gebäude,
+  Monument und Verkehrsautos dahinter werden pro Frame auf `visible = false`
+  gesetzt und gar nicht erst gezeichnet. Der Far-Plane der Kamera liegt bei 300.
+- **Instanced Birken**: Die ~90 Bäume der Allee sind zwei `InstancedMesh`
+  (Stamm + Krone) statt ~180 einzelner Meshes — 2 Draw Calls statt 180.
+- **Menü rendert nicht**: Das Hauptmenü überdeckt die Szene zu 93%; im
+  Menü-Zustand läuft kein `renderer.render()`, nur ein Standbild dahinter.
+- **Adaptive Auflösung (Mobil)**: Bleibt der FPS-Schnitt dauerhaft unter ~45,
+  sinkt die Render-Auflösung automatisch stufenweise bis auf 55%.
+- **Keine Allokationen pro Frame**: Collider-Liste wird einmal gebaut
+  (vorher `concat()` jeden Frame), die km/h-Anzeige aktualisiert sich nur
+  bei Wertänderung.
+
+### Debug-/URL-Parameter
+
+| Parameter           | Wirkung                                                        |
+| ------------------- | -------------------------------------------------------------- |
+| `?log`              | On-Screen-Log: alle 5 s fps/Draw-Calls/Dreiecke/Auflösung     |
+| `?scale=0.7`        | Render-Auflösung manuell reduzieren                             |
+| `?shadow`           | Schatten auf Mobilgeräten erzwingen                            |
+| `?noshadow`         | Schatten auf dem Desktop abschalten                            |
+
 ## Technik
 
 - Reines ES-Module-Setup mit Importmap, `three` liegt lokal in `vendor/`.
