@@ -268,17 +268,17 @@ renderMenu();
 const loading = document.getElementById('loading');
 const loadtext = document.getElementById('loadtext');
 try {
-  // await car.load('assets/campervan-optimized.glb', (e) => {
-  //   if (e.total) loadtext.textContent = `Lade Campervan … ${Math.round((e.loaded / e.total) * 100)} %`;
-  // });
-  // await traffic.loadCarModels((i, n) => {
-  //   loadtext.textContent = `Lade Autos … ${i}/${n}`;
-  // });
-  // loadtext.textContent = 'Lade Arc de Triomphe …';
-  // await loadArcMonument(scene, arc.cx, arc.cz);
-  // await placeBuildings(scene, world, arc, (i, n) => {
-  //   loadtext.textContent = `Lade Gebäude … ${i}/${n}`;
-  // });
+  await car.load('assets/campervan-optimized.glb', (e) => {
+    if (e.total) loadtext.textContent = `Lade Campervan … ${Math.round((e.loaded / e.total) * 100)} %`;
+  });
+  await traffic.loadCarModels((i, n) => {
+    loadtext.textContent = `Lade Autos … ${i}/${n}`;
+  });
+  loadtext.textContent = 'Lade Arc de Triomphe …';
+  await loadArcMonument(scene, arc.cx, arc.cz);
+  await placeBuildings(scene, world, arc, (i, n) => {
+    loadtext.textContent = `Lade Gebäude … ${i}/${n}`;
+  });
 } catch (err) {
   loadtext.textContent = 'Fehler beim Laden der Modelle: ' + err.message;
   throw err;
