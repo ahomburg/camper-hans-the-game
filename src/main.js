@@ -225,7 +225,7 @@ renderMenu();
 const loading = document.getElementById('loading');
 const loadtext = document.getElementById('loadtext');
 try {
-  await car.load('Campervan.glb', (e) => {
+  await car.load('campervan_meshopt.glb', (e) => {
     if (e.total) loadtext.textContent = `Lade Campervan … ${Math.round((e.loaded / e.total) * 100)} %`;
   });
   await traffic.loadCarModels((i, n) => {

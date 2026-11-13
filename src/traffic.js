@@ -6,8 +6,8 @@ import { carHonk } from './audio.js';
 
 const CAR_MODEL_URLS = ['car_mercedes_meshopt.glb', 'car_kaefer_meshopt.glb', 'car_ente_meshopt.glb'];
 const CAR_LENGTH = 3.6; // Ziel-Laenge der Ente (10% kleiner als urspruenglich 4.0; der Van bleibt unveraendert)
-// Mercedes und Kaefer sind nochmals 10% kleiner als die Ente
-const CAR_MODEL_LENGTHS = CAR_MODEL_URLS.map((_, i) => (i < 2 ? CAR_LENGTH * 0.9 : CAR_LENGTH));
+// Mercedes und Kaefer sind nochmals 10% kleiner als die Ente; die Ente selbst 20% kleiner (3.6 * 0.8 = 2.88)
+const CAR_MODEL_LENGTHS = CAR_MODEL_URLS.map((_, i) => (i < 2 ? CAR_LENGTH * 0.9 : CAR_LENGTH * 0.8));
 
 const PALETTE = [
   0xc0392b, 0x2980b9, 0x27ae60, 0xf39c12, 0x8e44ad,

@@ -4,6 +4,19 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { ARC } from './arc.js';
 import { AVENUE } from './world.js';
 
+// Deterministischer Zufall (wie in traffic.js): die Gebaeude-Mischung bleibt
+// reproduzierbar, ist aber von Lauf zu Lauf nicht die gleiche Reihenfolge.
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const rand = mulberry32(20240613);
+
 // Gebaeude als durchgehende Bebauung entlang der Strassen — ausschliesslich
 // building1/2/3/4_meshopt.glb. Fenster kommen nur aus der baked Textur der GLB-Dateien
 // (keine nachtraeglich hinzugefuegten Fenster).
@@ -76,17 +89,17 @@ export async function placeBuildings(scene, world, arc = ARC, onProgress = null)
   for (const x of [-AVENUE.buildingX, AVENUE.buildingX]) {
     const rotY = x > 0 ? -Math.PI / 2 : Math.PI / 2; // Fassade zur Strasse
     let z = -world.half + 12;
-    let idx = 0;
+    let nextTpl = Math.floor(rand() * templates.length); // zufaellige Gebaeude-Mischung
     while (z <= world.half - 12) {
       const free = Math.hypot(x, z + 100) >= 15            // Spawn-Bereich
         && Math.abs(z) >= 9                                // Strassenkreuzung
         && Math.hypot(x - arc.cx, z - arc.cz) >= arc.rOuter + 10; // Kreisverkehr
       if (!free) { z += 2; continue; }
-      const w = templates[idx % templates.length].userData.w;
-      place(x, z, rotY, idx);
-      const wNext = templates[(idx + 1) % templates.length].userData.w;
-      z += (w + wNext) / 2; // Kante an Kante: Gebaeude beruehren sich
-      idx++;
+      const tplIdx = nextTpl;
+      const w = templates[tplIdx].userData.w;
+      place(x, z, rotY, tplIdx);
+      nextTpl = Math.floor(rand() * templates.length);
+      z += (w + templates[nextTpl].userData.w) / 2; // Kante an Kante: Gebaeude beruehren sich
     }
   }
 
@@ -111,7 +124,7 @@ export async function placeBuildings(scene, world, arc = ARC, onProgress = null)
       const a = e0.a + e0.m + ((k + 0.5) / count) * segLen;
       const x = arc.cx + Math.sin(a) * rB;
       const z = arc.cz + Math.cos(a) * rB;
-      place(x, z, a + Math.PI, n); // Fassade zeigt zum Kreismittelpunkt
+      place(x, z, a + Math.PI, Math.floor(rand() * templates.length)); // Fassade zeigt zum Kreismittelpunkt
     }
   }
 

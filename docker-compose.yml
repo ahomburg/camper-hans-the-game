@@ -1,0 +1,11 @@
+services:
+  camper-hans:
+    build: .
+    image: camper-hans-the-game:latest
+    container_name: camper-hans
+    ports:
+      # Host-Port frei waehlbar: PORT=80 docker compose up  ->  http://localhost:80
+      - "${PORT:-9999}:9999"
+    environment:
+      - PORT=9999
+    restart: unless-stopped

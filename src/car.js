@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 // Das GLB-Modell liegt mit seiner Laengsachse auf der X-Achse und ist in Y zentriert.
 // MODEL_ROT_Y dreht das Modell so, dass seine Front auf +Z (Fahrtrichtung) zeigt.
@@ -32,7 +33,11 @@ export class Car {
   }
 
   async load(url, onProgress) {
-    const gltf = await new GLTFLoader().loadAsync(url, onProgress);
+    const loader = new GLTFLoader();
+    // campervan_meshopt.glb ist Meshopt-komprimiert (EXT_meshopt_compression)
+    await MeshoptDecoder.ready;
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    const gltf = await loader.loadAsync(url, onProgress);
     const model = gltf.scene;
     model.traverse((o) => {
       if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
