@@ -72,7 +72,7 @@ export function createArcLapQuest(arc, traffic, { target = 10, startTraffic = 10
   const quest = new Quest({
     id: 'arc-de-triomphe',
     title: 'Quest 1: Arc de Triomphe',
-    desc: `Fahre ${target} Runden um den Arc de Triomphe – mit dem Verkehr gegen den Uhrzeigersinn.`,
+    desc: `Fahre ${target} Runden um den Arc de Triomphe – mit dem Verkehr gegen den Uhrzeigersinn!`,
     target,
     extra: () => `Verkehr: ${traffic.count} Autos (Start ${startTraffic}, +5 pro Runde)`,
     update(dt, ctx, mgr, q) {
