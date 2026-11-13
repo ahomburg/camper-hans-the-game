@@ -15,7 +15,13 @@ mit der LKW-Hupe (H) durch den Kreisverkehr.
    1. **oder besser** Remash ~25K
 3. Texturen optimieren
 
-### Texturen optimieren
+### Optimieren mit online-Tool:
+
+- [GLB Optimizer: Compress GLB and glTF Files in Your Browser](https://threejsresources.com/glb-optimizer)
+- Meshopt
+- Texture size 1024: No Convert to WebP 
+
+### Alt: Texturen optimieren
 
 ```bash
 npx @gltf-transform/cli resize car_mercedes.glb resized.glb --width 2048 --height 2048  

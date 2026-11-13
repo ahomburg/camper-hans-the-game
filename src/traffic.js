@@ -5,7 +5,7 @@ import { laneRadii } from './arc.js';
 import { carHonk } from './audio.js';
 import { isTouchDevice, limitTextureSize } from './device.js';
 
-const CAR_MODEL_URLS = ['car_mercedes_meshopt.glb', 'car_kaefer_meshopt.glb', 'car_ente_meshopt.glb'];
+const CAR_MODEL_URLS = ['assets/car_mercedes-optimized.glb', 'assets/car_kaefer-optimized.glb', 'assets/car_ente-optimized.glb'];
 const CAR_LENGTH = 3.6; // Ziel-Laenge der Ente (10% kleiner als urspruenglich 4.0; der Van bleibt unveraendert)
 // Mercedes und Kaefer sind nochmals 10% kleiner als die Ente; die Ente selbst 20% kleiner (3.6 * 0.8 = 2.88)
 const CAR_MODEL_LENGTHS = CAR_MODEL_URLS.map((_, i) => (i < 2 ? CAR_LENGTH * 0.9 : CAR_LENGTH * 0.8));
@@ -113,10 +113,10 @@ export class Traffic {
     this.templates = []; // GLB-Vorlagen (car_*.glb), leer = Kisten-Fallback
   }
 
-  // Laedt car_mercedes/car_kaefer/car_ente_meshopt.glb als Vorlagen. onProgress(i, n).
+  // Laedt car_mercedes/car_kaefer/car_ente-optimized.glb als Vorlagen. onProgress(i, n).
   async loadCarModels(onProgress = null) {
     const loader = new GLTFLoader();
-    // Die car_*_meshopt.glb sind Meshopt-komprimiert (EXT_meshopt_compression)
+    // Die car_*-optimized.glb sind Meshopt-komprimiert (EXT_meshopt_compression)
     await MeshoptDecoder.ready;
     loader.setMeshoptDecoder(MeshoptDecoder);
     this.templates = [];
@@ -165,7 +165,7 @@ export class Traffic {
 
     // Jedes Auto bekommt eine eigene Zufallsgeschwindigkeit (deutlich gestreut)
     const speed = this.baseSpeed * (0.6 + this.rand() * 0.8) * (0.92 + 0.04 * lane);
-    // GLB-Modell im Wechsel (car_mercedes/car_kaefer/car_ente_meshopt): bei 30
+    // GLB-Modell im Wechsel (car_mercedes/car_kaefer/car_ente-optimized): bei 30
     // Autos ab Start sind das genau 10x Mercedes, 10x Kaefer, 10x Ente.
     // Kisten-Fallback, falls die Modelle nicht geladen sind.
     const modelIdx = this.cars.length % Math.max(1, this.templates.length);

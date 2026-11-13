@@ -36,7 +36,7 @@ export class Car {
 
   async load(url, onProgress) {
     const loader = new GLTFLoader();
-    // campervan_meshopt.glb ist Meshopt-komprimiert (EXT_meshopt_compression)
+    // campervan-optimized.glb ist Meshopt-komprimiert (EXT_meshopt_compression)
     await MeshoptDecoder.ready;
     loader.setMeshoptDecoder(MeshoptDecoder);
     const gltf = await loader.loadAsync(url, onProgress);

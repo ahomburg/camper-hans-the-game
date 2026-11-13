@@ -3,7 +3,8 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Stabile Assets zuerst, damit Code-Aenderungen die Asset-Layer im Build-Cache lassen
-COPY *.glb *.mp3 ./
+COPY assets/ ./assets/
+COPY *.mp3 ./
 COPY vendor/ ./vendor/
 COPY src/ ./src/
 COPY index.html serve.mjs ./

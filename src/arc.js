@@ -59,7 +59,7 @@ export function buildArc(scene) {
   colliders.push({ x: cx, z: cz, r: islandR + 0.4 });
 
   // --- Arc de Triomphe ---
-  // Das alte Kistenmodell wurde durch das GLB-Modell arch_meshopt.glb ersetzt,
+  // Das alte Kistenmodell wurde durch das GLB-Modell arch-optimized.glb ersetzt,
   // das nachtraeglich per loadArcMonument() geladen wird (async).
 
   // --- 6 Zufallsbaeume mit runder Krone auf der Insel ---
@@ -95,16 +95,16 @@ export function buildArc(scene) {
   return { ...ARC, laneRadii: laneRadii(), colliders, group };
 }
 
-// Laedt arch_meshopt.glb als Arc de Triomphe auf die Mittelinsel.
+// Laedt assets/arch-optimized.glb als Arc de Triomphe auf die Mittelinsel.
 // Das Modell ist ~1 Einheit gross und zentriert; es wird auf ~26 Einheiten
 // Hoehe skaliert (wie das alte Kistenmodell), auf die Insel gesetzt und so
 // gedreht, dass die Durchfahrt entlang der Nord-Sued-Strasse (Z) zeigt.
 export async function loadArcMonument(scene, cx = ARC.cx, cz = ARC.cz) {
   const loader = new GLTFLoader();
-  // arch_meshopt.glb ist Meshopt-komprimiert (EXT_meshopt_compression)
+  // arch-optimized.glb ist Meshopt-komprimiert (EXT_meshopt_compression)
   await MeshoptDecoder.ready;
   loader.setMeshoptDecoder(MeshoptDecoder);
-  const gltf = await loader.loadAsync('arch_meshopt.glb');
+  const gltf = await loader.loadAsync('assets/arch-optimized.glb');
   const model = gltf.scene;
   model.traverse((o) => {
     if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
