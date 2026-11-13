@@ -246,9 +246,9 @@ try {
   });
   loadtext.textContent = 'Lade Arc de Triomphe …';
   await loadArcMonument(scene, arc.cx, arc.cz);
-  await placeBuildings(scene, world, arc, (i, n) => {
-    loadtext.textContent = `Lade Gebäude … ${i}/${n}`;
-  });
+  // await placeBuildings(scene, world, arc, (i, n) => {
+  //   loadtext.textContent = `Lade Gebäude … ${i}/${n}`;
+  // });
 } catch (err) {
   loadtext.textContent = 'Fehler beim Laden der Modelle: ' + err.message;
   throw err;
