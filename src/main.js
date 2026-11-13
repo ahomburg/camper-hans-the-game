@@ -13,10 +13,14 @@ const app = document.getElementById('app');
 // Auf Mobilgeraeten sparsamer rendern: MSAA + hohe Aufloesung + weiche
 // Schatten treiben mobile GPUs sonst leicht in Kontext-Verlust.
 // isMobile kommt aus device.js (pointer: coarse ODER mobile UA).
-// Debug-Parameter zum Eingrenzen auf dem Geraet: ?noshadow  und  ?scale=0.7
+// Schatten sind auf Mobilgeraeten standardmaessig AUS: auf manchen Android-
+// GPUs (z.B. Pixel 10/Chrome) killt der Shadow-Pass den WebGL-Kontext direkt
+// beim Start (webglcontextlost ohne webglcontextrestored) — ohne Schatten
+// laeuft es stabil. Debug-Parameter: ?shadow (Schatten auf Mobil erzwingen),
+// ?noshadow (auf Desktop abschalten), ?scale=0.7 (Aufloesung reduzieren).
 const qs = new URLSearchParams(location.search);
 const resScale = Math.min(1, parseFloat(qs.get('scale')) || 1);
-const shadowsOff = qs.has('noshadow');
+const shadowsOff = qs.has('noshadow') || (isMobile && !qs.has('shadow'));
 const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, stencil: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2) * resScale);
 renderer.setSize(window.innerWidth, window.innerHeight);
