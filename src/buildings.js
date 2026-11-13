@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { ARC } from './arc.js';
 import { AVENUE } from './world.js';
 
 // Gebaeude als durchgehende Bebauung entlang der Strassen — ausschliesslich
-// building2/3/4.glb. Fenster kommen nur aus der baked Textur der GLB-Dateien
+// building1/2/3/4_meshopt.glb. Fenster kommen nur aus der baked Textur der GLB-Dateien
 // (keine nachtraeglich hinzugefuegten Fenster).
 // Start-Strasse (Nord-Sued, "Champs-Elysees"): Reihe hinter den Birken.
 // Kreisstrasse: Gebaeude direkt am Strassenrand (aussen).
-const BUILDING_URLS = ['building2.glb', 'building3.glb', 'building4.glb'];
+const BUILDING_URLS = ['building1_meshopt.glb', 'building2_meshopt.glb', 'building3_meshopt.glb', 'building4_meshopt.glb'];
 const BUILDING_HEIGHT = 10; // Zielhoehe in Welt-Einheiten
 
 // Modell normalisieren: laengste horizontale Achse (Fassade) auf lokale X,
@@ -47,6 +48,9 @@ function normalizeBuilding(model) {
 // Platziert GLB-Gebaeude und gibt die Anzahl zurueck. Collider landen in world.colliders.
 export async function placeBuildings(scene, world, arc = ARC, onProgress = null) {
   const loader = new GLTFLoader();
+  // Die building*_meshopt.glb sind Meshopt-komprimiert (EXT_meshopt_compression)
+  await MeshoptDecoder.ready;
+  loader.setMeshoptDecoder(MeshoptDecoder);
   const templates = [];
   for (let i = 0; i < BUILDING_URLS.length; i++) {
     const gltf = await loader.loadAsync(BUILDING_URLS[i]);

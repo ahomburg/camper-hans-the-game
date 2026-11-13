@@ -23,7 +23,7 @@ npx @gltf-transform/cli resize car_mercedes.glb resized.glb --width 2048 --heigh
 # Draco ist für diesen Einsatzfall nicht optimal, wir verwenden meshopt
 # noch nicht getestet (AI hat mit die Modelle gewandelt)
 # npx @gltf-transform/cli optimize resized.glb car_mercedes_opt.glb --compress draco --texture-compress webp
-npx @gltf-transform optimize car_mercedes.glb car_mercedes_meshopt.glb --texture-compress ktx2
+npx @gltf-transform/cli optimize car_mercedes.glb car_mercedes_meshopt.glb --texture-compress ktx2
 ```
 
 ## Start
