@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
+import { isTouchDevice, limitTextureSize } from './device.js';
+
 // Das GLB-Modell liegt mit seiner Laengsachse auf der X-Achse und ist in Y zentriert.
 // MODEL_ROT_Y dreht das Modell so, dass seine Front auf +Z (Fahrtrichtung) zeigt.
 // Falls der Van im Spiel rueckwaerts faehrt: Vorzeichen wechseln (+Math.PI / 2).
@@ -42,6 +44,7 @@ export class Car {
     model.traverse((o) => {
       if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
     });
+    if (isTouchDevice) limitTextureSize(model, 1024); // GPU-Speicher sparen (Mobil)
 
     const rot = new THREE.Group();
     rot.add(model);

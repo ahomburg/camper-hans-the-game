@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { ARC } from './arc.js';
 import { AVENUE } from './world.js';
+import { isTouchDevice, limitTextureSize } from './device.js';
 
 // Deterministischer Zufall (wie in traffic.js): die Gebaeude-Mischung bleibt
 // reproduzierbar, ist aber von Lauf zu Lauf nicht die gleiche Reihenfolge.
@@ -70,6 +71,7 @@ export async function placeBuildings(scene, world, arc = ARC, onProgress = null)
     gltf.scene.traverse((o) => {
       if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
     });
+    if (isTouchDevice) limitTextureSize(gltf.scene, 1024); // GPU-Speicher sparen (Mobil)
     templates.push(normalizeBuilding(gltf.scene));
     if (onProgress) onProgress(i + 1, BUILDING_URLS.length);
   }

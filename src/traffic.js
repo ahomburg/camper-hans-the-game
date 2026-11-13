@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { laneRadii } from './arc.js';
 import { carHonk } from './audio.js';
+import { isTouchDevice, limitTextureSize } from './device.js';
 
 const CAR_MODEL_URLS = ['car_mercedes_meshopt.glb', 'car_kaefer_meshopt.glb', 'car_ente_meshopt.glb'];
 const CAR_LENGTH = 3.6; // Ziel-Laenge der Ente (10% kleiner als urspruenglich 4.0; der Van bleibt unveraendert)
@@ -124,6 +125,7 @@ export class Traffic {
       gltf.scene.traverse((o) => {
         if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
       });
+      if (isTouchDevice) limitTextureSize(gltf.scene, 1024); // GPU-Speicher sparen (Mobil)
       this.templates.push(normalizeCarModel(gltf.scene, CAR_MODEL_LENGTHS[i]));
       if (onProgress) onProgress(i + 1, CAR_MODEL_URLS.length);
     }

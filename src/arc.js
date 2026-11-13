@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
+import { isTouchDevice, limitTextureSize } from './device.js';
+
 // Lage und Masse des Kreisverkehrs (Place Charles de Gaulle / Arc de Triomphe).
 // wird auch von world.js (Sperrbereiche) und traffic.js/quests.js (Spuren, Runden) benutzt.
 export const ARC = {
@@ -107,6 +109,7 @@ export async function loadArcMonument(scene, cx = ARC.cx, cz = ARC.cz) {
   model.traverse((o) => {
     if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
   });
+  if (isTouchDevice) limitTextureSize(model, 1024); // GPU-Speicher sparen (Mobil)
 
   const wrapper = new THREE.Group();
   wrapper.add(model);

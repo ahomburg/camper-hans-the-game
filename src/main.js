@@ -7,11 +7,11 @@ import { Traffic } from './traffic.js';
 import { QuestManager, createArcLapQuest, createSpeedQuest } from './quests.js';
 import { truckHonk } from './audio.js';
 import { placeBuildings } from './buildings.js';
+import { isTouchDevice } from './device.js';
 
 const app = document.getElementById('app');
 // Auf Touch-Geraeten (Android/iOS) sparsamer rendern: MSAA + hohe Aufloesung
 // treiben mobile GPUs sonst leicht in Kontext-Verlust (weisser Bildschirm).
-const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
 const renderer = new THREE.WebGLRenderer({ antialias: !isTouchDevice });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, isTouchDevice ? 1 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -20,13 +20,26 @@ renderer.shadowMap.type = isTouchDevice ? THREE.PCFShadowMap : THREE.PCFSoftShad
 app.appendChild(renderer.domElement);
 
 // GPU-Kontext verloren (z.B. zu wenig GPU-Speicher auf dem Telefon)?
-// Statt weissem Canvas Hinweis zeigen und Neuladen anbieten.
+// preventDefault() erlaubt die Wiederherstellung; three.js initialisiert den
+// GL-Kontext bei 'webglcontextrestored' selbst neu und laedt alle Texturen/
+// Puffer beim naechsten Render automatisch wieder hoch. Erst wenn die
+// Wiederherstellung ausbleibt, wird Neuladen angeboten.
+let reloadFallbackTimer = null;
 renderer.domElement.addEventListener('webglcontextlost', (e) => {
   e.preventDefault();
   const loading = document.getElementById('loading');
   loading.classList.remove('done');
-  document.getElementById('loadtext').textContent = 'Grafik wurde unterbrochen - bitte neu laden';
-  loading.addEventListener('click', () => location.reload(), { once: true });
+  document.getElementById('loadtext').textContent = 'Grafik wurde unterbrochen - wird wiederhergestellt …';
+  clearTimeout(reloadFallbackTimer);
+  reloadFallbackTimer = setTimeout(() => {
+    document.getElementById('loadtext').textContent = 'Grafik wurde unterbrochen - bitte neu laden';
+    loading.addEventListener('click', () => location.reload(), { once: true });
+  }, 8000);
+});
+renderer.domElement.addEventListener('webglcontextrestored', () => {
+  clearTimeout(reloadFallbackTimer);
+  document.getElementById('loading').classList.add('done');
+  renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 const scene = new THREE.Scene();
