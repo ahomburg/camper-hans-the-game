@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { laneRadii } from './arc.js';
 import { carHonk } from './audio.js';
 
-const CAR_MODEL_URLS = ['car1_simple.glb', 'car2_simple.glb', 'car3_simple.glb'];
-const CAR_LENGTH = 3.6; // Ziel-Laenge von car3 (10% kleiner als urspruenglich 4.0; der Van bleibt unveraendert)
-// car1 und car2 sind nochmals 10% kleiner als car3
+const CAR_MODEL_URLS = ['car_mercedes.glb', 'car_kaefer.glb', 'car_ente.glb'];
+const CAR_LENGTH = 3.6; // Ziel-Laenge der Ente (10% kleiner als urspruenglich 4.0; der Van bleibt unveraendert)
+// Mercedes und Kaefer sind nochmals 10% kleiner als die Ente
 const CAR_MODEL_LENGTHS = CAR_MODEL_URLS.map((_, i) => (i < 2 ? CAR_LENGTH * 0.9 : CAR_LENGTH));
 
 const PALETTE = [
@@ -108,12 +109,16 @@ export class Traffic {
     this.laneRadii = laneRadii(arc);
     this.cars = [];
     this.colliders = []; // ein Eintrag pro Auto, wird in update() mitbewegt
-    this.templates = []; // GLB-Vorlagen (car*_simple.glb), leer = Kisten-Fallback
+    this.templates = []; // GLB-Vorlagen (car_*.glb), leer = Kisten-Fallback
   }
 
-  // Laedt car1/2/3_simple.glb als Vorlagen. onProgress(i, n).
+  // Laedt car_mercedes/car_kaefer/car_ente.glb als Vorlagen. onProgress(i, n).
   async loadCarModels(onProgress = null) {
     const loader = new GLTFLoader();
+    // Die car_*.glb sind Draco-komprimiert (KHR_draco_mesh_compression)
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('vendor/addons/libs/draco/gltf/');
+    loader.setDRACOLoader(dracoLoader);
     this.templates = [];
     for (let i = 0; i < CAR_MODEL_URLS.length; i++) {
       const gltf = await loader.loadAsync(CAR_MODEL_URLS[i]);
@@ -159,8 +164,8 @@ export class Traffic {
 
     // Jedes Auto bekommt eine eigene Zufallsgeschwindigkeit (deutlich gestreut)
     const speed = this.baseSpeed * (0.6 + this.rand() * 0.8) * (0.92 + 0.04 * lane);
-    // GLB-Modell im Wechsel (car1_simple/car2_simple/car3_simple): bei 30
-    // Autos ab Start sind das genau 10x car1, 10x car2, 10x car3.
+    // GLB-Modell im Wechsel (car_mercedes/car_kaefer/car_ente): bei 30
+    // Autos ab Start sind das genau 10x Mercedes, 10x Kaefer, 10x Ente.
     // Kisten-Fallback, falls die Modelle nicht geladen sind.
     const modelIdx = this.cars.length % Math.max(1, this.templates.length);
     let mesh;

@@ -1,8 +1,8 @@
-// Hupen als MP3-Dateien: car1/car2/car3_horn.mp3 fuer die Verkehrsautos,
+// Hupen als MP3-Dateien: car_mercedes/car_kaefer/car_ente.mp3 fuer die Verkehrsautos,
 // campervan_horn.mp3 fuer den Van (Taste H). Die WebAudio-Synthese bleibt
 // als Fallback, falls eine Datei nicht geladen werden kann.
 
-const HORN_FILES = ['car1_horn.mp3', 'car2_horn.mp3', 'car3_horn.mp3'];
+const HORN_FILES = ['car_mercedes.mp3', 'car_kaefer.mp3', 'car_ente.mp3'];
 const TRUCK_HORN_FILE = 'campervan_horn.mp3';
 
 // --- Fallback-Synthese (WebAudio) ---
@@ -49,7 +49,7 @@ function synthHonk({ freqs, dur = 0.3, gain = 0.12, type = 'square', attack = 0.
   }
 }
 
-// Drei verschiedene Synthese-Hupen als Fallback fuer car1/car2/car3.
+// Drei verschiedene Synthese-Hupen als Fallback fuer car_mercedes/car_kaefer/car_ente.
 const CAR_HONKS = [
   { freqs: [392, 494], dur: 0.26, gain: 0.10, type: 'square' },
   { freqs: [330, 415], dur: 0.34, gain: 0.11, type: 'square' },
@@ -100,7 +100,7 @@ function playFile(url, volume, synthFallback) {
   }
 }
 
-// variant = 0, 1 oder 2 -> car1_horn.mp3 / car2_horn.mp3 / car3_horn.mp3
+// variant = 0, 1 oder 2 -> car_mercedes.mp3 / car_kaefer.mp3 / car_ente.mp3
 export function carHonk(variant = 0) {
   const v = ((variant % HORN_FILES.length) + HORN_FILES.length) % HORN_FILES.length;
   playFile(HORN_FILES[v], 0.7, () => synthHonk(CAR_HONKS[v]));
