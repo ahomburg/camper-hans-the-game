@@ -7,16 +7,21 @@ import { Traffic } from './traffic.js';
 import { QuestManager, createArcLapQuest, createSpeedQuest } from './quests.js';
 import { truckHonk } from './audio.js';
 import { placeBuildings } from './buildings.js';
-import { isTouchDevice } from './device.js';
+import { isMobile } from './device.js';
 
 const app = document.getElementById('app');
-// Auf Touch-Geraeten (Android/iOS) sparsamer rendern: MSAA + hohe Aufloesung
-// treiben mobile GPUs sonst leicht in Kontext-Verlust (weisser Bildschirm).
-const renderer = new THREE.WebGLRenderer({ antialias: !isTouchDevice });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, isTouchDevice ? 1 : 2));
+// Auf Mobilgeraeten sparsamer rendern: MSAA + hohe Aufloesung + weiche
+// Schatten treiben mobile GPUs sonst leicht in Kontext-Verlust.
+// isMobile kommt aus device.js (pointer: coarse ODER mobile UA).
+// Debug-Parameter zum Eingrenzen auf dem Geraet: ?noshadow  und  ?scale=0.7
+const qs = new URLSearchParams(location.search);
+const resScale = Math.min(1, parseFloat(qs.get('scale')) || 1);
+const shadowsOff = qs.has('noshadow');
+const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, stencil: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2) * resScale);
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = isTouchDevice ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = !shadowsOff;
+renderer.shadowMap.type = isMobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 app.appendChild(renderer.domElement);
 
 // GPU-Kontext verloren (z.B. zu wenig GPU-Speicher auf dem Telefon)?
@@ -25,8 +30,28 @@ app.appendChild(renderer.domElement);
 // Puffer beim naechsten Render automatisch wieder hoch. Erst wenn die
 // Wiederherstellung ausbleibt, wird Neuladen angeboten.
 let reloadFallbackTimer = null;
+// Optionaler On-Screen-Log (?log in der URL): schreibt Warnungen zusaetzlich
+// unten ins Bild, damit man sie auf dem Handy ohne Remote-Debugging sieht.
+const debugOnScreen = qs.has('log');
+function debugLog(...args) {
+  console.warn(...args);
+  if (!debugOnScreen) return;
+  let el = document.getElementById('debuglog');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'debuglog';
+    el.style.cssText = 'position:fixed;left:4px;bottom:4px;z-index:99;max-width:94vw;font:10px monospace;color:#ffd27a;background:rgba(0,0,0,.7);padding:4px 6px;border-radius:6px;pointer-events:none;white-space:pre-wrap;';
+    document.body.appendChild(el);
+  }
+  el.textContent = (el.textContent + '\n' + args.join(' ')).split('\n').slice(-8).join('\n');
+}
+renderer.domElement.addEventListener('webglcontextcreationerror', (e) => {
+  debugLog('[webgl] creation error:', e.statusMessage || '(kein statusMessage)');
+});
 renderer.domElement.addEventListener('webglcontextlost', (e) => {
   e.preventDefault();
+  // Diagnose: wie viele Texturen/Geometrien/Programme hielt der Kontext zuletzt?
+  debugLog('[webgl] LOST', new Date().toISOString(), JSON.stringify(renderer.info.memory), JSON.stringify(renderer.info.render));
   const loading = document.getElementById('loading');
   loading.classList.remove('done');
   document.getElementById('loadtext').textContent = 'Grafik wurde unterbrochen - wird wiederhergestellt …';
@@ -38,6 +63,7 @@ renderer.domElement.addEventListener('webglcontextlost', (e) => {
 });
 renderer.domElement.addEventListener('webglcontextrestored', () => {
   clearTimeout(reloadFallbackTimer);
+  debugLog('[webgl] RESTORED', new Date().toISOString());
   document.getElementById('loading').classList.add('done');
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
@@ -52,7 +78,7 @@ const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerH
 scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x51604a, 0.9));
 const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
 sun.castShadow = true;
-sun.shadow.mapSize.set(isTouchDevice ? 1024 : 2048, isTouchDevice ? 1024 : 2048);
+sun.shadow.mapSize.set(isMobile ? 512 : 2048, isMobile ? 512 : 2048);
 sun.shadow.camera.near = 10;
 sun.shadow.camera.far = 220;
 const sc = 60;

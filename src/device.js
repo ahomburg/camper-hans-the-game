@@ -2,6 +2,14 @@
 
 export const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
 
+// (pointer: coarse) meldet nicht jedes Mobilgeraet (z.B. iPad mit Trackpad,
+// manche Tablets mit Maus, DevTools-Emu ohne Touch). Ueber die UA willkommen
+// wir die sparsamen Render-Pfade zuverlaessig aktiviert.
+export const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent);
+
+// Massgeblich fuer GPU-sparendes Rendering (Aufloesung, MSAA, Schatten).
+export const isMobile = isTouchDevice || isMobileUA;
+
 // Die GLB-Modelle betten ihre Texturen als WebP mit bis zu 2048px ein.
 // Auf mobilen GPUs sprengt das schnell den GPU-Speicher (WebGL-Kontext
 // geht verloren -> "Grafik wurde unterbrochen"). Auf Touch-Geraeten werden
