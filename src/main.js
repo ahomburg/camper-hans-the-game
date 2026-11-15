@@ -307,15 +307,15 @@ try {
   await car.load('assets/campervan-optimized.glb', (e) => {
     if (e.total) loadtext.textContent = `Lade Campervan … ${Math.round((e.loaded / e.total) * 100)} %`;
   });
-  await traffic.loadCarModels((i, n) => {
-    loadtext.textContent = `Lade Autos … ${i}/${n}`;
-  });
+  // await traffic.loadCarModels((i, n) => {
+  //   loadtext.textContent = `Lade Autos … ${i}/${n}`;
+  // });
   loadtext.textContent = 'Lade Arc de Triomphe …';
   monument = await loadArcMonument(scene, arc.cx, arc.cz);
-  const { buildings } = await placeBuildings(scene, world, arc, (i, n) => {
-    loadtext.textContent = `Lade Gebäude … ${i}/${n}`;
-  });
-  staticCullables.push(...buildings, monument);
+  // const { buildings } = await placeBuildings(scene, world, arc, (i, n) => {
+  //   loadtext.textContent = `Lade Gebäude … ${i}/${n}`;
+  // });
+  // staticCullables.push(...buildings, monument);
   allColliders.push(...world.colliders, ...arc.colliders);
 } catch (err) {
   loadtext.textContent = 'Fehler beim Laden der Modelle: ' + err.message;
