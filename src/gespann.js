@@ -1,19 +1,23 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
+import { isTouchDevice, limitTextureSize } from './device.js';
 import { Car } from './car.js';
 
 // ---------------------------------------------------------------------------
-// Gespann: gruenes Zugfahrzeug mit Wohnwagen (beide prozedural aus Primitiven,
-// es gibt dafuer kein GLB-Modell). Der Wohnwagen haengt an einer Kupplung
+// Gespann: Zugfahrzeug aus peugeot-optimized.glb mit Wohnwagen aus
+// wohnwagen-optimized.glb. Der Wohnwagen haengt an einer Kupplung
 // hinter dem Auto und hat eine eigene Giertynamik - er kann ins Schlingern
 // geraten und im Extremfall abreißen. Schlingert er oder kippt das Fahrzeug,
 // ist die Quest gescheitert (main.js entscheidet das).
 // ---------------------------------------------------------------------------
 
 // Geometrie (Welt-Einheiten, Fahrzeug-Lokalkoordinaten: +Z = vorwaerts)
-const CAR_W = 1.9;
 const CAR_LEN = 4.2;
-const HITCH_DIST = 2.6;   // Kupplung hinter Zugfahrzeug-Mitte
+const HITCH_DIST = 2.3;   // Kupplung hinter Zugfahrzeug-Mitte: dicht am Heck
+                          // (CAR_LEN/2 = 2.1), damit zwischen Auto und Wohnwagen
+                          // kein sichtbarer Abstand bleibt
 
 // Wohnwagen-Schlingerphysik (gegen car.js in der Simulation getestet):
 //   psi          relativer Giervinkel Zug <-> Wohnwagen (0 = gerade hinterher)
@@ -37,6 +41,21 @@ const TRAILER_J = 1.0;    // normiertes Traegheitsmoment
 const S_EQ_CAP = 0.45;    // gedeckelte Ruhelage (~26 Grad Einknickwinkel)
 const TIRE_CAP = 0.26;     // Kraftsaettigung der Wohnwagen-Achse (Reifenhaftung)
 
+// GLB-Modelle (beide Meshopt-komprimiert, EXT_meshopt_compression)
+const CAR_MODEL_URL = 'assets/3d/peugeot-optimized.glb';
+const TRAILER_MODEL_URL = 'assets/3d/wohnwagen-optimized.glb';
+const TRAILER_MODEL_LEN = 5.0; // Ziel-Laenge des Wohnwagens in Welt-Einheiten
+// Der Wohnwagen wird um diesen Betrag ueber die Kupplung hinaus nach vorn
+// gezogen: die Deichsel verschwindet im Zugfahrzeug-Heck, damit zwischen
+// Wagen und Auto kein sichtbarer Spalt bleibt.
+const TRAILER_COUPLING_OVERLAP = 0.4;
+// Der Peugeot liegt wie der Campervan mit der Laengsachse auf X; CAR_MODEL_ROT_Y
+// dreht die Front auf +Z (Fahrtrichtung). Der Wohnwagen liegt mit der Laengsachse
+// auf Z; TRAILER_MODEL_ROT_Y legt fest, welches Ende zur Kupplung (+Z) zeigt -
+// haengt der Wohnwagen verkehrt herum am Auto: Math.PI einsetzen.
+const CAR_MODEL_ROT_Y = Math.PI / 2;
+const TRAILER_MODEL_ROT_Y = 0;
+
 
 export class Gespann extends Car {
   constructor(scene) {
@@ -54,7 +73,7 @@ export class Gespann extends Car {
     this.trailerGroup = new THREE.Group(); // sitzt an der Kupplung
     scene.add(this.trailerGroup);
 
-    // Das gruene Auto neigt sich fast nicht und schwingt kaum nach:
+    // Das Zugfahrzeug neigt sich fast nicht und schwingt kaum nach:
     // sehr kleiner Wank-Anteil + hoehere Wank-Daempfung. Damit Kippen
     // trotzdem erreichbar bleibt, kompensiert load() das mit einem
     // entsprechend kleinen Kippwinkel.
@@ -64,90 +83,75 @@ export class Gespann extends Car {
     this.syncTrailer();
   }
 
-  // Die Modelle werden prozedural gebaut (kein GLB noetig).
+  // Die Modelle werden aus den GLB-Dateien geladen; die Geometrie-Konstanten
+  // (CAR_LEN, TRAILER_L etc.) bleiben massgebend fuer die Physik und das Scaling.
   async load() {
-    this.buildCar();
+    await Promise.all([this.loadCarModel(), this.loadTrailerModel()]);
+  }
+
+  // Gemeinsamer GLB-Lader: Meshopt-Decoder, Schatten, Mobil-Texturbegrenzung.
+  async loadGlb(url) {
+    const loader = new GLTFLoader();
+    await MeshoptDecoder.ready;
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    const gltf = await loader.loadAsync(url);
+    const model = gltf.scene;
+    model.traverse((o) => {
+      if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+    });
+    if (isTouchDevice) limitTextureSize(model, 1024); // GPU-Speicher sparen (Mobil)
+    return model;
+  }
+
+  // Peugeot auf Laengsachse X (wie der Campervan), Front auf +Z, auf CAR_LEN
+  // skaliert, zentriert und auf den Boden gestellt (analog Car.load in car.js).
+  async loadCarModel() {
+    const model = await this.loadGlb(CAR_MODEL_URL);
+
+    const rot = new THREE.Group();
+    rot.add(model);
+    rot.rotation.y = CAR_MODEL_ROT_Y;
+
+    const inner = new THREE.Group();
+    inner.add(rot);
+    const box0 = new THREE.Box3().setFromObject(model);
+    const size0 = box0.getSize(new THREE.Vector3());
+    inner.scale.setScalar(CAR_LEN / size0.x); // Modell-Laenge liegt auf X
+
+    const box = new THREE.Box3().setFromObject(inner);
+    const center = box.getCenter(new THREE.Vector3());
+    inner.position.set(-center.x, -box.min.y, -center.z);
+    this.body.add(inner);
+
     // Zugwagen: neigt sich fast gar nicht (rollGain/rollDamping s. Konstruktor),
     // kippt aber bei brutalen Rucklenkern bei Maxspeed. cogHeight ist der
     // Tuning-Regler, der die beiden Effekte voneinander entkoppelt.
-    this.applySize(new THREE.Vector3(CAR_W, 2.0, CAR_LEN), 12.0);
-    this.buildTrailer();
+    const size = box.getSize(new THREE.Vector3());
+    this.applySize(size, 12.0);
   }
 
-  buildCar() {
-    const green = new THREE.MeshLambertMaterial({ color: 0x3a8d3f });
-    const darkGreen = new THREE.MeshLambertMaterial({ color: 0x2c6d31 });
-    const glass = new THREE.MeshLambertMaterial({ color: 0x16202b });
-    const tire = new THREE.MeshLambertMaterial({ color: 0x151515 });
+  // Wohnwagen auf Laengsachse Z, auf TRAILER_MODEL_LEN skaliert. Lokaler
+  // Nullpunkt des trailerGroup ist die KUPPLUNG: das zur Kupplung zeigende
+  // Ende liegt bei z=0, der Aufbau erstreckt sich nach -Z (wie beim alten
+  // prozeduralen Wohnwagen), unten auf dem Boden.
+  async loadTrailerModel() {
+    const model = await this.loadGlb(TRAILER_MODEL_URL);
 
-    const add = (geo, mat, x, y, z) => {
-      const m = new THREE.Mesh(geo, mat);
-      m.position.set(x, y, z);
-      m.castShadow = true;
-      m.receiveShadow = true;
-      this.body.add(m);
-      return m;
-    };
+    const rot = new THREE.Group();
+    rot.add(model);
+    rot.rotation.y = TRAILER_MODEL_ROT_Y;
 
-    // Karosserie
-    add(new THREE.BoxGeometry(CAR_W, 0.62, CAR_LEN), green, 0, 0.62, 0);
-    // Kabine
-    add(new THREE.BoxGeometry(CAR_W - 0.2, 0.62, 2.1), darkGreen, 0, 1.22, 0.15);
-    // Front-/Heckscheibe
-    add(new THREE.BoxGeometry(CAR_W - 0.5, 0.42, 0.1), glass, 0, 1.28, 1.22);
-    add(new THREE.BoxGeometry(CAR_W - 0.5, 0.42, 0.1), glass, 0, 1.28, -0.92);
-    // Seitenscheiben
-    add(new THREE.BoxGeometry(0.08, 0.34, 1.7), glass, (CAR_W - 0.15) / 2, 1.28, 0.15);
-    add(new THREE.BoxGeometry(0.08, 0.34, 1.7), glass, -(CAR_W - 0.15) / 2, 1.28, 0.15);
-    // Stoßstangen
-    add(new THREE.BoxGeometry(CAR_W - 0.1, 0.18, 0.14), darkGreen, 0, 0.4, CAR_LEN / 2);
-    add(new THREE.BoxGeometry(CAR_W - 0.1, 0.18, 0.14), darkGreen, 0, 0.4, -CAR_LEN / 2);
-    // Kupplungsstab am Heck
-    add(new THREE.BoxGeometry(0.12, 0.1, 0.4), darkGreen, 0, 0.42, -CAR_LEN / 2 - 0.12);
+    const inner = new THREE.Group();
+    inner.add(rot);
+    const box0 = new THREE.Box3().setFromObject(model);
+    const size0 = box0.getSize(new THREE.Vector3());
+    inner.scale.setScalar(TRAILER_MODEL_LEN / size0.z); // Laenge liegt auf Z
 
-    // Raeder (Zylinderachse = X)
-    const wg = new THREE.CylinderGeometry(0.36, 0.36, 0.28, 14);
-    wg.rotateZ(Math.PI / 2);
-    for (const [x, z] of [[0.82, 1.35], [-0.82, 1.35], [0.82, -1.35], [-0.82, -1.35]]) {
-      add(wg, tire, x, 0.36, z);
-    }
-  }
-
-  buildTrailer() {
-    // Lokaler Nullpunkt des Wohnwagens ist die KUPPLUNG; alles liegt dahinter (-Z).
-    const white = new THREE.MeshLambertMaterial({ color: 0xf2efe6 });
-    const green = new THREE.MeshLambertMaterial({ color: 0x3a8d3f });
-    const glass = new THREE.MeshLambertMaterial({ color: 0x16202b });
-    const tire = new THREE.MeshLambertMaterial({ color: 0x151515 });
-    const metal = new THREE.MeshLambertMaterial({ color: 0x6b6f74 });
-
-    const add = (geo, mat, x, y, z) => {
-      const m = new THREE.Mesh(geo, mat);
-      m.position.set(x, y, z);
-      m.castShadow = true;
-      m.receiveShadow = true;
-      this.trailerGroup.add(m);
-      return m;
-    };
-
-    // Deichsel
-    add(new THREE.BoxGeometry(0.14, 0.12, 1.0), metal, 0, 0.5, -0.5);
-    // Aufbau: 4.2 lang, von z=-0.9 bis -5.1
-    const h = 1.85;
-    add(new THREE.BoxGeometry(2.0, h, 4.2), white, 0, 0.55 + h / 2, -3.0);
-    // gruener Zierstreifen
-    add(new THREE.BoxGeometry(2.04, 0.22, 4.2), green, 0, 0.95, -3.0);
-    // Fensterband
-    add(new THREE.BoxGeometry(2.06, 0.5, 1.9), glass, 0, 1.5, -3.1);
-    // Dach (leicht schmaler, dunkler)
-    add(new THREE.BoxGeometry(1.8, 0.12, 3.9), metal, 0, 0.55 + h + 0.06, -3.0);
-    // Stuetzrad vorn
-    add(new THREE.BoxGeometry(0.1, 0.45, 0.1), metal, 0, 0.25, -1.1);
-    // Achse + Raeder bei z = -2.8 (TRAILER_L hinter der Kupplung)
-    const wg = new THREE.CylinderGeometry(0.32, 0.32, 0.26, 14);
-    wg.rotateZ(Math.PI / 2);
-    add(wg, tire, 0.88, 0.32, -TRAILER_L);
-    add(wg, tire, -0.88, 0.32, -TRAILER_L);
+    const box = new THREE.Box3().setFromObject(inner);
+    const center = box.getCenter(new THREE.Vector3());
+    // Front ueber die Kupplung hinaus ins Zugfahrzeug-Heck gezogen (s. Konstante)
+    inner.position.set(-center.x, -box.min.y, -box.max.z + TRAILER_COUPLING_OVERLAP);
+    this.trailerGroup.add(inner);
   }
 
   update(dt, input, colliders, worldHalf, arc = null) {

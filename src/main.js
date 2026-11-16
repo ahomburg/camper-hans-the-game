@@ -236,6 +236,7 @@ function startQuest(q) {
   elapsed = 0;
   timerRunning = true;
   state = 'playing';
+  introT = 0; // Kamerafahrt: schraeg von vorne auf die Chase-Position
   menuEl.classList.add('hidden');
   successEl.classList.add('hidden');
   failedEl.classList.add('hidden');
@@ -329,7 +330,7 @@ try {
   await campervan.load('assets/3d/campervan-optimized.glb', (e) => {
     if (e.total) loadtext.textContent = `Lade Campervan … ${Math.round((e.loaded / e.total) * 100)} %`;
   });
-  loadtext.textContent = 'Baue Gespann …';
+  loadtext.textContent = 'Lade Gespann …';
   await gespann.load();
   await traffic.loadCarModels((i, n) => {
     loadtext.textContent = `Lade Autos … ${i}/${n}`;
@@ -354,6 +355,19 @@ window.addEventListener('resize', () => {
 // --- Chase-Kamera ---
 const desired = new THREE.Vector3();
 const lookTarget = new THREE.Vector3();
+// --- Kamerafahrt bei Quest-Start ---
+// Beginnt schraeg vor dem Fahrzeug (Blick auf das Fahrzeug) und schwenkt auf
+// einem Kreisbogen um das Fahrzeug in die normale Chase-Position (Blick nach
+// vorn). Pose in Polarkoordinaten um das Fahrzeug: Winkel relativ zur
+// Fahrtrichtung, ~0.56 rad (32 Grad) seitlich vor der Front.
+const INTRO_DURATION = 2.6; // Sekunden
+let introT = 1;              // Fortschritt 0..1; 1 = Fahrt beendet
+const INTRO_ANGLE = Math.atan2(5, 8); // Startwinkel vor der Front (seitlich)
+const INTRO_RADIUS = Math.hypot(8, 5); // ~9.43, passend zur Front-Ansicht
+const INTRO_HEIGHT = 2.6;
+const CHASE_RADIUS = 9;
+const CHASE_HEIGHT = 4.4;
+const introLook = new THREE.Vector3();
 function placeCameraBehindCar() {
   const fx = Math.sin(car.heading);
   const fz = Math.cos(car.heading);
@@ -414,9 +428,25 @@ function animate() {
     camera.lookAt(lookTarget);
   } else {
     desired.set(car.pos.x - fx * 9, 4.4, car.pos.z - fz * 9);
-    camera.position.lerp(desired, 1 - Math.exp(-6 * dt));
     lookTarget.set(car.pos.x + fx * 7, 1.8, car.pos.z + fz * 7);
-    camera.lookAt(lookTarget);
+    if (introT < 1) {
+      // Kamerafahrt nach dem Quest-Start: Kreisbogen um das Fahrzeug vom
+      // Startwinkel (32 Grad vor der Front, Blick auf das Fahrzeug) bis
+      // hinter das Auto (Chase-Pose). Winkel, Radius und Hoehe gehen per
+      // Smoothstep ueber, das Blickziel wandert vom Auto auf die Fahrbahn.
+      introT = Math.min(1, introT + dt / INTRO_DURATION);
+      const e = introT * introT * (3 - 2 * introT); // smoothstep: weich an/aus
+      const h = car.heading;
+      const a = h + INTRO_ANGLE + (Math.PI - INTRO_ANGLE) * e;
+      const r = INTRO_RADIUS + (CHASE_RADIUS - INTRO_RADIUS) * e;
+      const y = INTRO_HEIGHT + (CHASE_HEIGHT - INTRO_HEIGHT) * e;
+      camera.position.set(car.pos.x + Math.sin(a) * r, y, car.pos.z + Math.cos(a) * r);
+      introLook.set(car.pos.x, 1.4, car.pos.z).lerp(lookTarget, e);
+      camera.lookAt(introLook);
+    } else {
+      camera.position.lerp(desired, 1 - Math.exp(-6 * dt));
+      camera.lookAt(lookTarget);
+    }
   }
 
   const targetFov = 62 + Math.min(Math.abs(car.speed) * 0.45, 12);
