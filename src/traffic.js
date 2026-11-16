@@ -192,6 +192,8 @@ export class Traffic {
       honkVariant: modelIdx,          // jedes Automodell hat seine eigene Hupe
       nextHonk: 2 + this.rand() * 12, // zufaelliges Hupen
       bounceT: 0,                     // > 0: Auto prallt zurueck
+      shoveT: 0,                      // > 0: Van hat es von hinten angestossen,
+                                       // faehrt kurz mit Schubtempo nach vorn
       hitCool: 0,                     // Nachklang-Sperre nach einem Treffer
     };
     this.cars.push(car);
@@ -244,10 +246,23 @@ export class Traffic {
           // 2) Bounce-Impuls nur bei frischem Treffer (Nachklang-Sperre), sonst
           // wiederholte Impulse solange sich beide noch beruehren.
           if (car.bounceT <= 0 && car.hitCool <= 0) {
-            car.bounceT = 0.45; // kurzer Rueckstoss statt langem Rueckwaerts-Sprung
             car.hitCool = 1.0;
-            // Richtung des Abprallens haengt davon ab, wie der Van auf das
-            // Auto trifft (Stossnormale gegenueber der Fahrzeug-Nase):
+            // Wo sitzt der Treffer? Stossnormale (Auto -> Van) gegen die
+            // Fahrtrichtung des Autos: zeigt sie nach HINTEN, sitzt der Van
+            // dahinter (Auffahrunfall - das Auto wird nach vorn geschoben),
+            // zeigt sie nach vorn, faehrt das Auto auf den Van auf (- Rueckstoss).
+            const ch = car.mesh.rotation.y;
+            const cDotN = Math.sin(ch) * hit.nx + Math.cos(ch) * hit.nz;
+            if (cDotN < -0.5) {
+              // Auffahrunfall: Auto ein Stueck nach vorn schieben
+              // (Positionsschub + kurzer, auslaufender Schubtempo-Anteil).
+              car.shoveT = 0.55;
+              car.ang += Math.min(hit.depth, 0.3) / this.laneRadii[car.lane];
+            } else {
+              car.bounceT = 0.45; // kurzer Rueckstoss statt langem Rueckwaerts-Sprung
+            }
+            // Richtung, in die der Van abbounce (Stossnormale gegenueber der
+            // Fahrzeug-Nase des Vans):
             const nDotH = Math.sin(van.heading) * hit.nx + Math.cos(van.heading) * hit.nz;
             if (Math.abs(nDotH) < 0.5) {
               // Seitentreffer (typisch: Spurwechsel in ein besetztes Auto):
@@ -278,6 +293,12 @@ export class Traffic {
         car.ang -= (car.speed / r) * 1.2 * dt;
       } else {
         car.omega = car.speed / r;
+        if (car.shoveT > 0) {
+          // Von hinten angestossen (Auffahrunfall): kurzer, linear
+          // auslaufender Vorwaerts-Schub obendrauf.
+          car.shoveT -= dt;
+          car.omega += (6 / r) * Math.max(0, car.shoveT / 0.55);
+        }
         car.ang += car.omega * dt;
       }
       if (car.ang >= Math.PI * 2) car.ang -= Math.PI * 2;
