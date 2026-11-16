@@ -237,14 +237,15 @@ export class Traffic {
         if (hit) {
           // 1) Positionskorrektur - IMMER, damit Van und Auto nie ineinander
           // verschwinden: der Van wird entlang der Stossnormalen herausgeschoben,
-          // bis die Kapseln sich gerade nicht mehr ueberlappen.
-          van.pos.x += hit.nx * (hit.depth + 0.02);
-          van.pos.z += hit.nz * (hit.depth + 0.02);
+          // bis die Kapseln sich gerade nicht mehr ueberlappen. pushOut nimmt
+          // die Korrektur auch in die Spurfuehrung auf, damit sie nicht im
+          // naechsten Frame wieder rueckgaengig gemacht wird (kein Ruckeln).
+          van.pushOut(hit.nx * (hit.depth + 0.02), hit.nz * (hit.depth + 0.02));
           // 2) Bounce-Impuls nur bei frischem Treffer (Nachklang-Sperre), sonst
           // wiederholte Impulse solange sich beide noch beruehren.
           if (car.bounceT <= 0 && car.hitCool <= 0) {
-            car.bounceT = 1.1; // Sekunden Rueckwaerts-Fahrt
-            car.hitCool = 2.0;
+            car.bounceT = 0.45; // kurzer Rueckstoss statt langem Rueckwaerts-Sprung
+            car.hitCool = 1.0;
             // Der Van prallt von der Stossnormalen weg: zeigt seine Nase zum
             // Auto, faehrt er rueckwaerts; zeigt sie vom Auto weg, bekommt er
             // Schwung nach vorn (z.B. wenn ihn ein Auto von hinten rammt).
@@ -259,9 +260,10 @@ export class Traffic {
 
       const r = this.laneRadii[car.lane];
       if (car.bounceT > 0) {
-        // Bounce: das Auto faehrt ein Stueck gegen die Fahrtrichtung zurueck
+        // Bounce: kurzer Rueckstoss gegen die Fahrtrichtung (kein grosser
+        // Sprung - sonst landet das Auto hinter dem Van und rammt erneut)
         car.bounceT -= dt;
-        car.ang -= (car.speed / r) * 1.4 * dt;
+        car.ang -= (car.speed / r) * 1.2 * dt;
       } else {
         car.omega = car.speed / r;
         car.ang += car.omega * dt;

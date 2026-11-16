@@ -29,6 +29,7 @@ export class Car {
     this.ringAng = 0;   // Winkel um den Arc-Mittelpunkt
     this.ringR = 0;     // aktueller Abstand zum Mittelpunkt
     this.ringLane = 0;  // Index der Zielfahrspur
+    this.arc = null;    // zuletzt uebergebener Kreisverkehr (fuer pushOut)
     this._prevLeft = false;
     this._prevRight = false;
 
@@ -103,6 +104,8 @@ export class Car {
     const accel = 15;
     const brake = 28;
     const reverseAccel = 9;
+
+    if (arc) this.arc = arc; // Kreisverkehr merken (pushOut braucht cx/cz)
 
     let yawRate = 0;
 
@@ -204,6 +207,23 @@ export class Car {
     else this.updateRoll(dt, this.speed * yawRate);
 
     this.sync();
+  }
+
+  // Externe Positionskorrektur (Kollisions-Trennung, siehe traffic.js).
+  // Der Van wird um (dx, dz) verschoben - bei aktiver Spurfuehrung im
+  // Kreisverkehr wird die Korrektur ZUSAETZLICH in den Ring-Zustand
+  // (ringAng/ringR) uebernommen. Ohne das wuerde die Spurfuehrung die
+  // Korrektur im naechsten Frame wieder ueberschreiben: der Van ruckelt
+  // dann sichtbar zwischen Spur- und Kollisionsposition hin und her.
+  pushOut(dx, dz) {
+    this.pos.x += dx;
+    this.pos.z += dz;
+    if (this.inRing && this.arc) {
+      const px = this.pos.x - this.arc.cx;
+      const pz = this.pos.z - this.arc.cz;
+      this.ringAng = Math.atan2(px, pz);
+      this.ringR = Math.hypot(px, pz);
+    }
   }
 
   // Feder-Daempfer-Modell um die Laengsachse. Der Van ist bewusst
