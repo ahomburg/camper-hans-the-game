@@ -372,10 +372,11 @@ function animate() {
 
   // Im Menue/Erfolgsbildschirm laeuft die Simulation nicht weiter
   if (state === 'playing') {
-    traffic.update(dt, car);
-    // Verkehrs-Colliders bewusst nicht hier: ein treffendes Auto prallt zurueck,
-    // der Van wird nicht verschoben (siehe traffic.update).
+    // Reihenfolge: erst den Van bewegen, dann den Verkehr. traffic.update
+    // trennt den Van danach von getroffenen Autos ab (Positionskorrektur +
+    // Bounce), damit nichts ineinander verschwinden kann.
     car.update(dt, controls.state, world.colliders.concat(arc.colliders), world.half, arc);
+    traffic.update(dt, car);
     if (activeQuest) activeQuest.update(dt, { car, arc }, quests);
 
     // Umgekippt oder Wohnwagen abgerissen? Kurz zeigen, dann ist die

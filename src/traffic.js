@@ -55,19 +55,29 @@ function makeCarMesh(color) {
 // Radius ~ halbe Fahrzeugbreite). Damit stoesst ein Auto in der Nachbarspur
 // (Achsabstand = Spurbreite 2.64) nicht mehr an den Van, obwohl die alten
 // Kreisradien (1.8 + 1.67 = 3.47) das falschelich taten.
+// Liefert null oder { nx, nz, depth }: Stossnormale (vom Auto zum Van)
+// und Eindringtiefe des am tiefsten ueberlappenden Kreispaars.
 function capsuleHit(ax, az, aHeading, aR, bx, bz, bHeading, bR) {
   const adx = Math.sin(aHeading), adz = Math.cos(aHeading);
   const bdx = Math.sin(bHeading), bdz = Math.cos(bHeading);
   const aPts = [[ax + adx * 1.5, az + adz * 1.5], [ax - adx * 1.5, az - adz * 1.5]];
   const bPts = [[bx + bdx * 1.1, bz + bdz * 1.1], [bx - bdx * 1.1, bz - bdz * 1.1]];
   const min = aR + bR;
+  let best = null;
   for (const [px, pz] of aPts) {
     for (const [qx, qz] of bPts) {
       const dx = px - qx, dz = pz - qz;
-      if (dx * dx + dz * dz < min * min) return true;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < min * min) {
+        const d = Math.sqrt(d2);
+        const nx = d > 1e-4 ? dx / d : adx;
+        const nz = d > 1e-4 ? dz / d : adz;
+        const depth = min - d;
+        if (!best || depth > best.depth) best = { nx, nz, depth };
+      }
     }
   }
-  return false;
+  return best;
 }
 
 // GLB-Automodell normalisieren: laengste horizontale Achse auf +Z drehen
@@ -223,14 +233,27 @@ export class Traffic {
       // Trifft das Auto den Campervan, prallen beide zurueck
       if (van) {
         if (car.hitCool > 0) car.hitCool -= dt;
-        if (
-          car.bounceT <= 0 && car.hitCool <= 0 &&
-          capsuleHit(van.pos.x, van.pos.z, van.heading, 1.1, car.collider.x, car.collider.z, car.mesh.rotation.y, 0.95)
-        ) {
-          car.bounceT = 1.1; // Sekunden Rueckwaerts-Fahrt
-          car.hitCool = 2.0;
-          // Der Van prallt ebenfalls zurueck (faehrt kurz rueckwaerts)
-          van.speed = -Math.abs(van.speed) * 0.6 - 3;
+        const hit = capsuleHit(van.pos.x, van.pos.z, van.heading, 1.1, car.collider.x, car.collider.z, car.mesh.rotation.y, 0.95);
+        if (hit) {
+          // 1) Positionskorrektur - IMMER, damit Van und Auto nie ineinander
+          // verschwinden: der Van wird entlang der Stossnormalen herausgeschoben,
+          // bis die Kapseln sich gerade nicht mehr ueberlappen.
+          van.pos.x += hit.nx * (hit.depth + 0.02);
+          van.pos.z += hit.nz * (hit.depth + 0.02);
+          // 2) Bounce-Impuls nur bei frischem Treffer (Nachklang-Sperre), sonst
+          // wiederholte Impulse solange sich beide noch beruehren.
+          if (car.bounceT <= 0 && car.hitCool <= 0) {
+            car.bounceT = 1.1; // Sekunden Rueckwaerts-Fahrt
+            car.hitCool = 2.0;
+            // Der Van prallt von der Stossnormalen weg: zeigt seine Nase zum
+            // Auto, faehrt er rueckwaerts; zeigt sie vom Auto weg, bekommt er
+            // Schwung nach vorn (z.B. wenn ihn ein Auto von hinten rammt).
+            const nDotH = Math.sin(van.heading) * hit.nx + Math.cos(van.heading) * hit.nz;
+            if (nDotH >= 0) van.speed = Math.abs(van.speed) * 0.6 + 3;
+            else van.speed = -Math.abs(van.speed) * 0.6 - 3;
+          }
+          // Positionskorrektur auch ins Rendering uebernehmen (Van wurde bewegt)
+          van.sync();
         }
       }
 
@@ -248,6 +271,9 @@ export class Traffic {
       this.place(car);
     }
     // Abstand innerhalb einer Spur halten ( Auffahrschutz )
+    // MIN_CAR_GAP = Kapsel-Laenge eines Autos (2*(1.1+0.95)=4.1) plus Puffer:
+    // diesen Abstand duerfen zwei Autos einer Spur nie unterschreiten.
+    const MIN_CAR_GAP = 4.3;
     for (let lane = 0; lane < this.laneRadii.length; lane++) {
       const r = this.laneRadii[lane];
       const inLane = this.cars.filter((c) => c.lane === lane).sort((a, b) => a.ang - b.ang);
@@ -256,9 +282,22 @@ export class Traffic {
         const car = inLane[i];
         const next = inLane[(i + 1) % inLane.length];
         let gap = next.ang - car.ang;
-        if (gap < 0) gap += Math.PI * 2;
+        if (i === inLane.length - 1 && gap < 0) gap += Math.PI * 2;
         const gapLen = gap * r;
         if (gapLen < 7) car.speed = Math.min(car.speed, next.speed * (gapLen / 7));
+        // Harte Trennung: dringen zwei Autos einer Spur doch ineinander ein
+        // (z.B. bei einem Bounce rueckwaerts), werden beide auseinandergeschoben.
+        if (gapLen < MIN_CAR_GAP) {
+          const push = (MIN_CAR_GAP - gapLen) * 0.5 / r;
+          car.ang -= push;
+          next.ang += push;
+          if (car.ang < 0) car.ang += Math.PI * 2;
+          if (car.ang >= Math.PI * 2) car.ang -= Math.PI * 2;
+          if (next.ang < 0) next.ang += Math.PI * 2;
+          if (next.ang >= Math.PI * 2) next.ang -= Math.PI * 2;
+          this.place(car);
+          this.place(next);
+        }
       }
     }
   }
