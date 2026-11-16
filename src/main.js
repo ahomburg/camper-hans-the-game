@@ -376,7 +376,9 @@ function animate() {
     // trennt den Van danach von getroffenen Autos ab (Positionskorrektur +
     // Bounce), damit nichts ineinander verschwinden kann.
     car.update(dt, controls.state, world.colliders.concat(arc.colliders), world.half, arc);
-    traffic.update(dt, car);
+    // colliders/worldHalf: dafuer die Kollision des abgerissenen Wohnwagens
+    // mit Hindernissen und Welt-Grenze (siehe traffic.update).
+    traffic.update(dt, car, world.colliders.concat(arc.colliders), world.half);
     if (activeQuest) activeQuest.update(dt, { car, arc }, quests);
 
     // Umgekippt oder Wohnwagen abgerissen? Kurz zeigen, dann ist die

@@ -51,33 +51,62 @@ function makeCarMesh(color) {
   return g;
 }
 
-// Kapsel-gegen-Kapsel-Kollision (je 2 Kreise entlang der Fahrzeugachse,
-// Radius ~ halbe Fahrzeugbreite). Damit stoesst ein Auto in der Nachbarspur
-// (Achsabstand = Spurbreite 2.64) nicht mehr an den Van, obwohl die alten
-// Kreisradien (1.8 + 1.67 = 3.47) das falschelich taten.
-// Liefert null oder { nx, nz, depth }: Stossnormale (vom Auto zum Van)
-// und Eindringtiefe des am tiefsten ueberlappenden Kreispaars.
-function capsuleHit(ax, az, aHeading, aR, bx, bz, bHeading, bR) {
+// Kapsel-gegen-Kapsel-Kollision mit Aufloesung: Jede Kapsel ist eine Strecke
+// (Kreiszentren bei ±aOff/±bOff entlang der Fahrzeugachse) mit Radius aR/bR.
+// Die Stossnormale entsteht aus dem NAECHSTEN Punktepaar der beiden Strecken
+// (Segment-Segment, nach Ericson) - im Gegensatz zu einem "tiefsten
+// Kreispaar" ist das auch bei stark ueberlappenden Kapseln (z.B. Wohnwagen-
+// Bug im Zugheck nach dem Abreissen) immer die korrekte Schieberichtung.
+// Liefert null oder { nx, nz, depth }: Normale (von b auf a) + Eindringtiefe.
+// aOff/bOff-Defaults passen fuer Van (4.4) und Ente/Kaefer/Mercedes; der
+// Wohnwagen (5.0) im Gespann nutzt groessere.
+export function capsuleHit(ax, az, aHeading, aR, bx, bz, bHeading, bR, aOff = 1.5, bOff = 1.1) {
   const adx = Math.sin(aHeading), adz = Math.cos(aHeading);
   const bdx = Math.sin(bHeading), bdz = Math.cos(bHeading);
-  const aPts = [[ax + adx * 1.5, az + adz * 1.5], [ax - adx * 1.5, az - adz * 1.5]];
-  const bPts = [[bx + bdx * 1.1, bz + bdz * 1.1], [bx - bdx * 1.1, bz - bdz * 1.1]];
-  const min = aR + bR;
-  let best = null;
-  for (const [px, pz] of aPts) {
-    for (const [qx, qz] of bPts) {
-      const dx = px - qx, dz = pz - qz;
-      const d2 = dx * dx + dz * dz;
-      if (d2 < min * min) {
-        const d = Math.sqrt(d2);
-        const nx = d > 1e-4 ? dx / d : adx;
-        const nz = d > 1e-4 ? dz / d : adz;
-        const depth = min - d;
-        if (!best || depth > best.depth) best = { nx, nz, depth };
-      }
-    }
+  const a1x = ax - adx * aOff, a1z = az - adz * aOff; // Strecken-Endpunkte
+  const a2x = ax + adx * aOff, a2z = az + adz * aOff;
+  const b1x = bx - bdx * bOff, b1z = bz - bdz * bOff;
+  const b2x = bx + bdx * bOff, b2z = bz + bdz * bOff;
+
+  const d1x = a2x - a1x, d1z = a2z - a1z;
+  const d2x = b2x - b1x, d2z = b2z - b1z;
+  const rx = a1x - b1x, rz = a1z - b1z;
+  const a = d1x * d1x + d1z * d1z;
+  const e = d2x * d2x + d2z * d2z;
+  const f = d2x * rx + d2z * rz;
+  const eps = 1e-9;
+  let s = 0, t = 0;
+  if (a > eps && e > eps) {
+    const c = d1x * rx + d1z * rz;
+    const b = d1x * d2x + d1z * d2z;
+    const denom = a * e - b * b;
+    s = denom > eps ? THREE.MathUtils.clamp((b * f - c * e) / denom, 0, 1) : 0;
+    t = (b * s + f) / e;
+    if (t < 0) { t = 0; s = THREE.MathUtils.clamp(-c / a, 0, 1); }
+    else if (t > 1) { t = 1; s = THREE.MathUtils.clamp((b - c) / a, 0, 1); }
+  } else if (e > eps) { // Strecke A ist ein Punkt
+    t = THREE.MathUtils.clamp(f / e, 0, 1);
   }
-  return best;
+
+  const px = a1x + d1x * s, pz = a1z + d1z * s; // naechstes Paar: P auf A, Q auf B
+  const qx = b1x + d2x * t, qz = b1z + d2z * t;
+  const dx = px - qx, dz = pz - qz;
+  const dist = Math.hypot(dx, dz);
+  const depth = aR + bR - dist;
+  if (depth <= 0) return null;
+
+  let nx, nz;
+  if (dist > 1e-4) {
+    nx = dx / dist; nz = dz / dist;
+  } else {
+    // Entartet (Strecken kreuzen/ueberlappen): Richtung gegen den Mittelpunkt
+    // von b schieben, sonst quer zur Achse von a.
+    const cx = ax - bx, cz = az - bz;
+    const cd = Math.hypot(cx, cz);
+    if (cd > 1e-4) { nx = cx / cd; nz = cz / cd; }
+    else { nx = adz; nz = -adx; }
+  }
+  return { nx, nz, depth };
 }
 
 // GLB-Automodell normalisieren: laengste horizontale Achse auf +Z drehen
@@ -223,7 +252,62 @@ export class Traffic {
     car.collider.z = z;
   }
 
-  update(dt, van = null) {
+  update(dt, van = null, colliders = [], worldHalf = 0) {
+    // Abgerissener Wohnwagen des Gespanns (nur das Gespann hat detached /
+    // trailerPos): Er ist ein eigenstaendiges Objekt und kollidiert mit den
+    // statischen Hindernissen, der Welt-Grenze und dem Zugfahrzeug. Die
+    // Verkehrautos behandelt die Schleife unten pro Auto. Der Wohnwagen ist
+    // 5.0 lang / ~2.0 breit -> Kapsel: 2 Kreise (r = 1.0) bei ±1.6.
+    if (van && van.detached) {
+      const t = van.trailerPos;
+      const fx = Math.sin(van.trailerHeading), fz = Math.cos(van.trailerHeading);
+      // Statische Hindernisse (Gebaeude, Baeume, ...): Kreis gegen Kapsel
+      for (const c of colliders) {
+        for (const off of [1.6, -1.6]) {
+          const px = t.x + fx * off, pz = t.z + fz * off;
+          const dx = px - c.x, dz = pz - c.z;
+          const d = Math.hypot(dx, dz);
+          const min = c.r + 1.0;
+          if (d < min && d > 1e-4) {
+            const p = (min - d) / d;
+            t.x += dx * p; t.z += dz * p;
+            van.trailerSpeed *= -0.25; // leichter Bounce
+          }
+        }
+      }
+      // Welt-Grenze (wie beim Zugfahrzeug in car.js)
+      if (worldHalf > 0) {
+        const lim = worldHalf - 3;
+        if (Math.abs(t.x) > lim) { t.x = Math.sign(t.x) * lim; van.trailerSpeed *= 0.4; }
+        if (Math.abs(t.z) > lim) { t.z = Math.sign(t.z) * lim; van.trailerSpeed *= 0.4; }
+      }
+      // Zugfahrzeug: Kapsel gegen Kapsel, beide werden auseinandergeschoben.
+      // Der groesste Teil schiebt den freien Wohnwagen, ein kleineres Stueck
+      // das Zugfahrzeug (pushOut uebernimmt auch die Spurfuehrung im Ring).
+      // In der gekoppelten Position ueberlappt der Wohnwagen-Bug das Heck des
+      // Zugfahrzeugs absichtlich (TRAILER_COUPLING_OVERLAP); deshalb bis zu
+      // drei Durchgaenge pro Frame. Die Korrektur ist pro Durchgang auf 0.5
+      // begrenzt, damit der Wohnwagen nach dem Abreissen nicht springt.
+      let tugBounced = false;
+      for (let i = 0; i < 3; i++) {
+        const tug = capsuleHit(t.x, t.z, van.trailerHeading, 1.0, van.pos.x, van.pos.z, van.heading, 1.1, 1.6, 1.5);
+        if (!tug) break;
+        const push = Math.min(tug.depth + 0.02, 0.5);
+        t.x += tug.nx * push * 0.7;
+        t.z += tug.nz * push * 0.7;
+        // Das Zugfahrzeug wandert ENTLANG der entgegengesetzten Richtung
+        // (Normale zeigt vom Zug zum Wohnwagen).
+        van.pushOut(-tug.nx * push * 0.3, -tug.nz * push * 0.3);
+        if (!tugBounced) {
+          tugBounced = true;
+          van.trailerSpeed *= -0.25; // Wohnwagen prallt ab
+          van.speed *= 0.85;         // leichter Schlag aufs Zugfahrzeug
+        }
+      }
+      van.sync();            // pushOut bewegte moeglicherweise das Zugfahrzeug
+      van.syncTrailer();    // Positionskorrekturen ins Rendering uebernehmen
+    }
+
     for (const car of this.cars) {
       // Zufaelliges Hupen
       car.nextHonk -= dt;
@@ -282,6 +366,36 @@ export class Traffic {
           }
           // Positionskorrektur auch ins Rendering uebernehmen (Van wurde bewegt)
           van.sync();
+        }
+      }
+
+      // Abgerissener Wohnwagen des Gespanns: er ist ein eigenstaendiges
+      // Objekt und kollidiert mit den Verkehrautos (Trennung + Bounce).
+      // Nur das Gespann hat detached/trailerPos; der Campervan bleibt
+      // hier ueber van.detached === false immer draussen.
+      if (van && van.detached) {
+        const hitch = capsuleHit(
+          van.trailerPos.x, van.trailerPos.z, van.trailerHeading, 1.0,
+          car.collider.x, car.collider.z, car.mesh.rotation.y, 0.95, 1.6, 1.1
+        );
+        if (hitch) {
+          // Der frei gleitende Wohnwagen wird entlang der Stossnormalen aus
+          // dem Auto herausgeschoben (das Auto ist an seine Spur gebunden).
+          van.trailerPos.x += hitch.nx * (hitch.depth + 0.02);
+          van.trailerPos.z += hitch.nz * (hitch.depth + 0.02);
+          if (car.bounceT <= 0 && car.hitCool <= 0) {
+            car.hitCool = 1.0;
+            // Wie beim Van: Stossnormale gegen die Fahrtrichtung des Autos.
+            // Rammt der Wohnwagen das Auto von hinten, wird es vorgeschoben,
+            // sonst prallt das Auto rueckwaerts ab.
+            const ch = car.mesh.rotation.y;
+            const cDotN = Math.sin(ch) * hitch.nx + Math.cos(ch) * hitch.nz;
+            if (cDotN < -0.5) car.shoveT = 0.55;
+            else car.bounceT = 0.45;
+            van.trailerSpeed *= -0.25; // Wohnwagen prallt ab
+          }
+          // Positionskorrektur ins Rendering uebernehmen
+          van.syncTrailer();
         }
       }
 
