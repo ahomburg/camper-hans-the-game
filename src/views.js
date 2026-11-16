@@ -17,15 +17,17 @@ export function applyView(camera, car, mode, smooth) {
 
   if (mode === 1) {
     // First Person: auf dem Fahrersitz (links Innen, leicht hinter der Mitte),
-    // Augenhohe knapp ueber dem Cockpit, Blick nach vorn.
-    // Links von der Fahrtrichtung = heading + 90 Grad -> (cos h, -sin h).
+    // Augenhohe kommt vom Fahrzeug (car.seatY, aus der Modellhoehe abgeleitet
+    // - das Wohnmobil sitzt deutlich hoeher als ein Pkw), Blick nach vorn
+    // leicht darunter. Links von der Fahrtrichtung = (cos h, -sin h).
     const lx = Math.cos(car.heading);
     const lz = -Math.sin(car.heading);
+    const seatY = car.seatY ?? 1.45;
     camera.position.set(
-      car.pos.x - fx * 0.2 + lx * 0.35, 1.45,
+      car.pos.x - fx * 0.2 + lx * 0.35, seatY,
       car.pos.z - fz * 0.2 + lz * 0.35
     );
-    camera.lookAt(car.pos.x + fx * 10, 1.25, car.pos.z + fz * 10);
+    camera.lookAt(car.pos.x + fx * 10, seatY - 0.2, car.pos.z + fz * 10);
     return;
   }
 

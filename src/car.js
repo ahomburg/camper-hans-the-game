@@ -48,6 +48,7 @@ export class Car {
     this.rollGain = 0.004;      // Wank-Verstaerkung (Fahrzeug-abhaengig, s. updateRoll)
     this.rollDamping = 3.0;     // Wank-Daempfung: kleiner = weniger Nachschwingen
     this.onTip = null;          // Callback, feuert einmal pro Umkippen (z.B. Toast)
+    this.seatY = 1.45;          // FPV-Augenhoehe (First Person), bis zum Laden
 
     this.sync();
   }
@@ -93,6 +94,11 @@ export class Car {
     this.halfWidth = size.x * 0.5;
     const halfTrack = size.x * 0.45;
     this.criticalRoll = Math.atan2(halfTrack, cogHeight);
+    // First-Person-Augenhoehe am Modell ausrichten: ~72 % der Fahrzeughoehe,
+    // mindestens 1.45 (damit bleibt die bewaehrte Cockpit-Pose kleiner Fahrzeuge
+    // wie des Peugeot unveraendert; das hohe Wohnmobil rutscht damit aus dem
+    // Armaturenbrett hoch in den Glasband-Bereich).
+    this.seatY = Math.max(1.45, size.y * 0.72);
   }
 
   // Einfache Arcade-Physik: Geschwindigkeit entlang der Heading-Richtung.
