@@ -31,6 +31,22 @@ export class Car {
     this.ringLane = 0;  // Index der Zielfahrspur
     this._prevLeft = false;
     this._prevRight = false;
+
+    // --- Wank-/Kipp-Physik (hoher Schwerpunkt) ---
+    // roll: aktueller Wankwinkel um die Laengsachse (rad), rollVel: Wankgeschwindigkeit
+    this.roll = 0;
+    this.rollVel = 0;
+    this.halfWidth = 0.95;     // halbe Van-Breite (nach dem Laden aus dem Modell)
+    this.criticalRoll = 0.6;   // ab diesem Wankwinkel kippt der Van um
+    this.tipped = false;       // liegt das Fahrzeug auf der Seite?
+    this.tipDir = 0;            // Kipprichtung: -1 links, +1 rechts
+    this.tipTimer = 0;
+    this.yawRate = 0;           // Gierrate des letzten update()-Schritts ( fuer Gespann)
+    this.detached = false;      // nur beim Gespann relevant: Wohnwagen abgerissen
+    this.rollGain = 0.004;      // Wank-Verstaerkung (Fahrzeug-abhaengig, s. updateRoll)
+    this.rollDamping = 3.0;     // Wank-Daempfung: kleiner = weniger Nachschwingen
+    this.onTip = null;          // Callback, feuert einmal pro Umkippen (z.B. Toast)
+
     this.sync();
   }
 
@@ -63,7 +79,18 @@ export class Car {
     this.body.add(inner);
 
     const size = box.getSize(new THREE.Vector3());
+    // Campervan: sehr "hoher" (getunter) Schwerpunkt, kippt frueh um
+    this.applySize(size, 3.5);
+  }
+
+  // Aus der Modellgeometrie abgeleitete Werte: Kollisionsradius, Breite
+  // und kippkritischer Wankwinkel. cogHeight ist ein Tuning-Regler:
+  // je groesser, desto frueher kippt das Fahrzeug bei kleiner Neigung um.
+  applySize(size, cogHeight) {
     this.radius = Math.max(size.x, size.z) * 0.38;
+    this.halfWidth = size.x * 0.5;
+    const halfTrack = size.x * 0.45;
+    this.criticalRoll = Math.atan2(halfTrack, cogHeight);
   }
 
   // Einfache Arcade-Physik: Geschwindigkeit entlang der Heading-Richtung.
@@ -77,19 +104,26 @@ export class Car {
     const brake = 28;
     const reverseAccel = 9;
 
-    if (input.up) {
-      this.speed += accel * dt;
-    } else if (input.down) {
-      this.speed = this.speed > 0.5
-        ? this.speed - brake * dt
-        : this.speed - reverseAccel * dt;
-    }
+    let yawRate = 0;
 
-    // Luft- und Rollwiderstand
-    this.speed -= this.speed * 0.5 * dt;
-    if (!input.up && !input.down) {
-      const r = 2.5 * dt;
-      this.speed = Math.abs(this.speed) <= r ? 0 : this.speed - Math.sign(this.speed) * r;
+    if (this.tipped) {
+      // Umgekippt: Motor aus, kein Bremsen - der Van rutscht nur aus
+      this.speed -= this.speed * 2.5 * dt;
+    } else {
+      if (input.up) {
+        this.speed += accel * dt;
+      } else if (input.down) {
+        this.speed = this.speed > 0.5
+          ? this.speed - brake * dt
+          : this.speed - reverseAccel * dt;
+      }
+
+      // Luft- und Rollwiderstand
+      this.speed -= this.speed * 0.5 * dt;
+      if (!input.up && !input.down) {
+        const r = 2.5 * dt;
+        this.speed = Math.abs(this.speed) <= r ? 0 : this.speed - Math.sign(this.speed) * r;
+      }
     }
     this.speed = THREE.MathUtils.clamp(this.speed, -maxReverse, maxSpeed);
 
@@ -122,14 +156,17 @@ export class Car {
       this.pos.x = arc.cx + Math.sin(this.ringAng) * this.ringR;
       this.pos.z = arc.cz + Math.cos(this.ringAng) * this.ringR;
       this.heading = this.ringAng + Math.PI / 2; // Tangente, gegen Uhrzeigersinn
+      yawRate = this.speed / this.ringR; // Kurvenfahrt erzeugt Querkraft
       steerAngle = THREE.MathUtils.clamp((targetR - this.ringR) * 0.12, -0.5, 0.5);
     } else {
-      // Lenken (vereinfachtes Bicycle-Modell); bei Rueckwaertsfahrt dreht es natuerlich umgekehrt
-      const steerInput = (input.left ? 1 : 0) - (input.right ? 1 : 0);
+      // Lenken (vereinfachtes Bicycle-Modell); bei Rueckwaertsfahrt dreht es natuerlich umgekehrt.
+      // Umgekippt wird nicht mehr gelenkt, der Van rutscht geradeaus aus.
+      const steerInput = this.tipped ? 0 : ((input.left ? 1 : 0) - (input.right ? 1 : 0));
       const maxSteer = 0.62 / (1 + Math.abs(this.speed) * 0.05);
       steerAngle = steerInput * maxSteer;
       const wheelBase = 2.7;
-      this.heading += (this.speed / wheelBase) * Math.tan(steerAngle) * dt;
+      yawRate = (this.speed / wheelBase) * Math.tan(steerAngle);
+      this.heading += yawRate * dt;
 
       this.pos.x += Math.sin(this.heading) * this.speed * dt;
       this.pos.z += Math.cos(this.heading) * this.speed * dt;
@@ -158,7 +195,54 @@ export class Car {
     this._prevLeft = !!input.left;
     this._prevRight = !!input.right;
 
-    this.sync(steerAngle);
+    // Gierrate fuer abgeleitete Physik (z.B. Wohnwagen-Schlingern)
+    this.yawRate = yawRate;
+
+    // Wank-Physik: Querkraft = Geschwindigkeit * Gierrate.
+    // Im Kreisverkehr zaehlt die Kurvenfahrt (v^2 / r), sonst die Lenkung.
+    if (this.tipped) this.updateTip(dt);
+    else this.updateRoll(dt, this.speed * yawRate);
+
+    this.sync();
+  }
+
+  // Feder-Daempfer-Modell um die Laengsachse. Der Van ist bewusst
+  // unterdaempft, damit die Karosserie beim Ein- und Auslenken noch
+  // sichtbar nachschwingt. Ueberschwingt der Wankwinkel den kritischen
+  // (bewusst niedrigen) Winkel, kippt der Van um.
+  updateRoll(dt, lateralAccel) {
+    // Zielwankwinkel proportional zur Querbeschleunigung, nach oben begrenzt:
+    // jenseits der Grenze drueckt die Querkraft das Fahrzeug staendig weiter.
+    // this.rollGain ist pro Fahrzeug einstellbar (z.B. weicher fuer Gespann).
+    const maxTarget = this.criticalRoll * 1.15;
+    const target = THREE.MathUtils.clamp(-lateralAccel * this.rollGain, -maxTarget, maxTarget);
+
+    const stiffness = 26;          // omega ~ 5.1 rad/s -> gut sichtbares Schwanken
+    const damping = this.rollDamping; // daempfungsverhaeltnis ~0.3 -> Nachschwingen
+    this.rollVel += (target - this.roll) * stiffness * dt;
+    this.rollVel -= this.rollVel * damping * dt;
+    this.roll += this.rollVel * dt;
+
+    if (Math.abs(this.roll) >= this.criticalRoll) {
+      this.tipped = true;
+      this.tipDir = Math.sign(this.roll) || 1;
+      this.tipTimer = 0;
+      if (this.onTip) this.onTip();
+    }
+  }
+
+  // Umgekippt: Das Fahrzeug faellt weiter, bis es (fast) flach auf der
+  // Seite liegt, und bleibt liegen - das beendet die Quest (siehe main.js).
+  updateTip(dt) {
+    const restRoll = this.tipDir * 1.45; // ~83 Grad: fast flach auf der Seite
+    this.rollVel += this.tipDir * 7 * dt; // Gravitation zieht weiter in Kipprichtung
+    this.roll += this.rollVel * dt;
+    if (this.tipDir * this.roll >= this.tipDir * restRoll) {
+      this.roll = restRoll;
+      if (Math.abs(this.rollVel) > 0.6) this.rollVel *= -0.25; // Abprall beim Aufschlagen
+      else this.rollVel = 0;
+    }
+    this.tipTimer += dt;
   }
 
   nearestLane(arc, r) {
@@ -171,12 +255,13 @@ export class Car {
     return best;
   }
 
-  sync(steerAngle = 0) {
+  sync() {
     this.group.position.copy(this.pos);
     this.group.rotation.y = this.heading;
-    // leichte Karosserie-Neigung beim Lenken
-    const targetRoll = -steerAngle * Math.min(Math.abs(this.speed) / 10, 1) * 0.08;
-    this.body.rotation.z += (targetRoll - this.body.rotation.z) * 0.2;
+    // Wankwinkel um die Laengsachse; beim Kippen wird der Van angehoben,
+    // damit die Seite nicht im Boden versinkt (Drehachse liegt am Boden).
+    this.body.rotation.z = this.roll;
+    this.body.position.y = this.halfWidth * Math.abs(Math.sin(this.roll));
   }
 
   reset() {
@@ -184,6 +269,13 @@ export class Car {
     this.heading = this.spawn.heading;
     this.speed = 0;
     this.body.rotation.set(0, 0, 0);
+    this.body.position.y = 0;
+    this.roll = 0;
+    this.rollVel = 0;
+    this.tipped = false;
+    this.tipDir = 0;
+    this.tipTimer = 0;
+    this.yawRate = 0;
     this.inRing = false;
     this.ringAng = 0;
     this.ringR = 0;

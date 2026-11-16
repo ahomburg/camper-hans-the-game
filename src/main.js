@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { buildWorld } from './world.js';
 import { buildArc, loadArcMonument } from './arc.js';
 import { Car } from './car.js';
+import { Gespann } from './gespann.js';
 import { Controls } from './controls.js';
 import { Traffic } from './traffic.js';
 import { QuestManager, createArcLapQuest, createSpeedQuest } from './quests.js';
@@ -96,8 +97,33 @@ scene.add(sun, sun.target);
 // --- Welt, Auto, Steuerung ---
 const world = buildWorld(scene);
 const arc = buildArc(scene);
-const car = new Car(scene);
+const campervan = new Car(scene);
+const gespann = new Gespann(scene);
+let car = campervan; // aktives Fahrzeug, im Menue umschaltbar
 const controls = new Controls();
+
+// --- Fahrzeugauswahl (bleibt ueber Sitzungen gespeichert) ---
+const VEHICLE_KEY = 'camperHansVehicle';
+function storedVehicle() {
+  try {
+    return localStorage.getItem(VEHICLE_KEY) === 'gespann' ? 'gespann' : 'campervan';
+  } catch { return 'campervan'; }
+}
+function setVehicle(id) {
+  car = id === 'gespann' ? gespann : campervan;
+  campervan.group.visible = id !== 'gespann';
+  gespann.group.visible = id === 'gespann';
+  gespann.trailerGroup.visible = id === 'gespann';
+  car.reset();
+  try { localStorage.setItem(VEHICLE_KEY, id); } catch { /* Private Mode o. ae. */ }
+  document.querySelectorAll('.veh-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.veh === id);
+  });
+}
+document.querySelectorAll('.veh-btn').forEach((b) => {
+  b.addEventListener('click', () => setVehicle(b.dataset.veh));
+});
+setVehicle(storedVehicle());
 
 // --- Verkehr auf dem Kreisverkehr (alle Quests starten mit 30 Autos) ---
 const START_TRAFFIC = 30;
@@ -110,9 +136,10 @@ const quests = new QuestManager();
 quests.add(createArcLapQuest(arc, traffic, { target: ROUNDS_TARGET, startTraffic: START_TRAFFIC }));
 quests.add(createSpeedQuest({ target: 100 }));
 
-// --- Spielzustand: 'menu' | 'playing' | 'success' ---
+// --- Spielzustand: 'menu' | 'playing' | 'success' | 'failed' ---
 let state = 'menu';
 let activeQuest = null;
+let failTimer = 0; // laeuft nach Umkippen/Abreissen, bis der Scheitern-Bildschirm kommt
 
 const questEl = document.getElementById('quest');
 const toastEl = document.getElementById('toast');
@@ -122,6 +149,8 @@ const menuHighscoreEl = document.getElementById('menu-highscore');
 const successEl = document.getElementById('success');
 const successTimeEl = document.getElementById('success-time');
 const successHsEl = document.getElementById('success-highscore');
+const failedEl = document.getElementById('failed');
+const failReasonEl = document.getElementById('fail-reason');
 let toastTimer = null;
 
 // --- Zeitmessung & Highscore (bleibt ueber Sitzungen gespeichert) ---
@@ -200,6 +229,7 @@ function showToast(msg) {
 function startQuest(q) {
   activeQuest = q;
   q.reset();
+  failTimer = 0;
   car.reset();
   traffic.setTarget(0); // alle Autos weg, damit die Verteilung 10/10/10 von vorne beginnt
   traffic.setTarget(START_TRAFFIC);
@@ -208,7 +238,23 @@ function startQuest(q) {
   state = 'playing';
   menuEl.classList.add('hidden');
   successEl.classList.add('hidden');
+  failedEl.classList.add('hidden');
   renderQuest();
+}
+
+// Kippen bzw. Abreissen beendet die Quest: kurz den Schwenk/Bruch zeigen,
+// dann Scheitern-Bildschirm mit Neustart.
+function failQuest(reason) {
+  timerRunning = false;
+  state = 'failed';
+  failReasonEl.textContent = reason;
+  failedEl.classList.remove('hidden');
+  renderQuest();
+}
+
+function retryQuest() {
+  if (activeQuest) startQuest(activeQuest);
+  else toMenu();
 }
 
 function toMenu() {
@@ -216,6 +262,7 @@ function toMenu() {
   activeQuest = null;
   timerRunning = false;
   successEl.classList.add('hidden');
+  failedEl.classList.add('hidden');
   menuEl.classList.remove('hidden');
   renderMenu();
   renderQuest();
@@ -252,15 +299,26 @@ quests.on('completed', (q) => {
 document.getElementById('btn-to-menu').addEventListener('click', toMenu);
 
 controls.onReset = () => {
+  if (state === 'failed') { retryQuest(); return; } // R im Scheitern-Bildschirm = Neustart
   car.reset();
   if (activeQuest) activeQuest.onCarReset();
   elapsed = 0;
   timerRunning = state === 'playing';
+  failTimer = 0;
 };
 controls.onHonk = () => truckHonk();
 controls.onEscape = () => {
-  if (state === 'playing' || state === 'success') toMenu(); // Quest abbrechen -> Startbildschirm
+  if (state !== 'menu') toMenu(); // Quest abbrechen / Scheitern-Bildschirm -> Startbildschirm
 };
+
+// Kippen oder Abreissen zeigt zunaechst einen Toast; die Quest scheitert
+// kurz danach (failTimer in der Hauptschleife), damit man den Sturz noch sieht.
+campervan.onTip = () => showToast('Umgekippt! Die Quest ist gescheitert …');
+gespann.onTip = () => showToast('Umgekippt! Die Quest ist gescheitert …');
+gespann.onBreakoff = () => showToast('Der Wohnwagen ist abgerissen!');
+
+document.getElementById('btn-retry').addEventListener('click', retryQuest);
+document.getElementById('btn-fail-menu').addEventListener('click', toMenu);
 
 renderHighscore();
 renderMenu();
@@ -268,9 +326,11 @@ renderMenu();
 const loading = document.getElementById('loading');
 const loadtext = document.getElementById('loadtext');
 try {
-  await car.load('assets/campervan-optimized.glb', (e) => {
+  await campervan.load('assets/campervan-optimized.glb', (e) => {
     if (e.total) loadtext.textContent = `Lade Campervan … ${Math.round((e.loaded / e.total) * 100)} %`;
   });
+  loadtext.textContent = 'Baue Gespann …';
+  await gespann.load();
   await traffic.loadCarModels((i, n) => {
     loadtext.textContent = `Lade Autos … ${i}/${n}`;
   });
@@ -318,6 +378,19 @@ function animate() {
     car.update(dt, controls.state, world.colliders.concat(arc.colliders), world.half, arc);
     if (activeQuest) activeQuest.update(dt, { car, arc }, quests);
 
+    // Umgekippt oder Wohnwagen abgerissen? Kurz zeigen, dann ist die
+    // Quest gescheitert (Scheitern-Bildschirm mit Neustart).
+    if (car.tipped || car.detached) {
+      failTimer += dt;
+      if (failTimer > 1.2) {
+        failQuest(
+          car.detached
+            ? 'Der Wohnwagen ist abgerissen – nächstes Mal früher vom Gas.'
+            : 'Das Fahrzeug ist umgekippt!'
+        );
+      }
+    }
+
     if (timerRunning) elapsed += dt;
     timeEl.textContent = `Zeit: ${fmtTime(elapsed)}`;
   }
@@ -361,4 +434,4 @@ function animate() {
 animate();
 
 // Debug-/Test-Zugang
-window.__game = { scene, camera, renderer, car, controls, world, arc, traffic, quests, get state() { return state; }, startQuest, toMenu };
+window.__game = { scene, camera, renderer, get car() { return car; }, controls, world, arc, traffic, quests, get state() { return state; }, startQuest, toMenu };

@@ -61,9 +61,20 @@
       display: flex; flex-direction: column; align-items: center; gap: 14px;
       padding: 42px 16px;
     }
-    #menu.hidden, #success.hidden { display: none; }
+    #menu.hidden, #success.hidden, #failed.hidden { display: none; }
     #menu h1 { margin: 0; font-size: 34px; color: #ffb347; text-shadow: 0 2px 8px rgba(0,0,0,.6); }
     .menu-sub { margin: 0; opacity: .8; font-size: 14px; }
+
+    #menu-vehicles { display: flex; gap: 10px; width: min(430px, 92vw); }
+    .veh-btn {
+      flex: 1; padding: 10px 10px 8px; border-radius: 10px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.06);
+      color: #fff; font: 600 13px system-ui, sans-serif; line-height: 1.35; text-align: center;
+    }
+    .veh-btn:hover { background: rgba(255,255,255,.12); }
+    .veh-btn.active { border-color: rgba(255,179,71,.85); background: rgba(255,179,71,.18); color: #ffd9a0; }
+    .veh-btn small { display: block; font-weight: 400; font-size: 11px; opacity: .75; margin-top: 3px; }
+
     #menu-quests { display: flex; flex-direction: column; gap: 12px; width: min(430px, 92vw); }
     .menu-quest {
       background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.15);
@@ -102,6 +113,24 @@
       color: #d9ffe3; font: 600 14px system-ui, sans-serif;
     }
     #btn-to-menu:hover { background: rgba(90,220,120,.3); }
+
+    #failed {
+      position: fixed; inset: 0; z-index: 26;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(18,8,8,.72); padding: 16px;
+    }
+    #failed .box {
+      background: rgba(34,16,16,.96); border: 1px solid rgba(220,90,90,.6); color: #ffd9d9;
+      padding: 28px 36px; border-radius: 16px; text-align: center; max-width: 92vw;
+    }
+    #failed h2 { margin: 0 0 10px; color: #ff7a7a; font-size: 24px; }
+    #fail-reason { font-size: 14px; line-height: 1.5; }
+    .fail-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+    .fail-actions button { padding: 10px 20px; border-radius: 10px; cursor: pointer; font: 600 14px system-ui, sans-serif; }
+    #btn-retry { border: 1px solid rgba(255,179,71,.7); background: rgba(255,179,71,.16); color: #ffd9a0; }
+    #btn-retry:hover { background: rgba(255,179,71,.32); }
+    #btn-fail-menu { border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.08); color: #eee; }
+    #btn-fail-menu:hover { background: rgba(255,255,255,.16); }
 
     #loading {
       position: fixed; inset: 0; z-index: 50; background: #0e1116; color: #dfe6ee;
@@ -150,10 +179,14 @@
 
   <div id="menu">
     <h1>Camper Hans</h1>
-    <p class="menu-sub">W&auml;hle eine Quest:</p>
+    <p class="menu-sub">W&auml;hle Fahrzeug und Quest:</p>
+    <div id="menu-vehicles">
+      <button class="veh-btn" data-veh="campervan">Campervan<small>hoher Schwerpunkt &ndash; kippt bei Volllenkung &uuml;ber ~70 km/h</small></button>
+      <button class="veh-btn" data-veh="gespann">Gr&uuml;nes Auto mit Wohnwagen<small>der Wohnwagen schlingert &uuml;ber ~70 km/h und kann abrei&szlig;en</small></button>
+    </div>
     <div id="menu-quests"></div>
     <div id="menu-highscore">Highscore: –</div>
-    <div class="menu-hint">ESC = Quest abbrechen &middot; H = Hupe</div>
+    <div class="menu-hint">ESC = Quest abbrechen &middot; H = Hupe &middot; Kippen oder abgerissener Wohnwagen = Quest gescheitert</div>
   </div>
 
   <div id="success" class="hidden">
@@ -162,6 +195,17 @@
       <div id="success-time"></div>
       <div id="success-highscore"></div>
       <button id="btn-to-menu">Zurück zum Hauptmenü</button>
+    </div>
+  </div>
+
+  <div id="failed" class="hidden">
+    <div class="box">
+      <h2>Quest gescheitert!</h2>
+      <div id="fail-reason"></div>
+      <div class="fail-actions">
+        <button id="btn-retry">Neu starten</button>
+        <button id="btn-fail-menu">Hauptmenü</button>
+      </div>
     </div>
   </div>
 

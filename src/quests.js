@@ -135,7 +135,7 @@ export function createSpeedQuest({ target = 100 } = {}) {
   return new Quest({
     id: 'temposuender',
     title: 'Quest 2: Temposünder',
-    desc: `Erreiche ${target} km/h mit dem Campervan.`,
+    desc: `Erreiche ${target} km/h.`,
     target,
     extra: () => `Top: ${Math.floor(state.max * 3.6)} km/h`,
     update(dt, ctx, mgr, q) {
