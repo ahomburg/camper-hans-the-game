@@ -23,9 +23,10 @@ export function applyView(camera, car, mode, smooth) {
     const lx = Math.cos(car.heading);
     const lz = -Math.sin(car.heading);
     const seatY = car.seatY ?? 1.45;
+    const seatFwd = car.seatFwd ?? -0.2;
     camera.position.set(
-      car.pos.x - fx * 0.2 + lx * 0.35, seatY,
-      car.pos.z - fz * 0.2 + lz * 0.35
+      car.pos.x + fx * seatFwd + lx * 0.35, seatY,
+      car.pos.z + fz * seatFwd + lz * 0.35
     );
     camera.lookAt(car.pos.x + fx * 10, seatY - 0.2, car.pos.z + fz * 10);
     return;

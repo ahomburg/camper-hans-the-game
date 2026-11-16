@@ -49,6 +49,8 @@ export class Car {
     this.rollDamping = 3.0;     // Wank-Daempfung: kleiner = weniger Nachschwingen
     this.onTip = null;          // Callback, feuert einmal pro Umkippen (z.B. Toast)
     this.seatY = 1.45;          // FPV-Augenhoehe (First Person), bis zum Laden
+    this.seatFwd = -0.2;         // FPV-Sitz vor/zurueck (negativ = hinter der Mitte)
+    this.modelSize = null;       // Bounding-Box des geladenen Modells (Debug/FPV)
 
     this.sync();
   }
@@ -98,9 +100,10 @@ export class Car {
     // mindestens 1.45 (damit bleibt die bewaehrte Cockpit-Pose kleiner Fahrzeuge
     // wie des Peugeot unveraendert; das hohe Wohnmobil rutscht damit aus dem
     // Armaturenbrett in den Windschutzscheiben-Bereich - 72 % erwiesen sich
-    // als zu hoch). Zum Feintuning live: __game.car.seatY = <Wert> in der
-    // Browser-Konsole (wirkt sofort, applyView liest jede Frame).
+    // als zu hoch). Zum Feintunen: URL ?debugcam, dann I/K (Hoehe) und J/L
+    // (vor/zurueck) - die Werte in HUD/Konsole ablesen und zurueckmelden.
     this.seatY = Math.max(1.45, size.y * 0.65);
+    this.modelSize = { x: size.x, y: size.y, z: size.z };
   }
 
   // Einfache Arcade-Physik: Geschwindigkeit entlang der Heading-Richtung.

@@ -315,6 +315,29 @@ let viewMode = 0;
 controls.onCycleView = () => {
   viewMode = (viewMode + 1) % 3;
 };
+
+// --- First-Person-Tuning (?debugcam in der URL) ---------------------------
+// I/K = Augenhoehe hoch/runter, J/L = Sitz vor/zurueck (Shift = fein, 0.01).
+// Das HUD zeigt die Werte zum Zurueckmelden; jede Aenderung zusaetzlich in
+// die Konsole. Ohne den URL-Parameter ist das Spiel unveraendert.
+const debugCam = qs.has('debugcam');
+let camDebugEl = null;
+if (debugCam) {
+  window.addEventListener('keydown', (e) => {
+    const step = e.shiftKey ? 0.01 : 0.05;
+    let changed = false;
+    if (e.code === 'KeyI') { car.seatY += step; changed = true; }
+    else if (e.code === 'KeyK') { car.seatY -= step; changed = true; }
+    else if (e.code === 'KeyL') { car.seatFwd += step; changed = true; }
+    else if (e.code === 'KeyJ') { car.seatFwd -= step; changed = true; }
+    if (changed) {
+      console.log(`[fpv] seatY=${car.seatY.toFixed(2)} seatFwd=${car.seatFwd.toFixed(2)} sizeY=${(car.modelSize?.y ?? 0).toFixed(2)}`);
+    }
+  });
+  camDebugEl = document.createElement('div');
+  camDebugEl.style.cssText = 'position:fixed;top:4px;left:50%;transform:translateX(-50%);z-index:99;font:12px monospace;color:#ffd27a;background:rgba(0,0,0,.75);padding:6px 10px;border-radius:6px;pointer-events:none;white-space:pre;text-align:center;';
+  document.body.appendChild(camDebugEl);
+}
 controls.onEscape = () => {
   if (state !== 'menu') toMenu(); // Quest abbrechen / Scheitern-Bildschirm -> Startbildschirm
 };
@@ -472,6 +495,14 @@ function animate() {
   sun.target.updateMatrixWorld();
 
   speedEl.innerHTML = `${Math.round(Math.abs(car.speed) * 3.6)} <small>km/h</small>`;
+
+  if (camDebugEl) {
+    const veh = car === campervan ? 'Campervan' : 'Peugeot-Gespann';
+    camDebugEl.textContent =
+      `FPV-Tuning (${veh})  I/K Höhe  J/L vor/zurück  C Ansicht (${viewMode})\n` +
+      `seatY=${car.seatY.toFixed(2)}  seatFwd=${car.seatFwd.toFixed(2)}  Modell sizeY=${(car.modelSize?.y ?? 0).toFixed(2)}\n` +
+      `Kamera ${camera.position.x.toFixed(1)} / ${camera.position.y.toFixed(2)} / ${camera.position.z.toFixed(1)}  Auto ${car.pos.x.toFixed(1)} / ${car.pos.z.toFixed(1)}`;
+  }
 
   renderer.render(scene, camera);
 }
