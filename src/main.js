@@ -9,6 +9,7 @@ import { QuestManager, createArcLapQuest, createSpeedQuest } from './quests.js';
 import { truckHonk } from './audio.js';
 import { placeBuildings } from './buildings.js';
 import { isMobile } from './device.js';
+import { applyView } from './views.js';
 
 const app = document.getElementById('app');
 // Auf Mobilgeraeten sparsamer rendern: MSAA + hohe Aufloesung + weiche
@@ -308,6 +309,12 @@ controls.onReset = () => {
   failTimer = 0;
 };
 controls.onHonk = () => truckHonk();
+
+// --- Kamera-Ansichten (Taste C): 0 Standard, 1 First Person, 2 hinten links ---
+let viewMode = 0;
+controls.onCycleView = () => {
+  viewMode = (viewMode + 1) % 3;
+};
 controls.onEscape = () => {
   if (state !== 'menu') toMenu(); // Quest abbrechen / Scheitern-Bildschirm -> Startbildschirm
 };
@@ -414,7 +421,11 @@ function animate() {
 
   const fx = Math.sin(car.heading);
   const fz = Math.cos(car.heading);
-  if (state === 'success' && activeQuest && activeQuest.id === 'arc-de-triomphe') {
+  // Ansicht 1/2 (Taste C): views.js setzt die Kamera; nur die Standard-
+  // Ansicht durchlaeuft die folgenden Zwoege (Erfolg/Schwenk/Verfolgung).
+  if (viewMode !== 0 && state !== 'menu') {
+    applyView(camera, car, viewMode, 1 - Math.exp(-6 * dt));
+  } else if (state === 'success' && activeQuest && activeQuest.id === 'arc-de-triomphe') {
     // Quest 1 geschafft: Bild bleibt stehen (keine Simulation mehr), die
     // Kamera faehrt nach hinten/oben und etwas zur Aussenseite des Kreises,
     // sodass der Arc de Triomphe im Hintergrund zu sehen ist.

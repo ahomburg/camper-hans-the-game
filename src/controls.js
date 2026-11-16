@@ -5,6 +5,7 @@ export class Controls {
     this.onReset = null;
     this.onHonk = null;
     this.onEscape = null;
+    this.onCycleView = null;
 
     const keymap = {
       ArrowUp: 'up', KeyW: 'up',
@@ -18,6 +19,7 @@ export class Controls {
       if (e.code === 'KeyR' && this.onReset) this.onReset();
       if (e.code === 'KeyH' && !e.repeat && this.onHonk) this.onHonk();
       if (e.code === 'Escape' && this.onEscape) this.onEscape();
+      if (e.code === 'KeyC' && !e.repeat && this.onCycleView) this.onCycleView();
     });
     window.addEventListener('keyup', (e) => {
       const k = keymap[e.code];
