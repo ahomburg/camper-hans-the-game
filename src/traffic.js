@@ -5,7 +5,7 @@ import { laneRadii } from './arc.js';
 import { carHonk } from './audio.js';
 import { isTouchDevice, limitTextureSize } from './device.js';
 
-const CAR_MODEL_URLS = ['assets/car_mercedes-optimized.glb', 'assets/car_kaefer-optimized.glb', 'assets/car_ente-optimized.glb'];
+const CAR_MODEL_URLS = ['assets/3d/car_mercedes-optimized.glb', 'assets/3d/car_kaefer-optimized.glb', 'assets/3d/car_ente-optimized.glb'];
 const CAR_LENGTH = 3.6; // Ziel-Laenge der Ente (10% kleiner als urspruenglich 4.0; der Van bleibt unveraendert)
 // Mercedes und Kaefer sind nochmals 10% kleiner als die Ente; die Ente selbst 20% kleiner (3.6 * 0.8 = 2.88)
 const CAR_MODEL_LENGTHS = CAR_MODEL_URLS.map((_, i) => (i < 2 ? CAR_LENGTH * 0.9 : CAR_LENGTH * 0.8));

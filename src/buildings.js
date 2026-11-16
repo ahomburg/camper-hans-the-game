@@ -23,7 +23,7 @@ const rand = mulberry32(20240613);
 // (keine nachtraeglich hinzugefuegten Fenster).
 // Start-Strasse (Nord-Sued, "Champs-Elysees"): Reihe hinter den Birken.
 // Kreisstrasse: Gebaeude direkt am Strassenrand (aussen).
-const BUILDING_URLS = ['assets/building1-optimized.glb', 'assets/building2-optimized.glb', 'assets/building3-optimized.glb', 'assets/building4-optimized.glb'];
+const BUILDING_URLS = ['assets/3d/building1-optimized.glb', 'assets/3d/building2-optimized.glb', 'assets/3d/building3-optimized.glb', 'assets/3d/building4-optimized.glb'];
 const BUILDING_HEIGHT = 10; // Zielhoehe in Welt-Einheiten
 
 // Modell normalisieren: laengste horizontale Achse (Fassade) auf lokale X,

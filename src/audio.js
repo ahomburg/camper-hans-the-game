@@ -2,8 +2,10 @@
 // campervan_horn.mp3 fuer den Van (Taste H). Die WebAudio-Synthese bleibt
 // als Fallback, falls eine Datei nicht geladen werden kann.
 
-const HORN_FILES = ['car_mercedes.mp3', 'car_kaefer.mp3', 'car_ente.mp3'];
-const TRUCK_HORN_FILE = 'campervan_horn.mp3';
+const SOUND_DIR = 'assets/sound/';
+const HORN_FILES = ['car_mercedes.mp3', 'car_kaefer.mp3', 'car_ente.mp3']
+  .map((f) => SOUND_DIR + f);
+const TRUCK_HORN_FILE = SOUND_DIR + 'campervan_horn.mp3';
 
 // --- Fallback-Synthese (WebAudio) ---
 let ctx = null;

@@ -95,7 +95,7 @@ export function buildArc(scene) {
   return { ...ARC, laneRadii: laneRadii(), colliders, group };
 }
 
-// Laedt assets/arch-optimized.glb als Arc de Triomphe auf die Mittelinsel.
+// Laedt assets/3d/arch-optimized.glb als Arc de Triomphe auf die Mittelinsel.
 // Das Modell ist ~1 Einheit gross und zentriert; es wird auf ~26 Einheiten
 // Hoehe skaliert (wie das alte Kistenmodell), auf die Insel gesetzt und so
 // gedreht, dass die Durchfahrt entlang der Nord-Sued-Strasse (Z) zeigt.
@@ -104,7 +104,7 @@ export async function loadArcMonument(scene, cx = ARC.cx, cz = ARC.cz) {
   // arch-optimized.glb ist Meshopt-komprimiert (EXT_meshopt_compression)
   await MeshoptDecoder.ready;
   loader.setMeshoptDecoder(MeshoptDecoder);
-  const gltf = await loader.loadAsync('assets/arch-optimized.glb');
+  const gltf = await loader.loadAsync('assets/3d/arch-optimized.glb');
   const model = gltf.scene;
   model.traverse((o) => {
     if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
