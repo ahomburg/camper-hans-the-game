@@ -25,6 +25,10 @@ function mulberry32(seed) {
   };
 }
 
+// Kapselradius des Wohnwagens im Gespann (~1.8 breit: 10 % schmaler als die
+// alte Annahme 2.0, passend zum um 10 % schmaler skalierten Modell).
+const TRAILER_R = 0.9;
+
 function makeCarMesh(color) {
   const g = new THREE.Group();
   const body = new THREE.Mesh(
@@ -257,7 +261,7 @@ export class Traffic {
     // trailerPos): Er ist ein eigenstaendiges Objekt und kollidiert mit den
     // statischen Hindernissen, der Welt-Grenze und dem Zugfahrzeug. Die
     // Verkehrautos behandelt die Schleife unten pro Auto. Der Wohnwagen ist
-    // 5.0 lang / ~2.0 breit -> Kapsel: 2 Kreise (r = 1.0) bei ±1.6.
+    // 5.0 lang / ~1.8 breit -> Kapsel: 2 Kreise (r = TRAILER_R) bei ±1.6.
     if (van && van.detached) {
       const t = van.trailerPos;
       const fx = Math.sin(van.trailerHeading), fz = Math.cos(van.trailerHeading);
@@ -267,7 +271,7 @@ export class Traffic {
           const px = t.x + fx * off, pz = t.z + fz * off;
           const dx = px - c.x, dz = pz - c.z;
           const d = Math.hypot(dx, dz);
-          const min = c.r + 1.0;
+          const min = c.r + TRAILER_R;
           if (d < min && d > 1e-4) {
             const p = (min - d) / d;
             t.x += dx * p; t.z += dz * p;
@@ -290,7 +294,7 @@ export class Traffic {
       // begrenzt, damit der Wohnwagen nach dem Abreissen nicht springt.
       let tugBounced = false;
       for (let i = 0; i < 3; i++) {
-        const tug = capsuleHit(t.x, t.z, van.trailerHeading, 1.0, van.pos.x, van.pos.z, van.heading, 1.1, 1.6, 1.5);
+        const tug = capsuleHit(t.x, t.z, van.trailerHeading, TRAILER_R, van.pos.x, van.pos.z, van.heading, 1.1, 1.6, 1.5);
         if (!tug) break;
         const push = Math.min(tug.depth + 0.02, 0.5);
         t.x += tug.nx * push * 0.7;
@@ -369,33 +373,57 @@ export class Traffic {
         }
       }
 
-      // Abgerissener Wohnwagen des Gespanns: er ist ein eigenstaendiges
-      // Objekt und kollidiert mit den Verkehrautos (Trennung + Bounce).
-      // Nur das Gespann hat detached/trailerPos; der Campervan bleibt
-      // hier ueber van.detached === false immer draussen.
-      if (van && van.detached) {
-        const hitch = capsuleHit(
-          van.trailerPos.x, van.trailerPos.z, van.trailerHeading, 1.0,
-          car.collider.x, car.collider.z, car.mesh.rotation.y, 0.95, 1.6, 1.1
-        );
+      // Wohnwagen des Gespanns - angekuppelt wie abgerissen ein fester
+      // Koerper: Verkehrautos koennen nie durch ihn hindurchfahren. Der
+      // ANGEKUPPELTE Wagen verhaelt sich wie das Zugfahrzeug (Auto prallt
+      // ab, Gespann wird entlang der Stossnormalen herausgeschoben, pushOut
+      // haelt die Spurfuehrung im Ring synchron - der Wagen folgt der
+      // Kupplung kinematisch mit). Der ABGERISSENE ist ein freier Koerper.
+      if (van && van.trailerGroup) {
+        const det = !!van.detached;
+        // Wagenposition/-ausrichtung: angekuppelt an der Kupplung hinter
+        // dem Zug (inkl. Schlingern psi), abgerissen frei (trailerPos).
+        const hh = det
+          ? van.trailerHeading
+          : van.heading - (van.psi || 0);
+        const hx = det
+          ? van.trailerPos.x
+          : van.pos.x - Math.sin(van.heading) * van.hitchDist;
+        const hz = det
+          ? van.trailerPos.z
+          : van.pos.z - Math.cos(van.heading) * van.hitchDist;
+        const hitch = capsuleHit(hx, hz, hh, TRAILER_R, car.collider.x, car.collider.z, car.mesh.rotation.y, 0.95, 1.6, 1.1);
         if (hitch) {
-          // Der frei gleitende Wohnwagen wird entlang der Stossnormalen aus
-          // dem Auto herausgeschoben (das Auto ist an seine Spur gebunden).
-          van.trailerPos.x += hitch.nx * (hitch.depth + 0.02);
-          van.trailerPos.z += hitch.nz * (hitch.depth + 0.02);
+          // 1) Trennung: angekuppelt das ganze Gespann, abgerissen nur den
+          // freien Wohnwagen entlang der Stossnormalen hinausschieben.
+          const push = hitch.depth + 0.02;
+          if (det) {
+            van.trailerPos.x += hitch.nx * push;
+            van.trailerPos.z += hitch.nz * push;
+          } else {
+            van.pushOut(hitch.nx * push, hitch.nz * push);
+          }
+          // 2) Bounce-Impuls nur bei frischem Treffer (Nachklang-Sperre)
           if (car.bounceT <= 0 && car.hitCool <= 0) {
             car.hitCool = 1.0;
             // Wie beim Van: Stossnormale gegen die Fahrtrichtung des Autos.
-            // Rammt der Wohnwagen das Auto von hinten, wird es vorgeschoben,
-            // sonst prallt das Auto rueckwaerts ab.
             const ch = car.mesh.rotation.y;
             const cDotN = Math.sin(ch) * hitch.nx + Math.cos(ch) * hitch.nz;
-            if (cDotN < -0.5) car.shoveT = 0.55;
-            else car.bounceT = 0.45;
-            van.trailerSpeed *= -0.25; // Wohnwagen prallt ab
+            if (cDotN < -0.5) {
+              // Wohnwagen/Gespann rammt das Auto von hinten -> vorschieben
+              car.shoveT = 0.55;
+              if (!det) van.speed *= 0.9; // leichter Schlag ins Gespann
+            } else {
+              car.bounceT = 0.45; // Auto prallt rueckwaerts ab
+              // Rammt das Auto den Wagen von hinten, wird das Gespann mit-
+              // geschoben (wie der Van bei einer Heckkollision).
+              if (!det && cDotN > 0.5) van.speed = Math.abs(van.speed) * 0.6 + 3;
+            }
+            if (det) van.trailerSpeed *= -0.25; // freier Wohnwagen prallt ab
           }
           // Positionskorrektur ins Rendering uebernehmen
-          van.syncTrailer();
+          if (det) van.syncTrailer();
+          else van.sync();
         }
       }
 

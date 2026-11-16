@@ -146,6 +146,7 @@ export class Gespann extends Car {
     const box0 = new THREE.Box3().setFromObject(model);
     const size0 = box0.getSize(new THREE.Vector3());
     inner.scale.setScalar(TRAILER_MODEL_LEN / size0.z); // Laenge liegt auf Z
+    inner.scale.x *= 0.9; // Wohnwagen 10 % schmaler (passend zum Kollisionsradius 0.9)
 
     const box = new THREE.Box3().setFromObject(inner);
     const center = box.getCenter(new THREE.Vector3());
