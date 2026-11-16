@@ -94,11 +94,13 @@ export class Car {
     this.halfWidth = size.x * 0.5;
     const halfTrack = size.x * 0.45;
     this.criticalRoll = Math.atan2(halfTrack, cogHeight);
-    // First-Person-Augenhoehe am Modell ausrichten: ~72 % der Fahrzeughoehe,
+    // First-Person-Augenhoehe am Modell ausrichten: ~65 % der Fahrzeughoehe,
     // mindestens 1.45 (damit bleibt die bewaehrte Cockpit-Pose kleiner Fahrzeuge
     // wie des Peugeot unveraendert; das hohe Wohnmobil rutscht damit aus dem
-    // Armaturenbrett hoch in den Glasband-Bereich).
-    this.seatY = Math.max(1.45, size.y * 0.72);
+    // Armaturenbrett in den Windschutzscheiben-Bereich - 72 % erwiesen sich
+    // als zu hoch). Zum Feintuning live: __game.car.seatY = <Wert> in der
+    // Browser-Konsole (wirkt sofort, applyView liest jede Frame).
+    this.seatY = Math.max(1.45, size.y * 0.65);
   }
 
   // Einfache Arcade-Physik: Geschwindigkeit entlang der Heading-Richtung.
