@@ -48,7 +48,8 @@ export class Car {
     this.rollGain = 0.004;      // Wank-Verstaerkung (Fahrzeug-abhaengig, s. updateRoll)
     this.rollDamping = 3.0;     // Wank-Daempfung: kleiner = weniger Nachschwingen
     this.onTip = null;          // Callback, feuert einmal pro Umkippen (z.B. Toast)
-    this.seatY = 1.45;          // FPV-Augenhoehe (First Person), bis zum Laden
+    this.seatY = 1.45;          // FPV-Augenhoehe (First Person), bis zum Laden;
+                                 // Peugeot behaelt diesen Wert, Campervan: s. load()
     this.seatFwd = -0.2;         // FPV-Sitz vor/zurueck (negativ = hinter der Mitte)
     this.modelSize = null;       // Bounding-Box des geladenen Modells (Debug/FPV)
 
@@ -86,6 +87,13 @@ export class Car {
     const size = box.getSize(new THREE.Vector3());
     // Campervan: sehr "hoher" (getunter) Schwerpunkt, kippt frueh um
     this.applySize(size, 3.5);
+
+    // FPV-Sitzposition (First Person, s. views.js), kalibriert per
+    // ?debugcam: Augenhoehe 1.92, Sitz 0.45 VOR der Modell-Mitte (das
+    // Cockpit sitzt beim Cab-over-Van weit vorn). Der Peugeot im Gespann
+    // nutzt die Konstruktor-Defaults (1.45 / -0.2) weiter.
+    this.seatY = 1.92;
+    this.seatFwd = 0.45;
   }
 
   // Aus der Modellgeometrie abgeleitete Werte: Kollisionsradius, Breite
@@ -96,13 +104,7 @@ export class Car {
     this.halfWidth = size.x * 0.5;
     const halfTrack = size.x * 0.45;
     this.criticalRoll = Math.atan2(halfTrack, cogHeight);
-    // First-Person-Augenhoehe am Modell ausrichten: ~65 % der Fahrzeughoehe,
-    // mindestens 1.45 (damit bleibt die bewaehrte Cockpit-Pose kleiner Fahrzeuge
-    // wie des Peugeot unveraendert; das hohe Wohnmobil rutscht damit aus dem
-    // Armaturenbrett in den Windschutzscheiben-Bereich - 72 % erwiesen sich
-    // als zu hoch). Zum Feintunen: URL ?debugcam, dann I/K (Hoehe) und J/L
-    // (vor/zurueck) - die Werte in HUD/Konsole ablesen und zurueckmelden.
-    this.seatY = Math.max(1.45, size.y * 0.65);
+    // Fuer Debug/FPV: Modell-Bounding-Box bereitstellen (?debugcam HUD).
     this.modelSize = { x: size.x, y: size.y, z: size.z };
   }
 
