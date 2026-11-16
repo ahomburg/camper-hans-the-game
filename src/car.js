@@ -29,6 +29,7 @@ export class Car {
     this.ringAng = 0;   // Winkel um den Arc-Mittelpunkt
     this.ringR = 0;     // aktueller Abstand zum Mittelpunkt
     this.ringLane = 0;  // Index der Zielfahrspur
+    this.ringLaneFrom = null; // Spur vor dem Spurwechsel (fuer abortLaneChange)
     this.arc = null;    // zuletzt uebergebener Kreisverkehr (fuer pushOut)
     this._prevLeft = false;
     this._prevRight = false;
@@ -146,12 +147,26 @@ export class Car {
     }
 
     if (this.inRing && arc) {
-      // Spurwechsel nur per Tastendruck (Kante), nie durch Dauerhalten
-      if (input.left && !this._prevLeft) this.ringLane = Math.max(0, this.ringLane - 1);
-      if (input.right && !this._prevRight) this.ringLane = Math.min(arc.lanes - 1, this.ringLane + 1);
+      // Spurwechsel nur per Tastendruck (Kante), nie durch Dauerhalten.
+      // ringLaneFrom merkt sich die Herkunftsspur: Stoesst der Van beim
+      // Wechsel gegen ein Auto in der Zielspur, bricht der Wechsel ab und
+      // der Van prallt in die Herkunftsspur zurueck (siehe abortLaneChange).
+      if (input.left && !this._prevLeft && this.ringLane > 0) {
+        this.ringLaneFrom = this.ringLane;
+        this.ringLane--;
+      }
+      if (input.right && !this._prevRight && this.ringLane < arc.lanes - 1) {
+        this.ringLaneFrom = this.ringLane;
+        this.ringLane++;
+      }
 
       const targetR = arc.laneRadii[this.ringLane];
       this.ringR += (targetR - this.ringR) * Math.min(1, 6 * dt);
+      // Spurwechsel abgeschlossen: Herkunftsspur vergessen, spaetere
+      // Kollisionen (z.B. von hinten) brechen dann nichts mehr ab.
+      if (this.ringLaneFrom !== null && Math.abs(targetR - this.ringR) < 0.15) {
+        this.ringLaneFrom = null;
+      }
       this.ringAng += (this.speed / this.ringR) * dt;
       if (this.ringAng >= Math.PI * 2) this.ringAng -= Math.PI * 2;
       if (this.ringAng < 0) this.ringAng += Math.PI * 2;
@@ -224,6 +239,16 @@ export class Car {
       this.ringAng = Math.atan2(px, pz);
       this.ringR = Math.hypot(px, pz);
     }
+  }
+
+  // Bricht einen laufenden Spurwechsel ab: der Van kehrt in die Spur
+  // zurueck, aus der er kam, (Aufrufer: traffic.js bei seitlicher
+  // Kollision, typisch Spurwechsel in ein besetztes Auto). Ohne
+  // laufenden Spurwechsel ist der Aufruf wirkungslos.
+  abortLaneChange() {
+    if (this.ringLaneFrom === null) return;
+    this.ringLane = this.ringLaneFrom;
+    this.ringLaneFrom = null;
   }
 
   // Feder-Daempfer-Modell um die Laengsachse. Der Van ist bewusst
@@ -300,6 +325,7 @@ export class Car {
     this.ringAng = 0;
     this.ringR = 0;
     this.ringLane = 0;
+    this.ringLaneFrom = null;
     this._prevLeft = false;
     this._prevRight = false;
     this.sync();

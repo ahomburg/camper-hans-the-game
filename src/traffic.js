@@ -246,12 +246,24 @@ export class Traffic {
           if (car.bounceT <= 0 && car.hitCool <= 0) {
             car.bounceT = 0.45; // kurzer Rueckstoss statt langem Rueckwaerts-Sprung
             car.hitCool = 1.0;
-            // Der Van prallt von der Stossnormalen weg: zeigt seine Nase zum
-            // Auto, faehrt er rueckwaerts; zeigt sie vom Auto weg, bekommt er
-            // Schwung nach vorn (z.B. wenn ihn ein Auto von hinten rammt).
+            // Richtung des Abprallens haengt davon ab, wie der Van auf das
+            // Auto trifft (Stossnormale gegenueber der Fahrzeug-Nase):
             const nDotH = Math.sin(van.heading) * hit.nx + Math.cos(van.heading) * hit.nz;
-            if (nDotH >= 0) van.speed = Math.abs(van.speed) * 0.6 + 3;
-            else van.speed = -Math.abs(van.speed) * 0.6 - 3;
+            if (Math.abs(nDotH) < 0.5) {
+              // Seitentreffer (typisch: Spurwechsel in ein besetztes Auto):
+              // Spurwechsel abbrechen - der Van prallt in seine alte Spur
+              // zurueck und verliert deutlich Tempo. Ohne laufenden
+              // Spurwechsel spielt abortLaneChange keine Rolle, der
+              // Temposchlag bleibt als Aufprall spuerbar.
+              van.abortLaneChange();
+              van.speed *= 0.4;
+            } else if (nDotH >= 0) {
+              // Van zeigt vom Auto weg -> Schwung nach vorn (Heck-Kollision)
+              van.speed = Math.abs(van.speed) * 0.6 + 3;
+            } else {
+              // Van faehrt mit der Nase aufs Auto -> rueckwaerts abbounce
+              van.speed = -Math.abs(van.speed) * 0.6 - 3;
+            }
           }
           // Positionskorrektur auch ins Rendering uebernehmen (Van wurde bewegt)
           van.sync();
