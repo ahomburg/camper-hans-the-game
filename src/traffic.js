@@ -28,6 +28,12 @@ function mulberry32(seed) {
 // Kapselradius des Wohnwagens im Gespann (~1.8 breit: 10 % schmaler als die
 // alte Annahme 2.0, passend zum um 10 % schmaler skalierten Modell).
 const TRAILER_R = 0.9;
+// Geometrie des Wohnwagens: trailerPos/trailerGroup-Ursprung ist die KUPPLUNG,
+// der Aufbau (5.0 lang, 0.4 ueberlappen ins Zugheck) erstreckt sich dahinter:
+// Mitte = 2.1 hinter der Kupplung, Kapselkreise bei ±1.6 um die Mitte decken
+// damit den Aufbau von +0.4 bis -4.6 ab.
+const TRAILER_MID = 2.1;
+const TRAILER_HALF = 1.6;
 
 function makeCarMesh(color) {
   const g = new THREE.Group();
@@ -265,10 +271,13 @@ export class Traffic {
     if (van && van.detached) {
       const t = van.trailerPos;
       const fx = Math.sin(van.trailerHeading), fz = Math.cos(van.trailerHeading);
+      // Kapselmitte des Aufbaus: 2.1 hinter der Kupplung (trailerPos)
+      const mx = t.x - fx * TRAILER_MID;
+      const mz = t.z - fz * TRAILER_MID;
       // Statische Hindernisse (Gebaeude, Baeume, ...): Kreis gegen Kapsel
       for (const c of colliders) {
-        for (const off of [1.6, -1.6]) {
-          const px = t.x + fx * off, pz = t.z + fz * off;
+        for (const off of [TRAILER_HALF, -TRAILER_HALF]) {
+          const px = mx + fx * off, pz = mz + fz * off;
           const dx = px - c.x, dz = pz - c.z;
           const d = Math.hypot(dx, dz);
           const min = c.r + TRAILER_R;
@@ -294,7 +303,7 @@ export class Traffic {
       // begrenzt, damit der Wohnwagen nach dem Abreissen nicht springt.
       let tugBounced = false;
       for (let i = 0; i < 3; i++) {
-        const tug = capsuleHit(t.x, t.z, van.trailerHeading, TRAILER_R, van.pos.x, van.pos.z, van.heading, 1.1, 1.6, 1.5);
+        const tug = capsuleHit(mx, mz, van.trailerHeading, TRAILER_R, van.pos.x, van.pos.z, van.heading, 1.1, TRAILER_HALF, 1.5);
         if (!tug) break;
         const push = Math.min(tug.depth + 0.02, 0.5);
         t.x += tug.nx * push * 0.7;
@@ -386,13 +395,17 @@ export class Traffic {
         const hh = det
           ? van.trailerHeading
           : van.heading - (van.psi || 0);
-        const hx = det
+        const kupX = det
           ? van.trailerPos.x
           : van.pos.x - Math.sin(van.heading) * van.hitchDist;
-        const hz = det
+        const kupZ = det
           ? van.trailerPos.z
           : van.pos.z - Math.cos(van.heading) * van.hitchDist;
-        const hitch = capsuleHit(hx, hz, hh, TRAILER_R, car.collider.x, car.collider.z, car.mesh.rotation.y, 0.95, 1.6, 1.1);
+        // Kapselmitte des Aufbaus: 2.1 hinter der Kupplung - trailerPos ist
+        // der ANKER (Aufbau erstreckt sich dahinter), nicht die Wagenmitte.
+        const mx = kupX - Math.sin(hh) * TRAILER_MID;
+        const mz = kupZ - Math.cos(hh) * TRAILER_MID;
+        const hitch = capsuleHit(mx, mz, hh, TRAILER_R, car.collider.x, car.collider.z, car.mesh.rotation.y, 0.95, TRAILER_HALF, 1.1);
         if (hitch) {
           // 1) Trennung: angekuppelt das ganze Gespann, abgerissen nur den
           // freien Wohnwagen entlang der Stossnormalen hinausschieben.
