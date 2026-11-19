@@ -94,10 +94,13 @@
     }
     #menu.hidden, #success.hidden, #failed.hidden { display: none; }
 
-    /* Gespann tuckert hinter dem Menueinhalt durch (Gag auf der Creme-Wiese) */
+    /* Gespann tuckert hinter dem Menueinhalt durch (Gag auf der Creme-Wiese).
+       object-fit haelt das 720:150-Renderformat, sonst streckt die 100vw-
+       Breite das Auto auf weiten Fenstern auseinander. */
     #menu-ride {
-      position: fixed; left: 0; width: 100vw; height: 150px; top: 34%;
+      position: fixed; left: 0; width: 100vw; height: 150px; top: 14%;
       z-index: 0; pointer-events: none;
+      object-fit: contain; object-position: center;
     }
     #menu > *:not(#menu-ride) { position: relative; z-index: 1; }
 
