@@ -211,14 +211,13 @@ function renderMenu() {
 function renderQuest() {
   if (!activeQuest) { questEl.innerHTML = ''; return; }
   const q = activeQuest;
+  // Bewusst reduziert (Feedback): nur Questname und Fortschrittsbalken -
+  // keine Beschreibung, kein Zaehler. Der Balken (Sonnen-Streifen, bei
+  // Erfolg Waldgruen) traegt die ganze Information.
   const pct = Math.min(100, (q.progress / q.target) * 100);
-  const extra = q.extra ? `<div class="q-text">${q.extra()}</div>` : '';
   questEl.innerHTML = `<div class="quest${q.completed ? ' done' : ''}">
     <div class="q-title">${q.title}</div>
-    <div class="q-desc">${q.desc}</div>
     <div class="q-bar"><div class="q-fill" style="width:${pct}%"></div></div>
-    <div class="q-text">${q.completed ? 'Erledigt!' : `${q.progress} / ${q.target}`}</div>
-    ${extra}
   </div>`;
 }
 
