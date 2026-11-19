@@ -190,19 +190,26 @@ function earn(n, label) {
 // Rand-Blitz, Crash-Banner mit Reparaturkosten - und die Kasse zahlt.
 // Mehrere Treffer im selben Aufprall (z.B. zwei Autos gleichzeitig) sind
 // EIN Crash: das Merge-Fenster faengt die Doppelabbuchung ab.
+// free = true: nur die Show (Funken/Sound/Wackeln/Banner), ohne Kosten -
+// fuer Ereignisse, an denen die Quest ohnehin scheitert (Kupplungsabriss).
 let crashCool = 0;
 let shakeT = 0, shakeAmp = 0;
 let crashBannerTimer = null;
-function handleCrash(info) {
+function handleCrash(info, free = false) {
   if (crashCool > 0) return;
   crashCool = 0.35;
-  const { coins, tier } = crashPenalty(info.closing);
   const sev = Math.min(1, info.closing / 22); // Haerte 0..1 fuer Sound/Funken/Wackeln
-
-  wallet.deduct(coins);
-  runCoins -= coins;
-  runRepairs += coins;
-  popCoin(-coins, tier);
+  let banner;
+  if (free) {
+    banner = `💥 ${info.banner || 'Crash!'}`;
+  } else {
+    const { coins, tier } = crashPenalty(info.closing);
+    wallet.deduct(coins);
+    runCoins -= coins;
+    runRepairs += coins;
+    popCoin(-coins, tier);
+    banner = `💥 ${tier} −${coins} 🪙`;
+  }
   renderCoins();
 
   crashFX.spawn(info.x, info.z, info.nx, info.nz, sev);
@@ -210,7 +217,7 @@ function handleCrash(info) {
   shakeT = 0.45 + sev * 0.4;
   shakeAmp = 0.1 + sev * 0.55;
 
-  crashEl.textContent = `💥 ${tier} −${coins} 🪙`;
+  crashEl.textContent = banner;
   crashEl.classList.remove('show');
   void crashEl.offsetWidth;
   crashEl.classList.add('show');
@@ -348,9 +355,11 @@ function failQuest(reason) {
   timerRunning = false;
   state = 'failed';
   failReasonEl.textContent = reason;
+  // Scheitern selbst ist kostenlos - nur die unterwegs bezahlten
+  // Reparaturen werden (informativ) nochmal genannt.
   failedCoinsEl.textContent = runRepairs > 0
-    ? `Reparaturen dieser Fahrt: −${runRepairs} 🪙 · Reisekasse: ${wallet.amount}`
-    : `Reisekasse unangetastet: ${wallet.amount} 🪙`;
+    ? `Scheitern kostet nichts · Reparaturen unterwegs: −${runRepairs} 🪙`
+    : `Scheitern kostet nichts · Reisekasse unangetastet: ${wallet.amount} 🪙`;
   failedEl.classList.remove('hidden');
   renderQuest();
 }
@@ -466,11 +475,13 @@ campervan.onTip = () => showToast('Umgekippt! Die Quest ist gescheitert …');
 gespann.onTip = () => showToast('Umgekippt! Die Quest ist gescheitert …');
 gespann.onBreakoff = () => {
   showToast('Der Wohnwagen ist abgerissen!');
-  // Kupplungsschaden: Crasht am Kupplungspunkt (Funken + Reparaturkosten)
+  // Kupplungsabriss = Quest ohnehin gescheitert: nur die Show (Funken,
+  // Sound, Wackeln, Banner), KEIN Muenz-Abzug - Scheitern ist kostenlos.
   handleCrash({
     kind: 'coupling', closing: 12, nx: 0, nz: 0,
+    banner: 'Kupplung gerissen!',
     x: gespann.trailerPos.x, z: gespann.trailerPos.z,
-  });
+  }, true);
 };
 
 document.getElementById('btn-retry').addEventListener('click', retryQuest);
