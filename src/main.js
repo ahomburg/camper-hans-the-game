@@ -459,13 +459,17 @@ function setupMenuRide() {
   const lamp = new THREE.DirectionalLight(0xffffff, 1.5);
   lamp.position.set(3, 5, 6);
   scene.add(lamp, root);
-  const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 100); // aspect folgt der Fensterbreite
-  const dist = (size.y / 2) / Math.tan(cam.fov * Math.PI / 360) * 1.6;
-  cam.position.set(0, size.y * 0.4, dist); // Seitenansicht, leicht von oben
+  // Orthografische Kamera: parallele Projektion, das Gespann bleibt am
+  // Bildrand genauso maechtig wie in der Mitte. (Eine Perspektivkamera
+  // braeuchte bei Fensterbreite x 150 px ein horizontales FOV von weit
+  // ueber 120 Grad - der Grund fuer die Rand-Verzerrung.)
+  const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+  const halfH = size.y * 0.8; // sichtbare Streifenhoehe mit Luft
+  cam.position.set(0, size.y * 0.4, 10); // Seitenansicht, minimal von oben
   cam.lookAt(0, 0, 0);
   const canvas = document.getElementById('menu-ride');
   menuRide = { root, scene, cam, canvas, ctx: canvas.getContext('2d'),
-    dist, halfV: cam.fov * Math.PI / 360, sizeX: size.x,
+    halfH, sizeX: size.x,
     w: 0, span: 1, x: -1, t: 0, speed: 1 };
   updateMenuRide(0);
 }
@@ -477,10 +481,13 @@ function updateMenuRide(dt) {
   const wantW = Math.max(320, Math.ceil(window.innerWidth));
   if (wantW !== r.w) {
     r.w = wantW;
-    r.cam.aspect = wantW / RIDE_H;
+    const halfW = r.halfH * (wantW / RIDE_H); // Aspect: Breite/Hoehe des Streifens
+    r.cam.left = -halfW;
+    r.cam.right = halfW;
+    r.cam.top = r.halfH;
+    r.cam.bottom = -r.halfH;
     r.cam.updateProjectionMatrix();
-    // sichtbare Halbbreite in der Szene (Seitenansicht, Kamera senkrecht zur Fahrt)
-    r.span = r.dist * Math.tan(r.halfV) * r.cam.aspect + r.sizeX / 2 + 1;
+    r.span = halfW + r.sizeX / 2 + 1; // hinter dem Rand unsichtbar ein-/aussetzen
     r.x = -r.span; // neue Durchfahrt von links beginnen
     r.speed = (2 * r.span) / 11; // ~11 s pro Durchfahrt
   }
