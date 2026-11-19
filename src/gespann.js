@@ -236,6 +236,7 @@ export class Gespann extends Car {
     this.detached = false;
     this.trailerSpeed = 0;
     this.trailerSpin = 0;
+    this.trailerHitCool = 0; // Crash-Abklang des freien Wohnwagens (traffic.js)
     this.trailerPos.set(this.spawn.x, 0, this.spawn.z);
     this.trailerHeading = this.spawn.heading;
     this.syncTrailer();

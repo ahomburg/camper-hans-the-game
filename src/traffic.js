@@ -160,6 +160,11 @@ export class Traffic {
     this.cars = [];
     this.colliders = []; // ein Eintrag pro Auto, wird in update() mitbewegt
     this.templates = []; // GLB-Vorlagen (car_*.glb), leer = Kisten-Fallback
+    // Muenz-System (main.js verdrahtet das): onCrash = Spieler hat ein
+    // Objekt gerammt ({ kind, closing, nx, nz, x, z }), onNearMiss = knapp
+    // und schnell an einem Auto vorbeigeschert (+ Ueberhol-Praemie).
+    this.onCrash = null;
+    this.onNearMiss = null;
   }
 
   // Laedt car_mercedes/car_kaefer/car_ente-optimized.glb als Vorlagen. onProgress(i, n).
@@ -234,6 +239,7 @@ export class Traffic {
       shoveT: 0,                      // > 0: Van hat es von hinten angestossen,
                                        // faehrt kurz mit Schubtempo nach vorn
       hitCool: 0,                     // Nachklang-Sperre nach einem Treffer
+      nearMissCool: 0,                // Sperre fuer die Ueberhol-Praemie
     };
     this.cars.push(car);
     this.colliders.push(collider);
@@ -269,6 +275,7 @@ export class Traffic {
     // Verkehrautos behandelt die Schleife unten pro Auto. Der Wohnwagen ist
     // 5.0 lang / ~1.8 breit -> Kapsel: 2 Kreise (r = TRAILER_R) bei ±1.6.
     if (van && van.detached) {
+      if (van.trailerHitCool > 0) van.trailerHitCool -= dt; // Crash-Abklang (s.o.)
       const t = van.trailerPos;
       const fx = Math.sin(van.trailerHeading), fz = Math.cos(van.trailerHeading);
       // Kapselmitte des Aufbaus: 2.1 hinter der Kupplung (trailerPos)
@@ -284,6 +291,18 @@ export class Traffic {
           if (d < min && d > 1e-4) {
             const p = (min - d) / d;
             t.x += dx * p; t.z += dz * p;
+            // Muenz-System: der abgerissen Wohnwagen knallt gegen ein
+            // Hindernis - Hans' Blech, Hans' Rechnung. Abkling-Sperre, damit
+            // das Rutschen entlang eines Zauns nicht jeden Kontakt einzeln
+            // abrechnet.
+            if (this.onCrash && Math.abs(van.trailerSpeed) > 2 && !(van.trailerHitCool > 0)) {
+              van.trailerHitCool = 1.0;
+              this.onCrash({
+                kind: 'trailer', closing: Math.abs(van.trailerSpeed),
+                nx: dx / d, nz: dz / d,
+                x: (px + c.x) / 2, z: (pz + c.z) / 2,
+              });
+            }
             van.trailerSpeed *= -0.25; // leichter Bounce
           }
         }
@@ -350,6 +369,24 @@ export class Traffic {
             // zeigt sie nach vorn, faehrt das Auto auf den Van auf (- Rueckstoss).
             const ch = car.mesh.rotation.y;
             const cDotN = Math.sin(ch) * hit.nx + Math.cos(ch) * hit.nz;
+            // Muenz-System: Crash an die Reisekasse melden, BEVOR die
+            // Bounce-Impulse unten das Tempo verbiegen - die Harte des
+            // Aufpralls ist die Annaeherungsgeschwindigkeit beider Fahrzeuge
+            // entlang der Stossnormalen. Sanftes Streifen im Gleichtritt ist
+            // billiger Lackschaden, ein Frontal-Crash der Totalschaden.
+            if (this.onCrash) {
+              const vvx = Math.sin(van.heading) * van.speed;
+              const vvz = Math.cos(van.heading) * van.speed;
+              const vcx = Math.sin(ch) * car.speed;
+              const vcz = Math.cos(ch) * car.speed;
+              const closing = Math.max(0, (vcx - vvx) * hit.nx + (vcz - vvz) * hit.nz);
+              this.onCrash({
+                kind: 'car', closing,
+                nx: hit.nx, nz: hit.nz,
+                x: (van.pos.x + car.collider.x) / 2,
+                z: (van.pos.z + car.collider.z) / 2,
+              });
+            }
             if (cDotN < -0.5) {
               // Auffahrunfall: Auto ein Stueck nach vorn schieben
               // (Positionsschub + kurzer, auslaufender Schubtempo-Anteil).
@@ -422,6 +459,25 @@ export class Traffic {
             // Wie beim Van: Stossnormale gegen die Fahrtrichtung des Autos.
             const ch = car.mesh.rotation.y;
             const cDotN = Math.sin(ch) * hitch.nx + Math.cos(ch) * hitch.nz;
+            // Muenz-System: Spieler-Haftung am Wohnwagen - Severity VOR den
+            // Bounce-Impulsen erfassen. Der ABGERISSENE Wagen zaehlt immer
+            // (Hans' entlaufener Besitz), der ANGEKUPPELTE nur, wenn das
+            // Gespann das Auto von hinten gerammt hat (cDotN < -0.5) - rammt
+            // umgekehrt ein Auto den Wohnwagen, ist das nicht Hans' Rechnung.
+            if (this.onCrash && (det || cDotN < -0.5)) {
+              const tSpeed = det ? van.trailerSpeed : van.speed;
+              const tvx = Math.sin(hh) * tSpeed;
+              const tvz = Math.cos(hh) * tSpeed;
+              const vcx = Math.sin(ch) * car.speed;
+              const vcz = Math.cos(ch) * car.speed;
+              const closing = Math.max(0, (vcx - tvx) * hitch.nx + (vcz - tvz) * hitch.nz);
+              this.onCrash({
+                kind: 'trailer', closing,
+                nx: hitch.nx, nz: hitch.nz,
+                x: (mx + car.collider.x) / 2,
+                z: (mz + car.collider.z) / 2,
+              });
+            }
             if (cDotN < -0.5) {
               // Wohnwagen/Gespann rammt das Auto von hinten -> vorschieben
               car.shoveT = 0.55;
@@ -437,6 +493,27 @@ export class Traffic {
           // Positionskorrektur ins Rendering uebernehmen
           if (det) van.syncTrailer();
           else van.sync();
+        }
+      }
+
+      // Ueberhol-Praemie (Muenz-System): Wer schnell durch den Verkehr
+      // schiebt, OHNE etwas zu treffen, verdient ein paar Muenzen. "Knapp
+      // vorbei" = die um einen Sicherheitssaum (0.45 je Seite) aufgetriebenen
+      // Kollisionsradien ueberlappen, die echten nicht; nur ab 12 m/s
+      // (~43 km/h) und mit 4 s Sperre je Auto, damit statisch-parallel
+      // dahertuckern nichts abwirft.
+      if (van && this.onNearMiss) {
+        car.nearMissCool = Math.max(0, (car.nearMissCool || 0) - dt);
+        if (car.nearMissCool <= 0 && car.hitCool <= 0 && Math.abs(van.speed) >= 12) {
+          const near = capsuleHit(van.pos.x, van.pos.z, van.heading, 1.55,
+            car.collider.x, car.collider.z, car.mesh.rotation.y, 1.4);
+          if (near) {
+            car.nearMissCool = 4;
+            this.onNearMiss({
+              x: (van.pos.x + car.collider.x) / 2,
+              z: (van.pos.z + car.collider.z) / 2,
+            });
+          }
         }
       }
 

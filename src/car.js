@@ -48,6 +48,9 @@ export class Car {
     this.rollGain = 0.004;      // Wank-Verstaerkung (Fahrzeug-abhaengig, s. updateRoll)
     this.rollDamping = 3.0;     // Wank-Daempfung: kleiner = weniger Nachschwingen
     this.onTip = null;          // Callback, feuert einmal pro Umkippen (z.B. Toast)
+    this.onObstacleCrash = null; // Callback: Spieler rammt Baum/Gebaeude/Bordstein
+                                  // ({ kind, closing, nx, nz, x, z }) -> Muenz-System
+    this.obstacleCool = 0;      // Abklang-Sperre fuer Hindernis-Crashs (Sekunden)
     this.seatY = 1.45;          // FPV-Augenhoehe (First Person), bis zum Laden;
                                  // Peugeot behaelt diesen Wert, Campervan: s. load()
     this.seatFwd = -0.2;         // FPV-Sitz vor/zurueck (negativ = hinter der Mitte)
@@ -120,6 +123,7 @@ export class Car {
     const reverseAccel = 9;
 
     if (arc) this.arc = arc; // Kreisverkehr merken (pushOut braucht cx/cz)
+    if (this.obstacleCool > 0) this.obstacleCool -= dt; // Crash-Abklang (s.u.)
 
     let yawRate = 0;
 
@@ -213,14 +217,40 @@ export class Car {
           const nz = d > 1e-4 ? dz / d : 0;
           this.pos.x = c.x + nx * min;
           this.pos.z = c.z + nz * min;
+          // Muenz-System: Crash gegen ein statisches Hindernis (Baum,
+          // Gebaeude, Bordstein des Arc ...) - Harte = Tempo vor dem Bounce.
+          const closing = Math.abs(this.speed);
           this.speed *= -0.25; // leichter Bounce
+          if (this.onObstacleCrash && closing > 1.2 && this.obstacleCool <= 0) {
+            this.obstacleCool = 1.0; // Entlang-Rutschen nicht mehrfach abrechnen
+            this.onObstacleCrash({
+              kind: 'obstacle', closing, nx, nz,
+              x: c.x + nx * c.r, z: c.z + nz * c.r,
+            });
+          }
         }
       }
 
-      // Welt-Grenze
+      // Welt-Grenze (Begrenzungsmauer): leichter Crash, Tempo vor dem Abbremsen
       const lim = worldHalf - 3;
-      if (Math.abs(this.pos.x) > lim) { this.pos.x = Math.sign(this.pos.x) * lim; this.speed *= 0.4; }
-      if (Math.abs(this.pos.z) > lim) { this.pos.z = Math.sign(this.pos.z) * lim; this.speed *= 0.4; }
+      if (Math.abs(this.pos.x) > lim) {
+        const closing = Math.abs(this.speed);
+        const sx = Math.sign(this.pos.x);
+        this.pos.x = sx * lim; this.speed *= 0.4;
+        if (this.onObstacleCrash && closing > 2 && this.obstacleCool <= 0) {
+          this.obstacleCool = 1.0;
+          this.onObstacleCrash({ kind: 'border', closing: closing * 0.7, nx: -sx, nz: 0, x: this.pos.x, z: this.pos.z });
+        }
+      }
+      if (Math.abs(this.pos.z) > lim) {
+        const closing = Math.abs(this.speed);
+        const sz = Math.sign(this.pos.z);
+        this.pos.z = sz * lim; this.speed *= 0.4;
+        if (this.onObstacleCrash && closing > 2 && this.obstacleCool <= 0) {
+          this.obstacleCool = 1.0;
+          this.onObstacleCrash({ kind: 'border', closing: closing * 0.7, nx: 0, nz: -sz, x: this.pos.x, z: this.pos.z });
+        }
+      }
     }
 
     this._prevLeft = !!input.left;
@@ -341,6 +371,7 @@ export class Car {
     this.ringLaneFrom = null;
     this._prevLeft = false;
     this._prevRight = false;
+    this.obstacleCool = 0;
     this.sync();
   }
 }

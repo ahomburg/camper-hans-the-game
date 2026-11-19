@@ -43,12 +43,53 @@
     .speedo-unit { font-size: 8.5px; font-weight: 700; letter-spacing: .06em; fill: var(--ch-night-soft); }
     .speedo-tick { font-size: 8.5px; font-weight: 700; fill: var(--ch-night-soft); }
     #side { flex-direction: column; align-items: flex-end; gap: 2px; padding: 10px 16px; }
-    #time, #highscore {
+    #time, #highscore, #coins {
       font-family: var(--ch-font-display); font-weight: 700; font-size: 16px;
       font-variant-numeric: tabular-nums; line-height: 1.3;
     }
     #time { color: var(--ch-night); }
     #highscore { color: var(--ch-sun-dark); }
+    #coins { color: var(--ch-wood-dark); }
+    #coins.bump { animation: coin-bump .45s var(--ch-spring); }
+    @keyframes coin-bump { 30% { transform: scale(1.35) rotate(-4deg); } }
+
+    /* ---------- Coin-Popups (+/- Buchungen schweben unter der Kasse auf) ---------- */
+    #coin-pop {
+      position: fixed; top: 96px; right: 26px; z-index: 7;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+      pointer-events: none;
+    }
+    .coin-delta {
+      font-family: var(--ch-font-hand); font-weight: 700; font-size: 1.45rem; line-height: 1.1;
+      animation: coin-float 1.5s ease forwards;
+    }
+    .coin-delta.plus { color: var(--ch-forest-dark); }
+    .coin-delta.minus { color: var(--ch-campfire-dark); }
+    @keyframes coin-float {
+      0% { opacity: 0; transform: translateY(8px) rotate(-2deg); }
+      14% { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-36px) rotate(2deg); }
+    }
+
+    /* ---------- Crash: Banner (Handschrift-Zettel) + Rötungs-Blitz uebers Bild ---------- */
+    #crash {
+      position: fixed; top: 24%; left: 50%; z-index: 9;
+      transform: translate(-50%, -50%) scale(.6) rotate(-3deg);
+      font-family: var(--ch-font-hand); font-weight: 700; font-size: 2.1rem; line-height: 1.2;
+      color: var(--ch-campfire-dark); background: var(--ch-fire-soft);
+      border: 3px solid var(--ch-night); border-radius: var(--ch-radius-md);
+      box-shadow: var(--ch-shadow-pop);
+      padding: 8px 24px; white-space: nowrap; max-width: 88vw;
+      opacity: 0; pointer-events: none;
+      transition: opacity .12s ease, transform .12s var(--ch-spring);
+    }
+    #crash.show { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-3deg); }
+    #crashflash {
+      position: fixed; inset: 0; z-index: 4; pointer-events: none; opacity: 0;
+      background: radial-gradient(ellipse at center, rgba(198, 69, 31, 0) 42%, rgba(198, 69, 31, .5) 100%);
+    }
+    #crashflash.show { opacity: var(--flash, .5); transition: none; }
+    #crashflash { transition: opacity .5s ease-out; }
 
     /* ---------- Quest-Anzeige (freier Text + Fortschrittsbalken, ohne Rahmen) ---------- */
     #quest {
@@ -147,6 +188,10 @@
       font-family: var(--ch-font-display); font-weight: 700; font-size: 15px;
       color: var(--ch-wood-dark); font-variant-numeric: tabular-nums;
     }
+    #menu-coins {
+      font-family: var(--ch-font-display); font-weight: 700; font-size: 15px;
+      color: var(--ch-sun-dark); font-variant-numeric: tabular-nums;
+    }
     .menu-hint { font-family: var(--ch-font-hand); font-size: 1.25rem; color: var(--ch-campfire-dark); opacity: .9; text-align: center; max-width: min(460px, 92vw); }
 
     /* ---------- Erfolg / Scheitern (Sticker-Karten auf Nacht-Vorhang) ---------- */
@@ -168,8 +213,9 @@
     #success h2 { color: var(--ch-forest-dark); }
     #failed h2 { color: var(--ch-campfire-dark); }
     .result-hans { height: 96px; }
-    #success-time, #success-highscore { font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ch-night); }
+    #success-time, #success-highscore, .result-coins { font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ch-night); }
     #success-highscore { font-weight: 700; color: var(--ch-wood-dark); }
+    .result-coins { font-weight: 700; color: var(--ch-sun-dark); }
     #fail-reason { font-size: 14.5px; line-height: 1.5; color: var(--ch-night); }
     .fail-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
 
@@ -245,8 +291,13 @@
     <div id="side" class="ch-hud">
       <div id="time">Zeit: 0.0 s</div>
       <div id="highscore">Highscore: –</div>
+      <div id="coins">🪙 <span id="coins-num">0</span></div>
     </div>
   </div>
+
+  <div id="coin-pop"></div>
+  <div id="crash"></div>
+  <div id="crashflash"></div>
 
   <div id="quest"></div>
   <div id="toast"></div>
@@ -262,6 +313,7 @@
     </div>
     <div id="menu-quests"></div>
     <div id="menu-highscore">Highscore: –</div>
+    <div id="menu-coins">Reisekasse: 0 🪙</div>
     <div class="menu-hint">ESC = Quest abbrechen</div>
   </div>
 
@@ -271,6 +323,7 @@
       <h2 class="ch-h2">Geschafft, du hast es geparkt!</h2>
       <div id="success-time"></div>
       <div id="success-highscore"></div>
+      <div id="success-coins" class="result-coins"></div>
       <button id="btn-to-menu" class="ch-btn ch-btn-primary ch-mt-sm">Zurück zum Hauptmenü</button>
     </div>
   </div>
@@ -280,6 +333,7 @@
       <img class="ch-hans ch-hans-flip result-hans" src="images/character/hans-standing.png" alt="Hans hobelt am Camper">
       <h2 class="ch-h2">Quest gescheitert!</h2>
       <div id="fail-reason"></div>
+      <div id="failed-coins" class="result-coins"></div>
       <div class="fail-actions">
         <button id="btn-retry" class="ch-btn ch-btn-fire">Neu starten</button>
         <button id="btn-fail-menu" class="ch-btn ch-btn-ghost">Hauptmenü</button>

@@ -114,3 +114,44 @@ export function truckHonk() {
     synthHonk({ freqs: [196, 233], dur: 0.7, gain: 0.22, type: 'sawtooth', attack: 0.02, detune: 4 })
   );
 }
+
+// Crash-Geraeusch (Blechschaden), rein synthetisch: abklingendes Rauschen
+// (Krachen) ueber Tiefpass + dumpfer Tiefton-Schlag (Aufprall-Masse).
+// intensity: 0..1 nach Crash-Haerte - lauter, laenger und haerter.
+export function crashSound(intensity = 0.5) {
+  const c = ensureCtx();
+  if (!c || c.state !== 'running') return;
+  const t0 = c.currentTime;
+  const amp = 0.08 + Math.min(1, intensity) * 0.28;
+
+  // 1) Blech-Krachen: weisses Rauschen mit quadratischem Abklingprofil
+  const dur = 0.22 + intensity * 0.3;
+  const buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    const t = i / data.length;
+    data[i] = (Math.random() * 2 - 1) * (1 - t) * (1 - t);
+  }
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const flt = c.createBiquadFilter();
+  flt.type = 'lowpass';
+  flt.frequency.value = 800 + intensity * 2600; // haerter = mehr Hoell-Anteil
+  const g = c.createGain();
+  g.gain.value = amp;
+  src.connect(flt).connect(g).connect(c.destination);
+  src.start(t0);
+
+  // 2) Dumpfer Aufprall: tiefe Sinus-Schwingung mit starkem Sweep nach unten
+  const osc = c.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(110, t0);
+  osc.frequency.exponentialRampToValueAtTime(36, t0 + 0.22);
+  const og = c.createGain();
+  og.gain.setValueAtTime(amp * 1.25, t0);
+  og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+  osc.connect(og).connect(c.destination);
+  osc.start(t0);
+  osc.stop(t0 + 0.32);
+}
+

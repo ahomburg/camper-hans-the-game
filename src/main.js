@@ -6,7 +6,9 @@ import { Gespann } from './gespann.js';
 import { Controls } from './controls.js';
 import { Traffic } from './traffic.js';
 import { QuestManager, createArcLapQuest, createSpeedQuest } from './quests.js';
-import { truckHonk } from './audio.js';
+import { truckHonk, crashSound } from './audio.js';
+import { Wallet, crashPenalty } from './coins.js';
+import { CrashFX } from './crashfx.js';
 import { placeBuildings } from './buildings.js';
 import { isMobile } from './device.js';
 import { applyView } from './views.js';
@@ -133,6 +135,90 @@ const START_TRAFFIC = 30;
 const traffic = new Traffic(scene, arc);
 traffic.setTarget(START_TRAFFIC);
 
+// --- Muenz-System: Hans' Reisekasse -----------------------------------------
+// Verdienen: +10 pro Runde um den Arc, +50 Questbonus, +3 fuer knappe
+// Ueberholmanöver im Verkehr. Zahlen: Jeder Crash (Fahrzeug, Hindernis,
+// Welt-Grenze, abgerissener Wohnwagen) kostet Reparaturguthaben nach
+// Aufprall-Haerte. Die Kasse ueberlebt die Sitzung (localStorage).
+const wallet = new Wallet();
+const crashFX = new CrashFX(scene);
+const EARN = { lap: 10, quest: 50, nearMiss: 3 };
+let runCoins = 0;   // Bilanz der laufenden Fahrt (+ verdient / - Reparaturen)
+let runRepairs = 0; // Reparaturkosten der laufenden Fahrt (Scheitern-Screen)
+
+const coinsNumEl = document.getElementById('coins-num');
+const coinsEl = document.getElementById('coins');
+const menuCoinsEl = document.getElementById('menu-coins');
+const coinPopEl = document.getElementById('coin-pop');
+const crashEl = document.getElementById('crash');
+const crashFlashEl = document.getElementById('crashflash');
+const successCoinsEl = document.getElementById('success-coins');
+const failedCoinsEl = document.getElementById('failed-coins');
+
+function renderCoins() {
+  coinsNumEl.textContent = wallet.amount;
+  menuCoinsEl.textContent = `Reisekasse: ${wallet.amount} 🪙`;
+}
+
+// Buchung schwebt kurz unter der Kasse auf, die Kasse selbst zuckt
+function popCoin(delta, label = '') {
+  const el = document.createElement('span');
+  el.className = 'coin-delta ' + (delta >= 0 ? 'plus' : 'minus');
+  el.textContent = `${delta >= 0 ? '+' : '−'}${Math.abs(delta)}${label ? ' ' + label : ''}`;
+  coinPopEl.appendChild(el);
+  setTimeout(() => el.remove(), 1600);
+  coinsEl.classList.remove('bump');
+  void coinsEl.offsetWidth; // CSS-Animation neu starten
+  coinsEl.classList.add('bump');
+}
+
+function earn(n, label) {
+  wallet.add(n);
+  runCoins += n;
+  popCoin(n, label);
+  renderCoins();
+}
+
+// Ein Crash: Funken + Truemmer am Aufprallpunkt, Kamera-Wackeln, roter
+// Rand-Blitz, Crash-Banner mit Reparaturkosten - und die Kasse zahlt.
+// Mehrere Treffer im selben Aufprall (z.B. zwei Autos gleichzeitig) sind
+// EIN Crash: das Merge-Fenster faengt die Doppelabbuchung ab.
+let crashCool = 0;
+let shakeT = 0, shakeAmp = 0;
+let crashBannerTimer = null;
+function handleCrash(info) {
+  if (crashCool > 0) return;
+  crashCool = 0.35;
+  const { coins, tier } = crashPenalty(info.closing);
+  const sev = Math.min(1, info.closing / 22); // Haerte 0..1 fuer Sound/Funken/Wackeln
+
+  wallet.deduct(coins);
+  runCoins -= coins;
+  runRepairs += coins;
+  popCoin(-coins, tier);
+  renderCoins();
+
+  crashFX.spawn(info.x, info.z, info.nx, info.nz, sev);
+  crashSound(sev);
+  shakeT = 0.45 + sev * 0.4;
+  shakeAmp = 0.1 + sev * 0.55;
+
+  crashEl.textContent = `💥 ${tier} −${coins} 🪙`;
+  crashEl.classList.remove('show');
+  void crashEl.offsetWidth;
+  crashEl.classList.add('show');
+  clearTimeout(crashBannerTimer);
+  crashBannerTimer = setTimeout(() => crashEl.classList.remove('show'), 1500);
+  crashFlashEl.style.setProperty('--flash', String(0.3 + sev * 0.6));
+  crashFlashEl.classList.add('show');
+  setTimeout(() => crashFlashEl.classList.remove('show'), 80); // blendet per CSS-Transition aus
+}
+
+traffic.onCrash = handleCrash;
+traffic.onNearMiss = () => earn(EARN.nearMiss, 'knapp!');
+campervan.onObstacleCrash = handleCrash;
+gespann.onObstacleCrash = handleCrash;
+
 // --- Quests ---
 const ROUNDS_TARGET = 5;
 const quests = new QuestManager();
@@ -206,6 +292,7 @@ function renderMenu() {
     b.addEventListener('click', () => startQuest(quests.quests.find((q) => q.id === b.dataset.id)));
   });
   renderHighscore();
+  renderCoins();
 }
 
 function renderQuest() {
@@ -238,6 +325,8 @@ function startQuest(q) {
   elapsed = 0;
   timerRunning = true;
   state = 'playing';
+  runCoins = 0;   // Reisekasse-Bilanz zaehlt pro Fahrt neu
+  runRepairs = 0;
   introT = 0; // Kamerafahrt: schraeg von vorne auf die Chase-Position
   menuEl.classList.add('hidden');
   successEl.classList.add('hidden');
@@ -251,6 +340,9 @@ function failQuest(reason) {
   timerRunning = false;
   state = 'failed';
   failReasonEl.textContent = reason;
+  failedCoinsEl.textContent = runRepairs > 0
+    ? `Reparaturen dieser Fahrt: −${runRepairs} 🪙 · Reisekasse: ${wallet.amount}`
+    : `Reisekasse unangetastet: ${wallet.amount} 🪙`;
   failedEl.classList.remove('hidden');
   renderQuest();
 }
@@ -274,6 +366,7 @@ function toMenu() {
 quests.on('progress', (q) => {
   if (q.id === 'arc-de-triomphe' && activeQuest === q) {
     traffic.setTarget(START_TRAFFIC + q.progress * 5); // pro Runde +5 Autos
+    earn(EARN.lap, 'Runde'); // Rundenpraemie in die Reisekasse
   }
   renderQuest();
 });
@@ -281,6 +374,7 @@ quests.on('progress', (q) => {
 quests.on('completed', (q) => {
   timerRunning = false;
   saveDone(q.id);
+  earn(EARN.quest, 'Questbonus');
   state = 'success';
   successTimeEl.textContent = `Zeit: ${fmtTime(elapsed)}`;
   if (q.id === 'arc-de-triomphe') {
@@ -294,6 +388,8 @@ quests.on('completed', (q) => {
   } else {
     successHsEl.textContent = '';
   }
+  const balance = runCoins >= 0 ? `+${runCoins}` : `−${Math.abs(runCoins)}`;
+  successCoinsEl.textContent = `Fahrtbilanz: ${balance} 🪙 · Reisekasse: ${wallet.amount}`;
   renderHighscore();
   renderQuest();
   successEl.classList.remove('hidden');
@@ -360,7 +456,14 @@ controls.onEscape = () => {
 // kurz danach (failTimer in der Hauptschleife), damit man den Sturz noch sieht.
 campervan.onTip = () => showToast('Umgekippt! Die Quest ist gescheitert …');
 gespann.onTip = () => showToast('Umgekippt! Die Quest ist gescheitert …');
-gespann.onBreakoff = () => showToast('Der Wohnwagen ist abgerissen!');
+gespann.onBreakoff = () => {
+  showToast('Der Wohnwagen ist abgerissen!');
+  // Kupplungsschaden: Crasht am Kupplungspunkt (Funken + Reparaturkosten)
+  handleCrash({
+    kind: 'coupling', closing: 12, nx: 0, nz: 0,
+    x: gespann.trailerPos.x, z: gespann.trailerPos.z,
+  });
+};
 
 document.getElementById('btn-retry').addEventListener('click', retryQuest);
 document.getElementById('btn-fail-menu').addEventListener('click', toMenu);
@@ -624,6 +727,11 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
 
+  // Muenz-System: Crash-Merge-Fenster und Funken laufen immer weiter
+  // (auch im Erfolgs-/Scheitern-Bildschirm fliegen die Funken noch aus)
+  crashCool = Math.max(0, crashCool - dt);
+  crashFX.update(dt);
+
   // Im Menue/Erfolgsbildschirm laeuft die Simulation nicht weiter
   if (state === 'playing') {
     // Reihenfolge: erst den Van bewegen, dann den Verkehr. traffic.update
@@ -699,6 +807,17 @@ function animate() {
     camera.updateProjectionMatrix();
   }
 
+  // Crash-Wackeln: kurz und heftig, am staerksten bei hartem Aufprall.
+  // Wirkt als Versatz NACH der Kamera-Platzierung (nur Position, kein
+  // Drehen), deshalb zittert es in jeder Ansicht einschliesslich FPV.
+  if (shakeT > 0) {
+    shakeT -= dt;
+    const s = shakeAmp * Math.max(0, shakeT);
+    camera.position.x += (Math.random() - 0.5) * s;
+    camera.position.y += (Math.random() - 0.5) * s * 0.6;
+    camera.position.z += (Math.random() - 0.5) * s;
+  }
+
   // Sonne (und Schatten) folgt dem Auto
   sun.position.set(car.pos.x + 45, 70, car.pos.z + 25);
   sun.target.position.set(car.pos.x, 0, car.pos.z);
@@ -727,4 +846,4 @@ function animate() {
 animate();
 
 // Debug-/Test-Zugang
-window.__game = { scene, camera, renderer, get car() { return car; }, controls, world, arc, traffic, quests, get state() { return state; }, startQuest, toMenu };
+window.__game = { scene, camera, renderer, get car() { return car; }, controls, world, arc, traffic, quests, wallet, get state() { return state; }, startQuest, toMenu };

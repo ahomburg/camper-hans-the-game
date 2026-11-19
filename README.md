@@ -41,6 +41,44 @@ node serve.mjs
 
 Kein Build-Schritt nötig; statischer Server ohne Abhängigkeiten.
 
+## Münz-System: Hans' Reisekasse
+
+Coins verdienen und Blechschaden bezahlen – die Reisekasse steht direkt im
+HUD (`src/coins.js`) und bleibt über Sitzungen gespeichert (localStorage,
+Schlüssel `camperHansCoins`).
+
+**Verdienen:**
+
+| Aktion | Prämie |
+|---|---|
+| Volle Runde um den Arc de Triomphe | +10 🪙 |
+| Quest abgeschlossen | +50 🪙 |
+| Schnell knapp an einem Verkehrswagen vorbei (≥ 43 km/h, 4 s Sperre je Auto) | +3 🪙 |
+
+**Zahlen:** Rammt man ein anderes Objekt (Verkehrswagen, Baum, Gebäude,
+Bordstein, Welt-Grenze, abgerissener Wohnwagen), wird der Crash visualisiert
+und es fallen Reparaturkosten an. Die Härte bemisst sich nach der
+Annäherungsgeschwindigkeit entlang der Stoßnormalen (`crashPenalty()` in
+`src/coins.js`):
+
+| Closing-Speed | Kategorie | Kosten |
+|---|---|---|
+| unter 1,5 m/s (Streifen) | Lackschaden | 2 🪙 |
+| 3 m/s | Blechschaden | 9 🪙 |
+| 8 m/s | Crash! | 17 🪙 |
+| 16 m/s | Totalschaden! | 30 🪙 |
+| Frontal (30 m/s) | Totalschaden! | max. 45 🪙 |
+
+Die Kasse geht nie unter 0. Wer von einem Verkehrauto von hinten angerempelt
+wird, zahlt nichts – nur Crashs, die Hans zu verantworten hat (auch der eigene
+Wohnwagen, angerissen oder angekuppelt).
+
+**Crash-Visualisierung** (`src/crashfx.js`, `src/audio.js`, `index.html`):
+Funken- und Trümmer-Partikel am Aufprallpunkt, Kamera-Wackeln, roter
+Rand-Blitz, Handschrift-Banner („💥 Blechschaden −14 🪙“), Crash-Sound
+(WebAudio: Blech-Rauschen + dumpfer Aufprall) und ein Coin-Popup an der
+Reisekasse. Mehrfach-Treffer im selben Aufprall werden zusammengefasst.
+
 ## Docker
 
 ```bash
