@@ -94,12 +94,10 @@
     }
     #menu.hidden, #success.hidden, #failed.hidden { display: none; }
 
-    .menu-top { display: flex; align-items: center; gap: var(--ch-space-sm); }
     .menu-emblem {
       height: 72px; width: auto; border-radius: var(--ch-radius-pill);
       border: 3px solid var(--ch-night); box-shadow: var(--ch-shadow-soft); background: var(--ch-paper);
     }
-    .menu-hans { height: 120px; }
     #menu h1 { margin: 0; }
     .menu-title em { color: var(--ch-campfire-dark); }
     .menu-sub { margin: 0; color: var(--ch-night-soft); font-size: 15px; text-align: center; }
@@ -244,10 +242,7 @@
   <div id="toast"></div>
 
   <div id="menu">
-    <div class="menu-top">
-      <img class="ch-hans ch-float menu-hans" src="images/character/hans-standing.png" alt="Hans steht bereit">
-      <img class="menu-emblem" src="images/logos/logo-hans-emblem.png" alt="Camper Hans Logo">
-    </div>
+    <img class="menu-emblem" src="images/logos/logo-hans-emblem.png" alt="Camper Hans Logo">
     <h1 class="ch-h1 menu-title">Camper <em>Hans</em></h1>
     <p class="menu-sub">Zelt auf, L&auml;cheln an! W&auml;hle Fahrzeug und Quest – dann hei&szlig;t es: Kaffee ans Lagerfeuer, wir fahren los!</p>
     <div id="menu-vehicles">
