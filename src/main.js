@@ -367,42 +367,68 @@ document.getElementById('btn-fail-menu').addEventListener('click', toMenu);
 renderHighscore();
 renderMenu();
 
-// --- Menue-Vorschaubilder der Fahrzeuge (Feedback: Buttons nur ein Bild) ---
-// Nach dem Laden wird jedes Modell einmal in pose reset() gestellt, geklont
-// und in eine kleine Vorschau-Szene gerendert; der Renderer snapshots den
-// Frame als data-URL ins <img> des Fahrzeugs-Buttons. Laeuft alles waehrend
-// des Ladebildschirms, deshalb stoert das kurzzeitige Umschalten der
-// Renderer-Groesse niemanden. Schlaegt es fehl, steht der Alt-Text im Button.
+// --- Menue-Vorschau der Fahrzeuge: lebendige 3D-Drehscheiben im Button ---
+// Statisch gerenderte Bilder hatten zwei Haken: Das Papier im Bild-Hintergrund
+// stand als weisser Rand vor dem Button, und der nicht gewaehlte Wohnwagen war
+// unsichtbar (clone() uebernimmt das visible=false des trailerGroup aus dem
+// Spiel). Jetzt dreht eine Mini-Szene jedes Fahrzeug langsam auf einem Canvas
+// im Button - mit transparentem Hintergrund, das Papier des Buttons scheint
+// durch. Ein zusaetzlicher Mini-Renderer (alpha, preserveDrawingBuffer) rendert
+// beide Szenen, solange das Menue offen ist; die Spiel-Szene wird dann nicht
+// mitgerendert (das Menue verdeckt sie ohnehin vollstaendig).
 const PREVIEW_W = 256, PREVIEW_H = 176;
-function makeVehiclePreviews() {
-  const prevScene = new THREE.Scene();
-  prevScene.background = new THREE.Color(0xFFFDF5); // --ch-paper als Button-Grund
-  prevScene.add(new THREE.HemisphereLight(0xbfd9ff, 0x51604a, 1.0));
-  const lamp = new THREE.DirectionalLight(0xffffff, 2.0);
-  lamp.position.set(4, 6, 5);
-  prevScene.add(lamp);
-  const cam = new THREE.PerspectiveCamera(35, PREVIEW_W / PREVIEW_H, 0.1, 1000);
+let previewRenderer = null;
+const vehiclePreviews = [];
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function setupVehiclePreviews() {
+  previewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  previewRenderer.setSize(PREVIEW_W, PREVIEW_H);
   for (const [id, veh] of [['campervan', campervan], ['gespann', gespann]]) {
-    veh.reset(); // definierte Pose an der Startlinie (Gruppe + Wohnwagen)
+    veh.reset(); // definierte Pose an der Startlinie (Zugwagen + Wohnwagen an der Kupplung)
     const root = new THREE.Group();
     root.add(veh.group.clone(true));
     if (veh.trailerGroup) root.add(veh.trailerGroup.clone(true));
-    prevScene.add(root);
+    root.traverse((o) => { o.visible = true; }); // im Spiel ist das abgewaehlte Fahrzeug versteckt
+    // Mittelpunkt der Bounding-Box in den Ursprung schieben, damit die
+    // Drehung um die eigene Achse laeuft statt um den Startpunkt.
     const box = new THREE.Box3().setFromObject(root);
-    const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
+    root.children.forEach((ch) => ch.position.sub(center));
+    const size = box.getSize(new THREE.Vector3());
+    const scene = new THREE.Scene(); // kein Hintergrund: Button-Papier scheint durch
+    scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x51604a, 1.0));
+    const lamp = new THREE.DirectionalLight(0xffffff, 1.6);
+    lamp.position.set(4, 6, 5);
+    scene.add(lamp, root);
+    const cam = new THREE.PerspectiveCamera(35, PREVIEW_W / PREVIEW_H, 0.1, 1000);
     const maxDim = Math.max(size.x, size.y, size.z);
-    const dist = (maxDim / 2) / Math.tan(cam.fov * Math.PI / 360) * 1.25;
-    // Fahrtrichtung 0 = +Z: Kamera schraeg von vorne, leicht erhoeht
-    cam.position.set(center.x + dist * 0.55, center.y + maxDim * 0.5, center.z + dist * 0.9);
-    cam.lookAt(center.x, center.y, center.z);
-    renderer.setSize(PREVIEW_W, PREVIEW_H, false);
-    renderer.render(prevScene, cam);
-    const img = document.querySelector(`.veh-btn[data-veh="${id}"] img`);
-    if (img) img.src = renderer.domElement.toDataURL('image/png');
-    prevScene.remove(root);
+    cam.position.set(maxDim * 0.9, maxDim * 0.55, maxDim * 1.5);
+    cam.lookAt(0, 0, 0);
+    // <img> im Button durch den Ziel-<canvas> ersetzen (Faellt-Software aus:
+    // ohne Vorschau bleibt der Alt-Text stehen, das Menue bleibt bedienbar).
+    const placeholder = document.querySelector(`.veh-btn[data-veh="${id}"] .veh-img`);
+    const canvas = document.createElement('canvas');
+    canvas.className = 'veh-img';
+    placeholder.replaceWith(canvas);
+    vehiclePreviews.push({ scene, root, cam, canvas, ctx: canvas.getContext('2d') });
   }
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  // ersten Frame gleich zeichnen, auch im Menue-Start ohne Bewegung
+  updateVehiclePreviews(0);
+}
+function updateVehiclePreviews(dt) {
+  if (!previewRenderer) return;
+  const src = previewRenderer.domElement;
+  for (const pv of vehiclePreviews) {
+    if (!reducedMotion) pv.root.rotation.y += dt * 0.7; // langsamer Drehteller
+    previewRenderer.render(pv.scene, pv.cam);
+    if (pv.canvas.width !== src.width || pv.canvas.height !== src.height) {
+      pv.canvas.width = src.width;
+      pv.canvas.height = src.height;
+    }
+    pv.ctx.clearRect(0, 0, pv.canvas.width, pv.canvas.height);
+    pv.ctx.drawImage(src, 0, 0);
+  }
 }
 
 const loading = document.getElementById('loading');
@@ -414,7 +440,11 @@ try {
   loadtext.textContent = 'Lade Gespann …';
   await gespann.load();
   loadtext.textContent = 'Modellbilder fürs Menü …';
-  makeVehiclePreviews();
+  try {
+    setupVehiclePreviews();
+  } catch (err) {
+    console.warn('Vorschau-Renderer nicht verfügbar:', err);
+  }
   await traffic.loadCarModels((i, n) => {
     loadtext.textContent = `Lade Autos … ${i}/${n}`;
   });
@@ -598,7 +628,13 @@ function animate() {
       `Kamera ${camera.position.x.toFixed(1)} / ${camera.position.y.toFixed(2)} / ${camera.position.z.toFixed(1)}  Auto ${car.pos.x.toFixed(1)} / ${car.pos.z.toFixed(1)}`;
   }
 
-  renderer.render(scene, camera);
+  if (state === 'menu' && previewRenderer) {
+    // Das Menue verdeckt die Spielflaeche komplett: statt der Welt die
+    // Fahrzeug-Drehscheiben in den Buttons aktualisieren (spart GPU).
+    updateVehiclePreviews(dt);
+  } else {
+    renderer.render(scene, camera);
+  }
 }
 animate();
 
