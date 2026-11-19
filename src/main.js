@@ -142,7 +142,14 @@ traffic.setTarget(START_TRAFFIC);
 // Aufprall-Haerte. Die Kasse ueberlebt die Sitzung (localStorage).
 const wallet = new Wallet();
 const crashFX = new CrashFX(scene);
-const EARN = { lap: 20, quest: 100, nearMiss: 5 };
+const EARN = { lap: 20, quest: 100, nearMiss: 5, tempo: 5 };
+// Tempo-Bonus: Ab dieser Geschwindigkeit zaehlt gefahrene Strecke; alle
+// TEMPO_DIST Meter gibt es EARN.tempo. 85 km/h sind bewusst ein Risiko:
+// Im Ringverkehr heisst das schneidig durch den Verkehr (Ueberschlag-
+// und Schlinger-Gefahr inklusive) - der Bonus honoriert genau das.
+const TEMPO_KMH = 85;
+const TEMPO_DIST = 100;
+let tempoDist = 0; // schnell gefahrene Strecke seit der letzten Praemie
 let runCoins = 0;   // Bilanz der laufenden Fahrt (+ verdient / - Reparaturen)
 let runRepairs = 0; // Reparaturkosten der laufenden Fahrt (Scheitern-Screen)
 
@@ -327,6 +334,7 @@ function startQuest(q) {
   state = 'playing';
   runCoins = 0;   // Reisekasse-Bilanz zaehlt pro Fahrt neu
   runRepairs = 0;
+  tempoDist = 0;  // Tempo-Bonus-Strecke startet bei jeder Fahrt von vorne
   introT = 0; // Kamerafahrt: schraeg von vorne auf die Chase-Position
   menuEl.classList.add('hidden');
   successEl.classList.add('hidden');
@@ -753,6 +761,20 @@ function animate() {
             ? 'Der Wohnwagen ist abgerissen – nächstes Mal früher vom Gas.'
             : 'Das Fahrzeug ist umgekippt!'
         );
+      }
+    }
+
+    // Tempo-Bonus: Flottes Fahren sammelt Praemien-Strecke. Unter der
+    // Schwelle verliert der Zaehler langsam an Schwung (0.4x), ein kurzer
+    // Brems-Wimpernschlag loescht ihn also nicht sofort - stehen bleiben
+    // oder Schneckentempo aber auch schon.
+    {
+      const kmh = Math.abs(car.speed) * 3.6;
+      if (kmh >= TEMPO_KMH) tempoDist += Math.abs(car.speed) * dt;
+      else tempoDist = Math.max(0, tempoDist - Math.abs(car.speed) * dt * 0.4);
+      while (tempoDist >= TEMPO_DIST) {
+        tempoDist -= TEMPO_DIST;
+        earn(EARN.tempo, 'Tempo');
       }
     }
 
