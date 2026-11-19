@@ -145,6 +145,8 @@
     }
     #menu > *:not(#menu-ride):not(.menu-emblem):not(.menu-title) { position: relative; z-index: 1; }
     #menu > .menu-emblem, #menu > .menu-title { position: relative; z-index: 3; }
+    /* Emblem dichter an die Marke ran (setzt den 16-px-Flex-Gap teilweise aus) */
+    #menu > .menu-brand { margin-top: -12px; }
 
     .menu-emblem {
       height: 72px; width: auto; border-radius: var(--ch-radius-pill);
