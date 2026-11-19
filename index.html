@@ -99,7 +99,16 @@
       border: 3px solid var(--ch-night); box-shadow: var(--ch-shadow-soft); background: var(--ch-paper);
     }
     #menu h1 { margin: 0; }
-    .menu-title em { color: var(--ch-campfire-dark); }
+    /* Brand in Hans' Handschrift, darunter der Spiel-Titel in der Display-Schrift */
+    .menu-brand {
+      font-family: var(--ch-font-hand);
+      font-weight: 700;
+      font-size: clamp(3rem, 9vw, 4.6rem);
+      line-height: 1.05;
+      color: var(--ch-campfire-dark);
+      transform: rotate(-2deg);
+    }
+    .menu-title { font-size: clamp(1.5rem, 3.5vw, 2.2rem); margin-top: -6px; }
 
     #menu-vehicles { display: flex; gap: 10px; width: min(460px, 92vw); margin-top: var(--ch-space-3xs); }
     /* Fahrzeugwahl: nur ein Vorschaubild, keine Erklaertexte (Feedback) */
@@ -241,7 +250,8 @@
 
   <div id="menu">
     <img class="menu-emblem" src="images/logos/logo-hans-emblem.png" alt="Camper Hans Logo">
-    <h1 class="ch-h1 menu-title">Camper <em>Hans</em></h1>
+    <span class="menu-brand">Camper Hans</span>
+    <h1 class="ch-h1 menu-title">the game</h1>
     <div id="menu-vehicles">
       <button class="veh-btn" data-veh="campervan" aria-label="Campervan"><img class="veh-img" alt="Campervan"></button>
       <button class="veh-btn" data-veh="gespann" aria-label="Grünes Auto mit Wohnwagen"><img class="veh-img" alt="Grünes Auto mit Wohnwagen"></button>
