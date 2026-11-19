@@ -42,10 +42,13 @@
     .speedo-num { font-family: var(--ch-font-display); font-weight: 700; font-size: 17px; fill: var(--ch-night); }
     .speedo-unit { font-size: 8.5px; font-weight: 700; letter-spacing: .06em; fill: var(--ch-night-soft); }
     .speedo-tick { font-size: 8.5px; font-weight: 700; fill: var(--ch-night-soft); }
-    #side { flex-direction: column; align-items: flex-end; gap: 4px; padding: 8px 14px; max-width: min(52vw, 460px); }
-    #hint { font-size: 11.5px; line-height: 1.5; color: var(--ch-night-soft); text-align: right; }
-    #time { font-family: var(--ch-font-display); font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ch-night); }
-    #highscore { font-family: var(--ch-font-display); font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ch-sun-dark); }
+    #side { flex-direction: column; align-items: flex-end; gap: 2px; padding: 10px 16px; }
+    #time, #highscore {
+      font-family: var(--ch-font-display); font-weight: 700; font-size: 16px;
+      font-variant-numeric: tabular-nums; line-height: 1.3;
+    }
+    #time { color: var(--ch-night); }
+    #highscore { color: var(--ch-sun-dark); }
 
     /* ---------- Quest-Anzeige (Karte mit Fortschrittsbalken) ---------- */
     #quest {
@@ -79,9 +82,6 @@
       opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; text-align: center; max-width: 88vw;
     }
     #toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1) rotate(-1deg); }
-
-    body:not(.touch) .touch-only { display: none; }
-    body.touch .kbd-only { display: none; }
 
     /* ---------- Hauptmenü (Creme-Papier, Sticker-Karten) ---------- */
     #menu {
@@ -245,10 +245,6 @@
       </svg>
     </div>
     <div id="side" class="ch-hud">
-      <div id="hint">
-        <span class="kbd-only">Pfeiltasten / WASD fahren &middot; im Kreisverkehr: LINKS/RECHTS = Spurwechsel &middot; H = Hupe &middot; C = Ansicht &middot; R = zur&uuml;cksetzen &middot; ESC = Men&uuml;</span>
-        <span class="touch-only">Buttons unten zum Fahren &middot; im Kreisverkehr wechseln LINKS/RECHTS die Spur</span>
-      </div>
       <div id="time">Zeit: 0.0 s</div>
       <div id="highscore">Highscore: –</div>
     </div>
