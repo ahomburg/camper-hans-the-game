@@ -312,9 +312,22 @@ controls.onHonk = () => truckHonk();
 
 // --- Kamera-Ansichten (Taste C): 0 Standard, 1 First Person, 2 hinten links ---
 let viewMode = 0;
-controls.onCycleView = () => {
+function cycleView() {
   viewMode = (viewMode + 1) % 3;
-};
+}
+controls.onCycleView = cycleView;
+
+// --- Hupe & Ansicht auch anklickbar (Tooltips nennen die Tastenkürzel) ---
+// pointerdown statt click: reagiert sofort und preventDefault haelt den
+// Fokus weg vom Button, damit Enter/Space danach nicht versehentlich hupen.
+document.getElementById('btn-horn').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  truckHonk();
+});
+document.getElementById('btn-view').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  cycleView();
+});
 
 // --- First-Person-Tuning (?debugcam in der URL) ---------------------------
 // I/K = Augenhoehe hoch/runter, J/L = Sitz vor/zurueck (Shift = fein, 0.01).
@@ -408,7 +421,48 @@ placeCameraBehindCar();
 
 // --- Hauptschleife ---
 const clock = new THREE.Clock();
-const speedEl = document.getElementById('speed');
+
+// --- Tacho (SVG-Zaegerinstrument im Hans-Stil): Skala einmalig zeichnen ---
+// Hoechstgeschwindigkeit 30 m/s = 108 km/h, Skala deshalb 0..120 km/h.
+// Zeiger startet bei -135 Grad (unten links) und laeuft 270 Grad bis unten rechts.
+const MAX_KMH = 120;
+const speedoNeedle = document.getElementById('speedo-needle');
+const speedoNum = document.getElementById('speedo-num');
+(function buildSpeedoScale() {
+  const g = document.getElementById('speedo-scale');
+  const NS = 'http://www.w3.org/2000/svg';
+  for (let v = 0; v <= MAX_KMH; v += 10) {
+    const rad = (-135 + (v / MAX_KMH) * 270) * Math.PI / 180;
+    const major = v % 20 === 0;
+    const r1 = major ? 47 : 50;
+    const r2 = 54;
+    const line = document.createElementNS(NS, 'line');
+    line.setAttribute('x1', 60 + Math.sin(rad) * r1);
+    line.setAttribute('y1', 60 - Math.cos(rad) * r1);
+    line.setAttribute('x2', 60 + Math.sin(rad) * r2);
+    line.setAttribute('y2', 60 - Math.cos(rad) * r2);
+    line.setAttribute('stroke', 'var(--ch-night)');
+    line.setAttribute('stroke-width', major ? 2 : 1);
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('opacity', major ? 1 : 0.45);
+    g.appendChild(line);
+    if (major) {
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', 60 + Math.sin(rad) * 38);
+      t.setAttribute('y', 60 - Math.cos(rad) * 38 + 3);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('class', 'speedo-tick');
+      t.textContent = v;
+      g.appendChild(t);
+    }
+  }
+})();
+
+function updateSpeedo(mps) {
+  const kmh = Math.min(Math.abs(mps) * 3.6, MAX_KMH);
+  speedoNum.textContent = Math.round(kmh);
+  speedoNeedle.setAttribute('transform', `rotate(${-135 + (kmh / MAX_KMH) * 270} 60 60)`);
+}
 
 function animate() {
   requestAnimationFrame(animate);
@@ -494,7 +548,7 @@ function animate() {
   sun.target.position.set(car.pos.x, 0, car.pos.z);
   sun.target.updateMatrixWorld();
 
-  speedEl.innerHTML = `${Math.round(Math.abs(car.speed) * 3.6)} <small>km/h</small>`;
+  updateSpeedo(car.speed);
 
   if (camDebugEl) {
     const veh = car === campervan ? 'Campervan' : 'Peugeot-Gespann';

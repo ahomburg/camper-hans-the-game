@@ -30,8 +30,18 @@
       display: flex; justify-content: space-between; align-items: flex-start;
       gap: 12px; pointer-events: none;
     }
-    #speed { font-size: 1.9rem; padding: 6px 16px 4px; line-height: 1.1; }
-    #speed.ch-stat small { display: inline; font-size: 0.75rem; margin-left: 2px; }
+    #speedo {
+      flex: none; width: 118px; height: 118px;
+      background: var(--ch-paper);
+      border: 3px solid var(--ch-night);
+      border-radius: 50%;
+      box-shadow: var(--ch-shadow-pop);
+      padding: 5px;
+    }
+    #speedo svg { width: 100%; height: 100%; display: block; }
+    .speedo-num { font-family: var(--ch-font-display); font-weight: 700; font-size: 17px; fill: var(--ch-night); }
+    .speedo-unit { font-size: 8.5px; font-weight: 700; letter-spacing: .06em; fill: var(--ch-night-soft); }
+    .speedo-tick { font-size: 8.5px; font-weight: 700; fill: var(--ch-night-soft); }
     #side { flex-direction: column; align-items: flex-end; gap: 4px; padding: 8px 14px; max-width: min(52vw, 460px); }
     #hint { font-size: 11.5px; line-height: 1.5; color: var(--ch-night-soft); text-align: right; }
     #time { font-family: var(--ch-font-display); font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ch-night); }
@@ -179,6 +189,26 @@
     }
     .cluster.right button { width: 82px; height: 58px; border-radius: var(--ch-radius-md); }
     .cluster button.active { background: var(--ch-sun); border-color: var(--ch-sun-dark); transform: translateY(4px); box-shadow: 0 2px 0 rgba(34,51,59,0.9); }
+
+    /* ---------- Hupe & Ansicht (Sticker-Buttons mit Tasten-Tooltip) ---------- */
+    #aux {
+      position: fixed; left: 18px; bottom: max(18px, env(safe-area-inset-bottom));
+      display: flex; gap: 10px; z-index: 6;
+    }
+    /* Auf Touch-Geraeten ueber den Lenk-Buttons, damit sich nichts ueberlappt */
+    body.touch #aux { flex-direction: column; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 96px); }
+    .aux-btn {
+      display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+      font-family: var(--ch-font-display); font-weight: 700; font-size: 13px; line-height: 1;
+      color: var(--ch-night); background: var(--ch-paper);
+      border: 3px solid var(--ch-night); border-radius: var(--ch-radius-pill);
+      padding: 10px 14px; box-shadow: var(--ch-shadow-pop);
+      touch-action: none; user-select: none; -webkit-user-select: none;
+      transition: transform var(--ch-fast) var(--ch-spring), background-color var(--ch-fast) ease;
+    }
+    .aux-btn:hover { transform: translateY(2px); box-shadow: 0 4px 0 rgba(34,51,59,0.9); }
+    .aux-btn:active { background: var(--ch-sun); transform: translateY(6px); box-shadow: 0 0 0 rgba(34,51,59,0.9); }
+    .aux-btn:focus-visible { outline: 3px solid var(--ch-sun); outline-offset: 2px; }
   </style>
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }
@@ -188,10 +218,21 @@
   <div id="app"></div>
 
   <div id="hud">
-    <div id="speed" class="ch-hud ch-stat">0 <small>km/h</small></div>
+    <div id="speedo" role="img" aria-label="Tacho">
+      <svg id="speedo-svg" viewBox="0 0 120 120" aria-hidden="true">
+        <g id="speedo-scale"></g>
+        <g id="speedo-needle" transform="rotate(-135 60 60)">
+          <polygon points="60,25 57,62 63,62" fill="var(--ch-campfire)" stroke="var(--ch-night)" stroke-width="1"></polygon>
+          <circle cx="60" cy="60" r="5" fill="var(--ch-night)"></circle>
+          <circle cx="60" cy="60" r="2" fill="var(--ch-cream)"></circle>
+        </g>
+        <text id="speedo-num" x="60" y="90" text-anchor="middle" class="speedo-num">0</text>
+        <text x="60" y="101" text-anchor="middle" class="speedo-unit">km/h</text>
+      </svg>
+    </div>
     <div id="side" class="ch-hud">
       <div id="hint">
-        <span class="kbd-only">Pfeiltasten / WASD fahren &middot; im Kreisverkehr: LINKS/RECHTS = Spurwechsel &middot; H = Hupe &middot; R = zur&uuml;cksetzen &middot; ESC = Men&uuml;</span>
+        <span class="kbd-only">Pfeiltasten / WASD fahren &middot; im Kreisverkehr: LINKS/RECHTS = Spurwechsel &middot; H = Hupe &middot; C = Ansicht &middot; R = zur&uuml;cksetzen &middot; ESC = Men&uuml;</span>
         <span class="touch-only">Buttons unten zum Fahren &middot; im Kreisverkehr wechseln LINKS/RECHTS die Spur</span>
       </div>
       <div id="time">Zeit: 0.0 s</div>
@@ -255,6 +296,18 @@
       <button id="btn-up" aria-label="Gas geben">GAS</button>
       <button id="btn-down" aria-label="Bremsen / Rückwärts">BREMS</button>
     </div>
+  </div>
+
+  <!-- Hupe & Ansicht: auch klickbar, Tooltip nennt die Tastenkürzel -->
+  <div id="aux">
+    <span class="ch-tooltip-wrap">
+      <button id="btn-horn" class="aux-btn" aria-label="Hupe (Taste H)">📢 Hupe</button>
+      <span class="ch-tooltip" role="tooltip">Taste H</span>
+    </span>
+    <span class="ch-tooltip-wrap">
+      <button id="btn-view" class="aux-btn" aria-label="Ansicht wechseln (Taste C)">📷 Ansicht</button>
+      <span class="ch-tooltip" role="tooltip">Taste C</span>
+    </span>
   </div>
 
   <script type="module" src="./src/main.js"></script>
