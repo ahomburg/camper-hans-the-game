@@ -110,7 +110,9 @@ function storedVehicle() {
     return localStorage.getItem(VEHICLE_KEY) === 'gespann' ? 'gespann' : 'campervan';
   } catch { return 'campervan'; }
 }
+let selectedVehicleId = 'campervan';
 function setVehicle(id) {
+  selectedVehicleId = id;
   car = id === 'gespann' ? gespann : campervan;
   campervan.group.visible = id !== 'gespann';
   gespann.group.visible = id === 'gespann';
@@ -411,15 +413,17 @@ function setupVehiclePreviews() {
     const canvas = document.createElement('canvas');
     canvas.className = 'veh-img';
     placeholder.replaceWith(canvas);
-    vehiclePreviews.push({ scene, root, cam, canvas, ctx: canvas.getContext('2d') });
+    vehiclePreviews.push({ id, scene, root, cam, canvas, ctx: canvas.getContext('2d') });
   }
-  // ersten Frame gleich zeichnen, auch im Menue-Start ohne Bewegung
-  updateVehiclePreviews(0);
+  // ersten Frame aller Buttons zeichnen (Standbild), Drehteller laufen nur
+  // nachher, wenn das Menue offen ist - und nur fuer das gewaehlte Fahrzeug.
+  updateVehiclePreviews(0, false);
 }
-function updateVehiclePreviews(dt) {
+function updateVehiclePreviews(dt, onlySelected = true) {
   if (!previewRenderer) return;
   const src = previewRenderer.domElement;
   for (const pv of vehiclePreviews) {
+    if (onlySelected && pv.id !== selectedVehicleId) continue; // nur die Auswahl dreht sich
     if (!reducedMotion) pv.root.rotation.y += dt * 0.7; // langsamer Drehteller
     previewRenderer.render(pv.scene, pv.cam);
     if (pv.canvas.width !== src.width || pv.canvas.height !== src.height) {
