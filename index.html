@@ -50,27 +50,27 @@
     #time { color: var(--ch-night); }
     #highscore { color: var(--ch-sun-dark); }
 
-    /* ---------- Quest-Anzeige (Karte mit Fortschrittsbalken) ---------- */
+    /* ---------- Quest-Anzeige (freier Text + Fortschrittsbalken, ohne Rahmen) ---------- */
     #quest {
-      position: fixed; top: 96px; left: 50%; transform: translateX(-50%); z-index: 5;
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 5;
       display: flex; flex-direction: column; gap: 8px; pointer-events: none;
-      width: min(320px, 86vw);
+      width: min(360px, 86vw);
     }
-    .quest {
-      background: var(--ch-paper);
-      border: 2px solid var(--ch-night);
-      border-radius: var(--ch-radius-md);
-      box-shadow: var(--ch-shadow-soft);
-      padding: 8px 14px 10px; text-align: center;
+    /* Auf schmalen Bildschirmen unter Tacho/Zeit-Panels, sonst Ueberlappung */
+    @media (max-width: 720px) { #quest { top: 138px; } }
+    .quest { text-align: center; padding: 2px; }
+    .quest .q-title {
+      font-family: var(--ch-font-display); font-weight: 700; font-size: 19px;
+      color: var(--ch-campfire-dark);
+      /* Creme-Schimmer statt Karte: lesbar ueber jeder 3D-Szene */
+      text-shadow: 0 2px 6px rgba(255,246,227,.9), 0 1px 2px rgba(255,246,227,.75);
     }
-    .quest .q-title { font-family: var(--ch-font-display); font-weight: 700; font-size: 15px; color: var(--ch-campfire-dark); }
-    .quest .q-bar { margin-top: 6px; height: 12px; border-radius: var(--ch-radius-pill); background: var(--ch-sun-soft); border: 2px solid var(--ch-night); overflow: hidden; }
+    .quest .q-bar { margin-top: 6px; height: 15px; border-radius: var(--ch-radius-pill); background: var(--ch-sun-soft); border: 2px solid var(--ch-night); overflow: hidden; }
     .quest .q-fill { height: 100%; width: 0; border-radius: var(--ch-radius-pill);
-      background: repeating-linear-gradient(45deg, var(--ch-sun) 0 8px, var(--ch-sun-dark) 8px 16px);
+      background: repeating-linear-gradient(45deg, var(--ch-sun) 0 10px, var(--ch-sun-dark) 10px 20px);
       transition: width .25s; }
-    .quest.done { background: var(--ch-forest-soft); }
     .quest.done .q-title { color: var(--ch-forest-dark); }
-    .quest.done .q-fill { background: repeating-linear-gradient(45deg, var(--ch-forest) 0 8px, var(--ch-forest-dark) 8px 16px); }
+    .quest.done .q-fill { background: repeating-linear-gradient(45deg, var(--ch-forest) 0 10px, var(--ch-forest-dark) 10px 20px); }
 
     /* ---------- Toast (Hans' handgeschriebener Merkzettel) ---------- */
     #toast {
