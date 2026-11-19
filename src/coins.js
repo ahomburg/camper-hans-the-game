@@ -3,7 +3,7 @@
 //
 // Verdienen:
 //   +20  pro volle Runde um den Arc de Triomphe (Rundenpraemie)
-//   +100 Quest abgeschlossen (Questbonus)
+//   +100 Kapitel abgeschlossen (Kapitelbonus)
 //   +5   Schnell und knapp an einem Verkehrswagen vorbei (Ueberhol-Reaktion)
 //   +5   Tempo-Bonus: je 100 m Strecke mit >= 85 km/h (siehe main.js)
 //

@@ -10,7 +10,7 @@ import { Car } from './car.js';
 // wohnwagen-optimized.glb. Der Wohnwagen haengt an einer Kupplung
 // hinter dem Auto und hat eine eigene Giertynamik - er kann ins Schlingern
 // geraten und im Extremfall abreißen. Schlingert er oder kippt das Fahrzeug,
-// ist die Quest gescheitert (main.js entscheidet das).
+// ist das Kapitel gescheitert (main.js entscheidet das).
 // ---------------------------------------------------------------------------
 
 // Geometrie (Welt-Einheiten, Fahrzeug-Lokalkoordinaten: +Z = vorwaerts)

@@ -91,25 +91,25 @@
     #crashflash.show { opacity: var(--flash, .5); transition: none; }
     #crashflash { transition: opacity .5s ease-out; }
 
-    /* ---------- Quest-Anzeige (freier Text + Fortschrittsbalken, ohne Rahmen) ---------- */
-    #quest {
+    /* ---------- Kapitel-Anzeige (freier Text + Fortschrittsbalken, ohne Rahmen) ---------- */
+    #chapter {
       position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 5;
       display: flex; flex-direction: column; gap: 8px; pointer-events: none;
       width: min(360px, 86vw);
     }
     /* Auf schmalen Bildschirmen unter Tacho/Zeit-Panels, sonst Ueberlappung */
-    @media (max-width: 720px) { #quest { top: 138px; } }
-    .quest { text-align: center; padding: 2px; }
-    .quest .q-title {
+    @media (max-width: 720px) { #chapter { top: 138px; } }
+    .chapter { text-align: center; padding: 2px; }
+    .chapter .c-title {
       font-family: var(--ch-font-display); font-weight: 700; font-size: 19px;
       color: var(--ch-campfire-dark);
     }
-    .quest .q-bar { margin-top: 6px; height: 15px; border-radius: var(--ch-radius-pill); background: var(--ch-sun-soft); border: 2px solid var(--ch-night); overflow: hidden; }
-    .quest .q-fill { height: 100%; width: 0; border-radius: var(--ch-radius-pill);
+    .chapter .c-bar { margin-top: 6px; height: 15px; border-radius: var(--ch-radius-pill); background: var(--ch-sun-soft); border: 2px solid var(--ch-night); overflow: hidden; }
+    .chapter .c-fill { height: 100%; width: 0; border-radius: var(--ch-radius-pill);
       background: repeating-linear-gradient(45deg, var(--ch-sun) 0 10px, var(--ch-sun-dark) 10px 20px);
       transition: width .25s; }
-    .quest.done .q-title { color: var(--ch-forest-dark); }
-    .quest.done .q-fill { background: repeating-linear-gradient(45deg, var(--ch-forest) 0 10px, var(--ch-forest-dark) 10px 20px); }
+    .chapter.done .c-title { color: var(--ch-forest-dark); }
+    .chapter.done .c-fill { background: repeating-linear-gradient(45deg, var(--ch-forest) 0 10px, var(--ch-forest-dark) 10px 20px); }
 
     /* ---------- Toast (Hans' handgeschriebener Merkzettel) ---------- */
     #toast {
@@ -122,7 +122,7 @@
     }
     #toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1) rotate(-1deg); }
 
-    /* ---------- Hauptmenü (Creme-Papier, Sticker-Karten) ---------- */
+    /* ---------- Hauptmenü (Creme-Papier, aufgeschlagenes Buch) ---------- */
     #menu {
       position: fixed; inset: 0; z-index: 30; overflow-y: auto;
       background: var(--ch-cream);
@@ -187,18 +187,156 @@
     .veh-btn.active { background: var(--ch-sun-soft); border-color: var(--ch-sun-dark); }
     .veh-img { display: block; width: 100%; height: 110px; object-fit: contain; border-radius: calc(var(--ch-radius-md) - 3px); }
 
-    #menu-quests { display: flex; flex-direction: column; gap: 12px; width: min(460px, 92vw); margin-top: var(--ch-space-3xs); }
-    .menu-quest {
-      background: var(--ch-paper);
-      border: 2px solid var(--ch-night); border-radius: var(--ch-radius-lg);
-      box-shadow: var(--ch-shadow-soft);
-      padding: 14px 16px;
+    /* Kapitelauswahl als aufgeschlagenes Buch: Holzeinband (Buchdeckel) mit
+       Papierspitzen, zwei Seiten nebeneinander, Falz-Schatten in der Mitte.
+       Jedes Kapitel ist eine Seite (class "book-page", siehe renderMenu). */
+    #menu-book {
+      position: relative;
+      width: min(720px, 94vw);
+      margin-top: var(--ch-space-sm);
+      padding: 14px 14px 18px;
+      background: linear-gradient(150deg, var(--ch-wood) 0%, var(--ch-wood-dark) 100%);
+      border: 3px solid var(--ch-night);
+      border-radius: 8px 14px 14px 8px;
+      box-shadow: var(--ch-shadow-pop), inset 0 2px 0 rgba(255, 253, 245, 0.25);
     }
-    .menu-quest.done { background: var(--ch-forest-soft); }
-    .mq-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-    .mq-title { font-family: var(--ch-font-display); font-weight: 700; font-size: 16px; color: var(--ch-night); }
-    .mq-desc { font-size: 12.5px; color: var(--ch-night-soft); margin-top: 4px; line-height: 1.45; }
-    .mq-start { margin-top: 12px; }
+    /* Buchtitel-Prägung auf dem Einband */
+    .book-heading {
+      font-family: var(--ch-font-display);
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: .28em;
+      text-transform: uppercase;
+      text-align: center;
+      color: var(--ch-sun);
+      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+      margin: 0 0 10px;
+    }
+    /* Seitenblock: Papier, an den Außenkanten schauen unten/rechts die
+       Blattkanten aus dem Einband (pseudo-Elemente am #menu-book). */
+    .book-pages {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      background: var(--ch-paper);
+      border-radius: 3px 10px 10px 3px;
+      box-shadow: inset 0 -10px 22px -14px rgba(110, 67, 31, 0.4);
+    }
+    #menu-book::after { /* gestapelte Blattkanten unten im Einband */
+      content: '';
+      position: absolute;
+      left: 17px; right: 20px; bottom: 5px; height: 11px;
+      background: repeating-linear-gradient(180deg, #FFFDF5 0 1.5px, #E9D9B6 1.5px 3px);
+      border-radius: 0 0 6px 2px;
+    }
+    #menu-book::before { /* Blattkanten an der rechten Einband-Kante */
+      content: '';
+      position: absolute;
+      top: 17px; bottom: 20px; right: 4px; width: 6px;
+      background: repeating-linear-gradient(90deg, #FFFDF5 0 1.5px, #E9D9B6 1.5px 3px);
+      border-radius: 0 3px 3px 0;
+    }
+    /* Falz: weicher Buchrücken-Schatten zwischen den beiden Seiten */
+    .book-pages::before {
+      content: '';
+      position: absolute; left: 50%; top: 0; bottom: 0;
+      width: 52px; transform: translateX(-50%);
+      background: linear-gradient(90deg,
+        rgba(34, 51, 59, 0) 0%,
+        rgba(34, 51, 59, 0.13) 42%,
+        rgba(34, 51, 59, 0.20) 50%,
+        rgba(34, 51, 59, 0.13) 58%,
+        rgba(34, 51, 59, 0) 100%);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .book-page {
+      position: relative;
+      min-height: 210px;
+      padding: 24px 24px 18px;
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+    }
+    /* Papier krümmt sich zum Falz: linke Seite wird nach rechts, rechte nach
+       links hin etwas dunkler - n-th-child statt :first-child wirkt auch,
+       wenn spaeter weitere Kapitel dazu kommen (2er-Raster). */
+    .book-page:nth-child(odd) {
+      background: linear-gradient(90deg, var(--ch-paper) 58%, #F3E7CD 100%);
+    }
+    .book-page:nth-child(even) {
+      background: linear-gradient(270deg, var(--ch-paper) 58%, #F3E7CD 100%);
+    }
+    /* Lesebändchen: Zustand des Kapitels als Textmarke uber der Seite */
+    .book-ribbon {
+      position: absolute;
+      top: -13px; right: 14px; z-index: 3;
+      padding: 4px 12px 12px;
+      font-family: var(--ch-font-display); font-weight: 700;
+      font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase;
+      background: var(--ch-sun); color: var(--ch-night);
+      border: 2px solid var(--ch-night); border-top: none;
+      border-radius: 0 0 5px 5px;
+      box-shadow: 2px 2px 0 rgba(34, 51, 59, 0.35);
+      transform: rotate(2.5deg);
+    }
+    .book-ribbon::after { /* Kerbe im Bändchen unten */
+      content: '';
+      position: absolute;
+      left: -2px; right: -2px; bottom: -13px; height: 14px;
+      background: inherit;
+      border: 2px solid var(--ch-night); border-top: none;
+      clip-path: polygon(0 0, 100% 0, 50% 100%, 0 0);
+    }
+    .book-ribbon.done { background: var(--ch-forest); color: #fff; }
+    .bp-kicker {
+      font-family: var(--ch-font-hand);
+      font-weight: 700;
+      font-size: 1.3rem;
+      line-height: 1.1;
+      color: var(--ch-campfire-dark);
+      transform: rotate(-1deg);
+    }
+    .bp-title {
+      font-family: var(--ch-font-display);
+      font-weight: 700;
+      font-size: clamp(1.2rem, 2.8vw, 1.45rem);
+      line-height: 1.2;
+      color: var(--ch-night);
+      margin: 3px 0 2px;
+    }
+    /* Zierlinie mit Fleuron (✦) zwischen Titel und Beschreibung */
+    .bp-rule {
+      display: flex; align-items: center; gap: 8px;
+      margin: 8px 0 10px;
+      font-size: 11px; line-height: 1;
+      color: var(--ch-wood-dark);
+    }
+    .bp-rule::before, .bp-rule::after {
+      content: '';
+      height: 2px; flex: 1;
+      background: var(--ch-wood);
+      border-radius: var(--ch-radius-pill);
+      opacity: 0.75;
+    }
+    .bp-desc {
+      flex: 1;
+      font-family: var(--ch-font-display);
+      font-weight: 500;
+      font-size: 14.5px;
+      line-height: 1.6;
+      color: var(--ch-night-soft);
+    }
+    .bp-start { margin-top: 14px; align-self: flex-start; }
+    /* Schmale Bildschirme: Buch wird hoch geklappt, Falz-Schatten weg, dafuer
+       Blatt-Trennlinie zwischen den uebereinander liegenden Seiten */
+    @media (max-width: 720px) {
+      .book-pages { grid-template-columns: 1fr; }
+      .book-pages::before { display: none; }
+      .book-page + .book-page { border-top: 2px solid rgba(34, 51, 59, 0.14); }
+      .book-page { min-height: 0; padding: 20px 20px 16px; }
+    }
 
     #menu-highscore {
       font-family: var(--ch-font-display); font-weight: 700; font-size: 15px;
@@ -315,7 +453,7 @@
   <div id="crash"></div>
   <div id="crashflash"></div>
 
-  <div id="quest"></div>
+  <div id="chapter"></div>
   <div id="toast"></div>
 
   <div id="menu">
@@ -327,10 +465,14 @@
       <button class="veh-btn" data-veh="campervan" aria-label="Campervan"><img class="veh-img" alt="Campervan"></button>
       <button class="veh-btn" data-veh="gespann" aria-label="Grünes Auto mit Wohnwagen"><img class="veh-img" alt="Grünes Auto mit Wohnwagen"></button>
     </div>
-    <div id="menu-quests"></div>
+    <!-- Kapitelauswahl: aufgeschlagenes Buch (Holzeinband, zwei Seiten) -->
+    <div id="menu-book">
+      <div class="book-heading">Inhaltsverzeichnis</div>
+      <div id="menu-chapters" class="book-pages"></div>
+    </div>
     <div id="menu-highscore">Highscore: –</div>
     <div id="menu-coins">Reisekasse: 0 🪙</div>
-    <div class="menu-hint">ESC = Quest abbrechen</div>
+    <div class="menu-hint">ESC = Kapitel abbrechen</div>
   </div>
 
   <div id="success" class="hidden">
@@ -347,7 +489,7 @@
   <div id="failed" class="hidden">
     <div class="box">
       <img class="ch-hans ch-hans-flip result-hans" src="images/character/hans-standing.png" alt="Hans hobelt am Camper">
-      <h2 class="ch-h2">Quest gescheitert!</h2>
+      <h2 class="ch-h2">Kapitel gescheitert!</h2>
       <div id="fail-reason"></div>
       <div id="failed-coins" class="result-coins"></div>
       <div class="fail-actions">

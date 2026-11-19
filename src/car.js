@@ -320,7 +320,7 @@ export class Car {
   }
 
   // Umgekippt: Das Fahrzeug faellt weiter, bis es (fast) flach auf der
-  // Seite liegt, und bleibt liegen - das beendet die Quest (siehe main.js).
+  // Seite liegt, und bleibt liegen - das beendet das Kapitel (siehe main.js).
   updateTip(dt) {
     const restRoll = this.tipDir * 1.45; // ~83 Grad: fast flach auf der Seite
     this.rollVel += this.tipDir * 7 * dt; // Gravitation zieht weiter in Kipprichtung

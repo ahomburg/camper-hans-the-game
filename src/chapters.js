@@ -1,7 +1,8 @@
-// Quest-System: QuestManager verwaltet eine Liste von Quests (weitere koennen
-// einfach per add() ergaenzt werden). Quest 1 zaehlt Runden um den Arc de Triomphe.
+// Kapitel-System: ChapterManager verwaltet eine Liste von Kapiteln (weitere
+// koennen einfach per add() ergaenzt werden). Kapitel 1 zaehlt Runden um den
+// Arc de Triomphe. Der Name lehnt sich ans Buch: Jede Aufgabe ist ein Kapitel.
 
-export class Quest {
+export class Chapter {
   constructor({ id, title, desc, target, extra = null, update, onCarReset = null, onReset = null }) {
     this.id = id;
     this.title = title;
@@ -23,7 +24,7 @@ export class Quest {
     if (this._onCarReset) this._onCarReset();
   }
 
-  // Quest fuer einen neuen Durchlauf zuruecksetzen (Fortschritt + interner Zustand)
+  // Kapitel fuer einen neuen Durchlauf zuruecksetzen (Fortschritt + interner Zustand)
   reset() {
     this.progress = 0;
     this.completed = false;
@@ -31,31 +32,31 @@ export class Quest {
   }
 }
 
-export class QuestManager {
+export class ChapterManager {
   constructor() {
-    this.quests = [];
+    this.chapters = [];
     this._handlers = {};
   }
 
-  add(quest) {
-    this.quests.push(quest);
-    return quest;
+  add(chapter) {
+    this.chapters.push(chapter);
+    return chapter;
   }
 
   on(event, cb) {
     (this._handlers[event] ||= []).push(cb);
   }
 
-  emit(event, quest) {
-    for (const cb of this._handlers[event] || []) cb(quest);
+  emit(event, chapter) {
+    for (const cb of this._handlers[event] || []) cb(chapter);
   }
 
   update(dt, ctx) {
-    for (const q of this.quests) q.update(dt, ctx, this);
+    for (const c of this.chapters) c.update(dt, ctx, this);
   }
 
   notifyCarReset() {
-    for (const q of this.quests) q.onCarReset();
+    for (const c of this.chapters) c.onCarReset();
   }
 }
 
@@ -66,16 +67,16 @@ export class QuestManager {
 const SECTORS = 12;
 const SECTOR_W = (Math.PI * 2) / SECTORS;
 
-export function createArcLapQuest(arc, traffic, { target = 10, startTraffic = 10 } = {}) {
+export function createArcLapChapter(arc, traffic, { target = 10, startTraffic = 10 } = {}) {
   const state = { acc: 0, prevSector: null };
 
-  const quest = new Quest({
+  const chapter = new Chapter({
     id: 'arc-de-triomphe',
-    title: 'Quest 1: Arc de Triomphe',
+    title: 'Kapitel 1: Arc de Triomphe',
     desc: `Fahre ${target} Runden um den Arc de Triomphe`,
     target,
     extra: () => `Verkehr: ${traffic.count} Autos (Start ${startTraffic}, +5 pro Runde)`,
-    update(dt, ctx, mgr, q) {
+    update(dt, ctx, mgr, c) {
       const { car } = ctx;
       const dx = car.pos.x - arc.cx;
       const dz = car.pos.z - arc.cz;
@@ -105,11 +106,11 @@ export function createArcLapQuest(arc, traffic, { target = 10, startTraffic = 10
 
       if (state.acc >= SECTORS) {
         state.acc = 0;
-        q.progress++;
-        mgr.emit('progress', q);
-        if (q.progress >= q.target) {
-          q.completed = true;
-          mgr.emit('completed', q);
+        c.progress++;
+        mgr.emit('progress', c);
+        if (c.progress >= c.target) {
+          c.completed = true;
+          mgr.emit('completed', c);
         }
       } else if (state.acc <= -SECTORS) {
         state.acc = 0; // volle Runde in die falsche Richtung
@@ -126,28 +127,28 @@ export function createArcLapQuest(arc, traffic, { target = 10, startTraffic = 10
     },
   });
 
-  return quest;
+  return chapter;
 }
 
-// Quest 2: Temposuender – erreichte Hoechstgeschwindigkeit in km/h.
-export function createSpeedQuest({ target = 100 } = {}) {
+// Kapitel 2: Temposuender – erreichte Hoechstgeschwindigkeit in km/h.
+export function createSpeedChapter({ target = 100 } = {}) {
   const state = { max: 0 };
-  return new Quest({
+  return new Chapter({
     id: 'temposuender',
-    title: 'Quest 2: Temposünder',
+    title: 'Kapitel 2: Temposünder',
     desc: `Erreiche ${target} km/h.`,
     target,
     extra: () => `Top: ${Math.floor(state.max * 3.6)} km/h`,
-    update(dt, ctx, mgr, q) {
+    update(dt, ctx, mgr, c) {
       const kmh = Math.abs(ctx.car.speed) * 3.6;
       if (kmh > state.max) state.max = kmh;
-      const p = Math.min(q.target, Math.floor(state.max));
-      if (p > q.progress) {
-        q.progress = p;
-        mgr.emit('progress', q);
-        if (q.progress >= q.target) {
-          q.completed = true;
-          mgr.emit('completed', q);
+      const p = Math.min(c.target, Math.floor(state.max));
+      if (p > c.progress) {
+        c.progress = p;
+        mgr.emit('progress', c);
+        if (c.progress >= c.target) {
+          c.completed = true;
+          mgr.emit('completed', c);
         }
       }
     },

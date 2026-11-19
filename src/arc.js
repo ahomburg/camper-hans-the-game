@@ -5,7 +5,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { isTouchDevice, limitTextureSize } from './device.js';
 
 // Lage und Masse des Kreisverkehrs (Place Charles de Gaulle / Arc de Triomphe).
-// wird auch von world.js (Sperrbereiche) und traffic.js/quests.js (Spuren, Runden) benutzt.
+// wird auch von world.js (Sperrbereiche) und traffic.js/chapters.js (Spuren, Runden) benutzt.
 export const ARC = {
   cx: 0,
   cz: 110,

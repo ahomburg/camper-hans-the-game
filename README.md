@@ -52,7 +52,7 @@ Schlüssel `camperHansCoins`).
 | Aktion | Prämie |
 |---|---|
 | Volle Runde um den Arc de Triomphe | +20 🪙 |
-| Quest abgeschlossen | +100 🪙 |
+| Kapitel abgeschlossen | +100 🪙 |
 | Schnell knapp an einem Verkehrswagen vorbei (≥ 32 km/h, 3 s Sperre je Auto) | +5 🪙 |
 | Schnell gefahrene Strecke, je 100 m ab 85 km/h („Tempo-Bonus“) | +5 🪙 |
 
@@ -70,7 +70,7 @@ Annäherungsgeschwindigkeit entlang der Stoßnormalen (`crashPenalty()` in
 | 16 m/s | C'est la cata! | 30 🪙 |
 | Frontal (30 m/s) | C'est la cata! | max. 45 🪙 |
 
-Die Kasse geht nie unter 0. Das Scheitern einer Quest kostet keine Münzen –
+Die Kasse geht nie unter 0. Das Scheitern eines Kapitels kostet keine Münzen –
 auch der Kupplungsabriss des Wohnwagens wird nicht zusätzlich berechnet
 (de facto zahlt man nur für Crashs, die man selbst fährt). Der Verkehr fährt
 Hans nicht hinten auf: Verkehrsautos bremsen automatisch – hinter Hans gilt
@@ -147,25 +147,25 @@ VPS reicht völlig.
 | LINKS / RECHTS im Kreisverkehr | Spur wechseln (Sobald der Van den Kreis erreicht hat, bleibt er in der Spur) |
 | H                              | LKW-Hupe (campervan\_horn.mp3)                                               |
 | R                              | Zurücksetzen an den Startpunkt                                               |
-| ESC                            | Quest abbrechen, zurück zum Hauptmenü                                        |
+| ESC                            | Kapitel abbrechen, zurück zum Hauptmenü                                        |
 
 
 Auf Touch-Geräten erscheinen Buttons unten (GAS / BREMS / LINKS / RECHTS).
 
 ## Spielprinzip
 
-- **Hauptmenü**: Übersicht über alle Quests mit Status (Offen/Erledigt, wird in
-`localStorage` gespeichert). Per Klick startet man eine Quest.
-- **Quest 1 – Arc de Triomphe**: 5 Runden gegen den Uhrzeigersinn um den Kreis.
+- **Hauptmenü**: Übersicht über alle Kapitel als aufgeschlagenes Buch (Status Zu lesen/Gelesen, wird in
+`localStorage` gespeichert). Per Klick auf „Aufschlagen“ startet man ein Kapitel.
+- **Kapitel 1 – Arc de Triomphe**: 5 Runden gegen den Uhrzeigersinn um den Kreis.
 Pro Runde +5 Autos. Highscore (schnellste Zeit) wird gespeichert.
-- **Quest 2 – Temposünder**: 100 km/h erreichen.
+- **Kapitel 2 – Temposünder**: 100 km/h erreichen.
 - **Erfolgsbildschirm**: „Glückwunsch, du hast es geschafft!“ mit Zeit und
-Highscore; bei Quest 1 bleibt das Bild stehen und die Kamera fährt nach
+Highscore; bei Kapitel 1 bleibt das Bild stehen und die Kamera fährt nach
 hinten/oben zur Außenseite des Kreises, sodass der Arc im Hintergrund sieht.
 
 ## Verkehr
 
-- 30 Autos zu Questbeginn (exakt 10× car1_simple, 10× car2_simple, 10× car3_simple),
+- 30 Autos zu Kapitelbeginn (exakt 10× car1_simple, 10× car2_simple, 10× car3_simple),
 danach +5 pro Runde.
 - Jedes Auto fährt mit eigener Zufallsgeschwindigkeit in seiner Spur und hupt
 zufällig (car1/2/3_horn.mp3 — drei verschiedene Sounds).
@@ -190,7 +190,7 @@ Die grossen `car1/2/3.glb` werden nicht verwendet und sind per `.dockerignore`
 aus dem Docker-Image ausgeschlossen.
 - Sounds: `car1/2/3_horn.mp3`, `campervan_horn.mp3` (WebAudio-Synthese nur als
 Fallback, falls eine Datei fehlt).
-- Persistenz: Highscore und erledigte Quests in `localStorage`.
+- Persistenz: Highscore und gelesene Kapitel in `localStorage`.
 
 ## Projektstruktur
 
@@ -203,7 +203,7 @@ src/arc.js      Kreisverkehr, Arc de Triomphe (arch.glb)
 src/car.js      Van: Physik, Spurhaltung im Kreis
 src/traffic.js  Verkehr: GLB-Autos, Zufallsgeschwindigkeit, Hupen, Kollision
 src/buildings.js  Gebäudezeilen (building2/3/4.glb)
-src/quests.js   Quest-System (Runden, Hupen, Tempo)
+src/chapters.js Kapitel-System (Runden, Hupen, Tempo)
 src/controls.js Tastatur/Touch
 src/audio.js    MP3-Hupen + Synth-Fallback
 vendor/         three.module.min.js + Addons

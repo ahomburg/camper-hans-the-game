@@ -5,7 +5,7 @@ import { Car } from './car.js';
 import { Gespann } from './gespann.js';
 import { Controls } from './controls.js';
 import { Traffic } from './traffic.js';
-import { QuestManager, createArcLapQuest, createSpeedQuest } from './quests.js';
+import { ChapterManager, createArcLapChapter, createSpeedChapter } from './chapters.js';
 import { truckHonk, crashSound } from './audio.js';
 import { Wallet, crashPenalty } from './coins.js';
 import { CrashFX } from './crashfx.js';
@@ -130,19 +130,19 @@ document.querySelectorAll('.veh-btn').forEach((b) => {
 });
 setVehicle(storedVehicle());
 
-// --- Verkehr auf dem Kreisverkehr (alle Quests starten mit 30 Autos) ---
+// --- Verkehr auf dem Kreisverkehr (alle Kapitel starten mit 30 Autos) ---
 const START_TRAFFIC = 30;
 const traffic = new Traffic(scene, arc);
 traffic.setTarget(START_TRAFFIC);
 
 // --- Muenz-System: Hans' Reisekasse -----------------------------------------
-// Verdienen: +20 pro Runde um den Arc, +100 Questbonus, +5 fuer knappe
+// Verdienen: +20 pro Runde um den Arc, +100 Kapitelbonus, +5 fuer knappe
 // Ueberholmanöver im Verkehr. Zahlen: Jeder Crash (Fahrzeug, Hindernis,
 // Welt-Grenze, abgerissener Wohnwagen) kostet Reparaturguthaben nach
 // Aufprall-Haerte. Die Kasse ueberlebt die Sitzung (localStorage).
 const wallet = new Wallet();
 const crashFX = new CrashFX(scene);
-const EARN = { lap: 20, quest: 100, nearMiss: 5, tempo: 5 };
+const EARN = { lap: 20, chapter: 100, nearMiss: 5, tempo: 5 };
 // Tempo-Bonus: Ab dieser Geschwindigkeit zaehlt gefahrene Strecke; alle
 // TEMPO_DIST Meter gibt es EARN.tempo. 85 km/h sind bewusst ein Risiko:
 // Im Ringverkehr heisst das schneidig durch den Verkehr (Ueberschlag-
@@ -191,7 +191,7 @@ function earn(n, label) {
 // Mehrere Treffer im selben Aufprall (z.B. zwei Autos gleichzeitig) sind
 // EIN Crash: das Merge-Fenster faengt die Doppelabbuchung ab.
 // free = true: nur die Show (Funken/Sound/Wackeln/Banner), ohne Kosten -
-// fuer Ereignisse, an denen die Quest ohnehin scheitert (Kupplungsabriss).
+// fuer Ereignisse, an denen das Kapitel ohnehin scheitert (Kupplungsabriss).
 let crashCool = 0;
 let shakeT = 0, shakeAmp = 0;
 let crashBannerTimer = null;
@@ -233,21 +233,21 @@ traffic.onNearMiss = () => earn(EARN.nearMiss, 'knapp!');
 campervan.onObstacleCrash = handleCrash;
 gespann.onObstacleCrash = handleCrash;
 
-// --- Quests ---
+// --- Kapitel ---
 const ROUNDS_TARGET = 5;
-const quests = new QuestManager();
-quests.add(createArcLapQuest(arc, traffic, { target: ROUNDS_TARGET, startTraffic: START_TRAFFIC }));
-quests.add(createSpeedQuest({ target: 100 }));
+const chapters = new ChapterManager();
+chapters.add(createArcLapChapter(arc, traffic, { target: ROUNDS_TARGET, startTraffic: START_TRAFFIC }));
+chapters.add(createSpeedChapter({ target: 100 }));
 
 // --- Spielzustand: 'menu' | 'playing' | 'success' | 'failed' ---
 let state = 'menu';
-let activeQuest = null;
+let activeChapter = null;
 let failTimer = 0; // laeuft nach Umkippen/Abreissen, bis der Scheitern-Bildschirm kommt
 
-const questEl = document.getElementById('quest');
+const chapterEl = document.getElementById('chapter');
 const toastEl = document.getElementById('toast');
 const menuEl = document.getElementById('menu');
-const menuQuestsEl = document.getElementById('menu-quests');
+const menuChaptersEl = document.getElementById('menu-chapters');
 const menuHighscoreEl = document.getElementById('menu-highscore');
 const successEl = document.getElementById('success');
 const successTimeEl = document.getElementById('success-time');
@@ -258,7 +258,8 @@ let toastTimer = null;
 
 // --- Zeitmessung & Highscore (bleibt ueber Sitzungen gespeichert) ---
 const HS_KEY = 'camperHansHighscore';
-const DONE_KEY = 'camperHansQuestsDone';
+const DONE_KEY = 'camperHansChaptersDone';
+const DONE_KEY_LEGACY = 'camperHansQuestsDone'; // alter Quest-Schluessel (Migration)
 const timeEl = document.getElementById('time');
 const highscoreEl = document.getElementById('highscore');
 let elapsed = 0;
@@ -279,7 +280,15 @@ function renderHighscore() {
 }
 
 function loadDone() {
-  try { return JSON.parse(localStorage.getItem(DONE_KEY)) || []; } catch { return []; }
+  try {
+    let d = JSON.parse(localStorage.getItem(DONE_KEY));
+    if (!d) {
+      // Migration: Erledigt-Haken standen frueher unter dem Quest-Schluessel.
+      d = JSON.parse(localStorage.getItem(DONE_KEY_LEGACY)) || [];
+      if (d.length) localStorage.setItem(DONE_KEY, JSON.stringify(d));
+    }
+    return d;
+  } catch { return []; }
 }
 function saveDone(id) {
   const d = loadDone();
@@ -292,33 +301,39 @@ function isDone(id) {
   return loadDone().includes(id);
 }
 
-// --- Hauptmenue: Uebersicht ueber alle Quests mit Status ---
+// --- Hauptmenue: Kapitelauswahl als aufgeschlagenes Buch -------------------
+// Ein Kapitel = eine Seite. Titel haben die Form "Kapitel 1: Arc de Triomphe";
+// fuer das Buchdesign wird der Doppelpunkt getrennt: Kicker ueber dem Titel.
 function renderMenu() {
-  menuQuestsEl.innerHTML = quests.quests.map((q) => {
+  menuChaptersEl.innerHTML = chapters.chapters.map((q) => {
     const done = isDone(q.id);
-    return `<div class="menu-quest${done ? ' done' : ''}">
-      <div class="mq-head"><span class="mq-title">${q.title}</span><span class="ch-badge${done ? ' ch-badge-forest' : ' ch-badge-sun'}">${done ? 'Erledigt' : 'Offen'}</span></div>
-      <div class="mq-desc">${q.desc}</div>
-      <button class="ch-btn ch-btn-primary mq-start" data-id="${q.id}">${done ? 'Erneut starten' : 'Starten'}</button>
+    const [kicker, bookTitle] = q.title.split(': ');
+    return `<div class="book-page${done ? ' done' : ''}">
+      <span class="book-ribbon${done ? ' done' : ''}">${done ? 'Gelesen' : 'Zu lesen'}</span>
+      <div class="bp-kicker">${kicker || 'Kapitel'}</div>
+      <h3 class="bp-title">${bookTitle ?? q.title}</h3>
+      <div class="bp-rule" aria-hidden="true">✦</div>
+      <p class="bp-desc">${q.desc}</p>
+      <button class="ch-btn ch-btn-primary ch-btn-sm bp-start" data-id="${q.id}">${done ? 'Erneut lesen' : 'Aufschlagen'}</button>
     </div>`;
   }).join('');
-  menuQuestsEl.querySelectorAll('button[data-id]').forEach((b) => {
-    b.addEventListener('click', () => startQuest(quests.quests.find((q) => q.id === b.dataset.id)));
+  menuChaptersEl.querySelectorAll('button[data-id]').forEach((b) => {
+    b.addEventListener('click', () => startChapter(chapters.chapters.find((q) => q.id === b.dataset.id)));
   });
   renderHighscore();
   renderCoins();
 }
 
-function renderQuest() {
-  if (!activeQuest) { questEl.innerHTML = ''; return; }
-  const q = activeQuest;
-  // Bewusst reduziert (Feedback): nur Questname und Fortschrittsbalken -
+function renderChapter() {
+  if (!activeChapter) { chapterEl.innerHTML = ''; return; }
+  const q = activeChapter;
+  // Bewusst reduziert (Feedback): nur Kapitelname und Fortschrittsbalken -
   // keine Beschreibung, kein Zaehler. Der Balken (Sonnen-Streifen, bei
   // Erfolg Waldgruen) traegt die ganze Information.
   const pct = Math.min(100, (q.progress / q.target) * 100);
-  questEl.innerHTML = `<div class="quest${q.completed ? ' done' : ''}">
-    <div class="q-title">${q.title}</div>
-    <div class="q-bar"><div class="q-fill" style="width:${pct}%"></div></div>
+  chapterEl.innerHTML = `<div class="chapter${q.completed ? ' done' : ''}">
+    <div class="c-title">${q.title}</div>
+    <div class="c-bar"><div class="c-fill" style="width:${pct}%"></div></div>
   </div>`;
 }
 
@@ -329,8 +344,8 @@ function showToast(msg) {
   toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3500);
 }
 
-function startQuest(q) {
-  activeQuest = q;
+function startChapter(q) {
+  activeChapter = q;
   q.reset();
   failTimer = 0;
   car.reset();
@@ -346,12 +361,12 @@ function startQuest(q) {
   menuEl.classList.add('hidden');
   successEl.classList.add('hidden');
   failedEl.classList.add('hidden');
-  renderQuest();
+  renderChapter();
 }
 
-// Kippen bzw. Abreissen beendet die Quest: kurz den Schwenk/Bruch zeigen,
+// Kippen bzw. Abreissen beendet das Kapitel: kurz den Schwenk/Bruch zeigen,
 // dann Scheitern-Bildschirm mit Neustart.
-function failQuest(reason) {
+function failChapter(reason) {
   timerRunning = false;
   state = 'failed';
   failReasonEl.textContent = reason;
@@ -361,37 +376,37 @@ function failQuest(reason) {
     ? `Scheitern kostet nichts · Reparaturen unterwegs: −${runRepairs} 🪙`
     : `Scheitern kostet nichts · Reisekasse unangetastet: ${wallet.amount} 🪙`;
   failedEl.classList.remove('hidden');
-  renderQuest();
+  renderChapter();
 }
 
-function retryQuest() {
-  if (activeQuest) startQuest(activeQuest);
+function retryChapter() {
+  if (activeChapter) startChapter(activeChapter);
   else toMenu();
 }
 
 function toMenu() {
   state = 'menu';
-  activeQuest = null;
+  activeChapter = null;
   timerRunning = false;
   successEl.classList.add('hidden');
   failedEl.classList.add('hidden');
   menuEl.classList.remove('hidden');
   renderMenu();
-  renderQuest();
+  renderChapter();
 }
 
-quests.on('progress', (q) => {
-  if (q.id === 'arc-de-triomphe' && activeQuest === q) {
+chapters.on('progress', (q) => {
+  if (q.id === 'arc-de-triomphe' && activeChapter === q) {
     traffic.setTarget(START_TRAFFIC + q.progress * 5); // pro Runde +5 Autos
     earn(EARN.lap, 'Runde'); // Rundenpraemie in die Reisekasse
   }
-  renderQuest();
+  renderChapter();
 });
 
-quests.on('completed', (q) => {
+chapters.on('completed', (q) => {
   timerRunning = false;
   saveDone(q.id);
-  earn(EARN.quest, 'Questbonus');
+  earn(EARN.chapter, 'Kapitelbonus');
   state = 'success';
   successTimeEl.textContent = `Zeit: ${fmtTime(elapsed)}`;
   if (q.id === 'arc-de-triomphe') {
@@ -408,16 +423,16 @@ quests.on('completed', (q) => {
   const balance = runCoins >= 0 ? `+${runCoins}` : `−${Math.abs(runCoins)}`;
   successCoinsEl.textContent = `Fahrtbilanz: ${balance} 🪙 · Reisekasse: ${wallet.amount}`;
   renderHighscore();
-  renderQuest();
+  renderChapter();
   successEl.classList.remove('hidden');
 });
 
 document.getElementById('btn-to-menu').addEventListener('click', toMenu);
 
 controls.onReset = () => {
-  if (state === 'failed') { retryQuest(); return; } // R im Scheitern-Bildschirm = Neustart
+  if (state === 'failed') { retryChapter(); return; } // R im Scheitern-Bildschirm = Neustart
   car.reset();
-  if (activeQuest) activeQuest.onCarReset();
+  if (activeChapter) activeChapter.onCarReset();
   elapsed = 0;
   timerRunning = state === 'playing';
   failTimer = 0;
@@ -466,16 +481,16 @@ if (debugCam) {
   document.body.appendChild(camDebugEl);
 }
 controls.onEscape = () => {
-  if (state !== 'menu') toMenu(); // Quest abbrechen / Scheitern-Bildschirm -> Startbildschirm
+  if (state !== 'menu') toMenu(); // Kapitel abbrechen / Scheitern-Bildschirm -> Startbildschirm
 };
 
-// Kippen oder Abreissen zeigt zunaechst einen Toast; die Quest scheitert
+// Kippen oder Abreissen zeigt zunaechst einen Toast; das Kapitel scheitert
 // kurz danach (failTimer in der Hauptschleife), damit man den Sturz noch sieht.
-campervan.onTip = () => showToast('Umgekippt! Die Quest ist gescheitert …');
-gespann.onTip = () => showToast('Umgekippt! Die Quest ist gescheitert …');
+campervan.onTip = () => showToast('Umgekippt! Das Kapitel ist gescheitert …');
+gespann.onTip = () => showToast('Umgekippt! Das Kapitel ist gescheitert …');
 gespann.onBreakoff = () => {
   showToast('Der Wohnwagen ist abgerissen!');
-  // Kupplungsabriss = Quest ohnehin gescheitert: nur die Show (Funken,
+  // Kupplungsabriss = Kapitel ohnehin gescheitert: nur die Show (Funken,
   // Sound, Wackeln, Banner), KEIN Muenz-Abzug - Scheitern ist kostenlos.
   handleCrash({
     kind: 'coupling', closing: 12, nx: 0, nz: 0,
@@ -484,7 +499,7 @@ gespann.onBreakoff = () => {
   }, true);
 };
 
-document.getElementById('btn-retry').addEventListener('click', retryQuest);
+document.getElementById('btn-retry').addEventListener('click', retryChapter);
 document.getElementById('btn-fail-menu').addEventListener('click', toMenu);
 
 renderHighscore();
@@ -561,7 +576,7 @@ function updateVehiclePreviews(dt, onlySelected = true) {
   }
 }
 
-// --- Gespann tuckert durchs Startmenue (Gag hinter den Karten) ---
+// --- Gespann tuckert durchs Startmenue (Gag hinter dem Buch) ---
 // Das gruene Auto mit Wohnwagen faehrt auf einem breiten, transparenten
 // Hintergrund-Streifen langsam von Bildkante zu Bildkante - huepft wie
 // auf Pflastersteinen und wackelt ein wenig. Nutzt denselben Mini-Renderer
@@ -676,7 +691,7 @@ window.addEventListener('resize', () => {
 // --- Chase-Kamera ---
 const desired = new THREE.Vector3();
 const lookTarget = new THREE.Vector3();
-// --- Kamerafahrt bei Quest-Start ---
+// --- Kamerafahrt bei Kapitel-Start ---
 // Beginnt schraeg vor dem Fahrzeug (Blick auf das Fahrzeug) und schwenkt auf
 // einem Kreisbogen um das Fahrzeug in die normale Chase-Position (Blick nach
 // vorn). Pose in Polarkoordinaten um das Fahrzeug: Winkel relativ zur
@@ -760,14 +775,14 @@ function animate() {
     // colliders/worldHalf: dafuer die Kollision des abgerissenen Wohnwagens
     // mit Hindernissen und Welt-Grenze (siehe traffic.update).
     traffic.update(dt, car, world.colliders.concat(arc.colliders), world.half);
-    if (activeQuest) activeQuest.update(dt, { car, arc }, quests);
+    if (activeChapter) activeChapter.update(dt, { car, arc }, chapters);
 
     // Umgekippt oder Wohnwagen abgerissen? Kurz zeigen, dann ist die
-    // Quest gescheitert (Scheitern-Bildschirm mit Neustart).
+    // Kapitel gescheitert (Scheitern-Bildschirm mit Neustart).
     if (car.tipped || car.detached) {
       failTimer += dt;
       if (failTimer > 1.2) {
-        failQuest(
+        failChapter(
           car.detached
             ? 'Der Wohnwagen ist abgerissen – nächstes Mal früher vom Gas.'
             : 'Das Fahrzeug ist umgekippt!'
@@ -799,8 +814,8 @@ function animate() {
   // Ansicht durchlaeuft die folgenden Zwoege (Erfolg/Schwenk/Verfolgung).
   if (viewMode !== 0 && state !== 'menu') {
     applyView(camera, car, viewMode, 1 - Math.exp(-6 * dt));
-  } else if (state === 'success' && activeQuest && activeQuest.id === 'arc-de-triomphe') {
-    // Quest 1 geschafft: Bild bleibt stehen (keine Simulation mehr), die
+  } else if (state === 'success' && activeChapter && activeChapter.id === 'arc-de-triomphe') {
+    // Kapitel 1 geschafft: Bild bleibt stehen (keine Simulation mehr), die
     // Kamera faehrt nach hinten/oben und etwas zur Aussenseite des Kreises,
     // sodass der Arc de Triomphe im Hintergrund zu sehen ist.
     const dx = car.pos.x - arc.cx;
@@ -815,7 +830,7 @@ function animate() {
     desired.set(car.pos.x - fx * 9, 4.4, car.pos.z - fz * 9);
     lookTarget.set(car.pos.x + fx * 7, 1.8, car.pos.z + fz * 7);
     if (introT < 1) {
-      // Kamerafahrt nach dem Quest-Start: Kreisbogen um das Fahrzeug vom
+      // Kamerafahrt nach dem Kapitel-Start: Kreisbogen um das Fahrzeug vom
       // Startwinkel (32 Grad vor der Front, Blick auf das Fahrzeug) bis
       // hinter das Auto (Chase-Pose). Winkel, Radius und Hoehe gehen per
       // Smoothstep ueber, das Blickziel wandert vom Auto auf die Fahrbahn.
@@ -879,4 +894,4 @@ function animate() {
 animate();
 
 // Debug-/Test-Zugang
-window.__game = { scene, camera, renderer, get car() { return car; }, controls, world, arc, traffic, quests, wallet, get state() { return state; }, startQuest, toMenu };
+window.__game = { scene, camera, renderer, get car() { return car; }, controls, world, arc, traffic, chapters, wallet, get state() { return state; }, startChapter, toMenu };
