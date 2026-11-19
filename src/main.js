@@ -367,6 +367,44 @@ document.getElementById('btn-fail-menu').addEventListener('click', toMenu);
 renderHighscore();
 renderMenu();
 
+// --- Menue-Vorschaubilder der Fahrzeuge (Feedback: Buttons nur ein Bild) ---
+// Nach dem Laden wird jedes Modell einmal in pose reset() gestellt, geklont
+// und in eine kleine Vorschau-Szene gerendert; der Renderer snapshots den
+// Frame als data-URL ins <img> des Fahrzeugs-Buttons. Laeuft alles waehrend
+// des Ladebildschirms, deshalb stoert das kurzzeitige Umschalten der
+// Renderer-Groesse niemanden. Schlaegt es fehl, steht der Alt-Text im Button.
+const PREVIEW_W = 256, PREVIEW_H = 176;
+function makeVehiclePreviews() {
+  const prevScene = new THREE.Scene();
+  prevScene.background = new THREE.Color(0xFFFDF5); // --ch-paper als Button-Grund
+  prevScene.add(new THREE.HemisphereLight(0xbfd9ff, 0x51604a, 1.0));
+  const lamp = new THREE.DirectionalLight(0xffffff, 2.0);
+  lamp.position.set(4, 6, 5);
+  prevScene.add(lamp);
+  const cam = new THREE.PerspectiveCamera(35, PREVIEW_W / PREVIEW_H, 0.1, 1000);
+  for (const [id, veh] of [['campervan', campervan], ['gespann', gespann]]) {
+    veh.reset(); // definierte Pose an der Startlinie (Gruppe + Wohnwagen)
+    const root = new THREE.Group();
+    root.add(veh.group.clone(true));
+    if (veh.trailerGroup) root.add(veh.trailerGroup.clone(true));
+    prevScene.add(root);
+    const box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const dist = (maxDim / 2) / Math.tan(cam.fov * Math.PI / 360) * 1.25;
+    // Fahrtrichtung 0 = +Z: Kamera schraeg von vorne, leicht erhoeht
+    cam.position.set(center.x + dist * 0.55, center.y + maxDim * 0.5, center.z + dist * 0.9);
+    cam.lookAt(center.x, center.y, center.z);
+    renderer.setSize(PREVIEW_W, PREVIEW_H, false);
+    renderer.render(prevScene, cam);
+    const img = document.querySelector(`.veh-btn[data-veh="${id}"] img`);
+    if (img) img.src = renderer.domElement.toDataURL('image/png');
+    prevScene.remove(root);
+  }
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
 const loading = document.getElementById('loading');
 const loadtext = document.getElementById('loadtext');
 try {
@@ -375,6 +413,8 @@ try {
   });
   loadtext.textContent = 'Lade Gespann …';
   await gespann.load();
+  loadtext.textContent = 'Modellbilder fürs Menü …';
+  makeVehiclePreviews();
   await traffic.loadCarModels((i, n) => {
     loadtext.textContent = `Lade Autos … ${i}/${n}`;
   });

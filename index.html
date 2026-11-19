@@ -100,13 +100,11 @@
     }
     #menu h1 { margin: 0; }
     .menu-title em { color: var(--ch-campfire-dark); }
-    .menu-sub { margin: 0; color: var(--ch-night-soft); font-size: 15px; text-align: center; }
 
     #menu-vehicles { display: flex; gap: 10px; width: min(460px, 92vw); margin-top: var(--ch-space-3xs); }
+    /* Fahrzeugwahl: nur ein Vorschaubild, keine Erklaertexte (Feedback) */
     .veh-btn {
-      flex: 1; padding: 10px 10px 12px; cursor: pointer;
-      font-family: var(--ch-font-display); font-weight: 700; font-size: 14px; line-height: 1.3;
-      color: var(--ch-night); text-align: left;
+      flex: 1; padding: 6px; cursor: pointer;
       background: var(--ch-paper);
       border: 2px solid var(--ch-night); border-radius: var(--ch-radius-md);
       box-shadow: var(--ch-shadow-pop);
@@ -114,7 +112,7 @@
     }
     .veh-btn:hover { transform: translateY(2px); box-shadow: 0 4px 0 rgba(34,51,59,0.9); }
     .veh-btn.active { background: var(--ch-sun-soft); border-color: var(--ch-sun-dark); }
-    .veh-btn small { display: block; font-family: var(--ch-font-body); font-weight: 400; font-size: 11px; color: var(--ch-night-soft); margin-top: 4px; line-height: 1.4; }
+    .veh-img { display: block; width: 100%; height: 110px; object-fit: contain; border-radius: calc(var(--ch-radius-md) - 3px); }
 
     #menu-quests { display: flex; flex-direction: column; gap: 12px; width: min(460px, 92vw); margin-top: var(--ch-space-3xs); }
     .menu-quest {
@@ -127,7 +125,7 @@
     .mq-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .mq-title { font-family: var(--ch-font-display); font-weight: 700; font-size: 16px; color: var(--ch-night); }
     .mq-desc { font-size: 12.5px; color: var(--ch-night-soft); margin-top: 4px; line-height: 1.45; }
-    .mq-start { margin-top: 12px; width: 100%; }
+    .mq-start { margin-top: 12px; }
 
     #menu-highscore {
       font-family: var(--ch-font-display); font-weight: 700; font-size: 15px;
@@ -244,14 +242,13 @@
   <div id="menu">
     <img class="menu-emblem" src="images/logos/logo-hans-emblem.png" alt="Camper Hans Logo">
     <h1 class="ch-h1 menu-title">Camper <em>Hans</em></h1>
-    <p class="menu-sub">Zelt auf, L&auml;cheln an! W&auml;hle Fahrzeug und Quest – dann hei&szlig;t es: Kaffee ans Lagerfeuer, wir fahren los!</p>
     <div id="menu-vehicles">
-      <button class="veh-btn" data-veh="campervan">Campervan<small>hoher Schwerpunkt &ndash; kippt bei Volllenkung &uuml;ber ~70 km/h</small></button>
-      <button class="veh-btn" data-veh="gespann">Gr&uuml;nes Auto mit Wohnwagen<small>der Wohnwagen schlingert &uuml;ber ~70 km/h und kann abrei&szlig;en</small></button>
+      <button class="veh-btn" data-veh="campervan" aria-label="Campervan"><img class="veh-img" alt="Campervan"></button>
+      <button class="veh-btn" data-veh="gespann" aria-label="Grünes Auto mit Wohnwagen"><img class="veh-img" alt="Grünes Auto mit Wohnwagen"></button>
     </div>
     <div id="menu-quests"></div>
     <div id="menu-highscore">Highscore: –</div>
-    <div class="menu-hint">ESC = Quest abbrechen &middot; H = Hupe &middot; Kippen oder abgerissener Wohnwagen = Quest gescheitert &mdash; Hans</div>
+    <div class="menu-hint">ESC = Quest abbrechen</div>
   </div>
 
   <div id="success" class="hidden">
