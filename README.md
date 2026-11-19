@@ -67,8 +67,8 @@ Annäherungsgeschwindigkeit entlang der Stoßnormalen (`crashPenalty()` in
 | unter 1,5 m/s (Streifen) | Lackschaden | 2 🪙 |
 | 3 m/s | Blechschaden | 9 🪙 |
 | 8 m/s | Crash! | 17 🪙 |
-| 16 m/s | Totalschaden! | 30 🪙 |
-| Frontal (30 m/s) | Totalschaden! | max. 45 🪙 |
+| 16 m/s | C'est la cata! | 30 🪙 |
+| Frontal (30 m/s) | C'est la cata! | max. 45 🪙 |
 
 Die Kasse geht nie unter 0. Das Scheitern einer Quest kostet keine Münzen –
 auch der Kupplungsabriss des Wohnwagens wird nicht zusätzlich berechnet

@@ -27,7 +27,9 @@ const STORAGE_KEY = 'camperHansCoins';
 export function crashPenalty(closing) {
   if (closing < 1.5) return { coins: 2, tier: 'Lackschaden' };
   const coins = Math.min(45, 4 + Math.round(closing * 1.6));
-  if (closing >= 16) return { coins, tier: 'TOTALSCHADEN!' };
+  // Härteste Stufe: Hans' Schul-Französisch ("c'est la catastrophe!") -
+  // der Van ueberlebt ja alles, aber er koennte kotzen.
+  if (closing >= 16) return { coins, tier: "C'EST LA CATA!" };
   if (closing >= 8) return { coins, tier: 'Crash!' };
   return { coins, tier: 'Blechschaden' };
 }

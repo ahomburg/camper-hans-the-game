@@ -425,7 +425,7 @@ export class Traffic {
             // Bounce-Impulse unten das Tempo verbiegen - die Harte des
             // Aufpralls ist die Annaeherungsgeschwindigkeit beider Fahrzeuge
             // entlang der Stossnormalen. Sanftes Streifen im Gleichtritt ist
-            // billiger Lackschaden, ein Frontal-Crash der Totalschaden.
+            // billiger Lackschaden, ein Frontal-Crash "C'est la cata!".
             if (this.onCrash) {
               const vvx = Math.sin(van.heading) * van.speed;
               const vvz = Math.cos(van.heading) * van.speed;
