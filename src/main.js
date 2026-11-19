@@ -437,10 +437,12 @@ function updateVehiclePreviews(dt, onlySelected = true) {
 
 // --- Gespann tuckert durchs Startmenue (Gag hinter den Karten) ---
 // Das gruene Auto mit Wohnwagen faehrt auf einem breiten, transparenten
-// Hintergrund-Streifen langsam von links nach rechts - huepft wie auf
-// Pflastersteinen und wackelt ein wenig. Nutzt denselben Mini-Renderer
-// wie die Fahrzeug-Buttons (pro Menue-Frame einmal umgroessiert).
-const RIDE_W = 720, RIDE_H = 150;
+// Hintergrund-Streifen langsam von Bildkante zu Bildkante - huepft wie
+// auf Pflastersteinen und wackelt ein wenig. Nutzt denselben Mini-Renderer
+// wie die Fahrzeug-Buttons. Die Renderbreite folgt der Fensterbreite, damit
+// das Gespann wirklich GANZ links einsetzt und GANZ rechts verschwindet
+// (ein fixer 720er-Puffer wuerde auf weiten Fenstern nur mittig liegen).
+const RIDE_H = 150;
 let menuRide = null;
 function setupMenuRide() {
   gespann.reset(); // definierte Pose: Zugwagen mit Wohnwagen an der Kupplung
@@ -457,21 +459,31 @@ function setupMenuRide() {
   const lamp = new THREE.DirectionalLight(0xffffff, 1.5);
   lamp.position.set(3, 5, 6);
   scene.add(lamp, root);
-  const cam = new THREE.PerspectiveCamera(30, RIDE_W / RIDE_H, 0.1, 100);
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 100); // aspect folgt der Fensterbreite
   const dist = (size.y / 2) / Math.tan(cam.fov * Math.PI / 360) * 1.6;
   cam.position.set(0, size.y * 0.4, dist); // Seitenansicht, leicht von oben
   cam.lookAt(0, 0, 0);
-  // horizontaler FOV: wo das Gespann unsichtbar hinter dem Rand verschwindet
-  const halfHoriz = Math.atan(Math.tan(cam.fov * Math.PI / 360) * (RIDE_W / RIDE_H));
-  const span = dist * Math.tan(halfHoriz) + size.x / 2 + 1;
   const canvas = document.getElementById('menu-ride');
   menuRide = { root, scene, cam, canvas, ctx: canvas.getContext('2d'),
-    span, x: -span, t: 0, speed: (2 * span) / 11 }; // ~11 s pro Durchfahrt
+    dist, halfV: cam.fov * Math.PI / 360, sizeX: size.x,
+    w: 0, span: 1, x: -1, t: 0, speed: 1 };
   updateMenuRide(0);
 }
 function updateMenuRide(dt) {
   if (!previewRenderer || !menuRide) return;
   const r = menuRide;
+  // Renderbreite = Fensterbreite: Durchfahrt von ganz links bis ganz rechts.
+  // (Aenderungen gibt es praktisch nur beim Resize; dann Strecke neu vermessen.)
+  const wantW = Math.max(320, Math.ceil(window.innerWidth));
+  if (wantW !== r.w) {
+    r.w = wantW;
+    r.cam.aspect = wantW / RIDE_H;
+    r.cam.updateProjectionMatrix();
+    // sichtbare Halbbreite in der Szene (Seitenansicht, Kamera senkrecht zur Fahrt)
+    r.span = r.dist * Math.tan(r.halfV) * r.cam.aspect + r.sizeX / 2 + 1;
+    r.x = -r.span; // neue Durchfahrt von links beginnen
+    r.speed = (2 * r.span) / 11; // ~11 s pro Durchfahrt
+  }
   if (!reducedMotion) {
     r.t += dt;
     r.x += r.speed * dt;
@@ -482,7 +494,7 @@ function updateMenuRide(dt) {
   r.root.position.x = r.x;
   // Huepfen wie auf Pflastersteinen
   r.root.position.y = reducedMotion ? 0 : 0.05 * Math.abs(Math.sin(r.t * 7));
-  previewRenderer.setSize(RIDE_W, RIDE_H);
+  previewRenderer.setSize(r.w, RIDE_H);
   previewRenderer.render(r.scene, r.cam);
   const src = previewRenderer.domElement;
   if (r.canvas.width !== src.width || r.canvas.height !== src.height) {

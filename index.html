@@ -95,8 +95,9 @@
     #menu.hidden, #success.hidden, #failed.hidden { display: none; }
 
     /* Gespann tuckert hinter dem Menueinhalt durch (Gag auf der Creme-Wiese).
-       object-fit haelt das 720:150-Renderformat, sonst streckt die 100vw-
-       Breite das Auto auf weiten Fenstern auseinander. */
+       Der Renderer liefert Fensterbreite x 150 px, der Streifen ist genauso
+       proportioniert - so faehrt das Auto von ganz links bis ganz rechts,
+       ohne verzerrt zu werden. */
     #menu-ride {
       position: fixed; left: 0; width: 100vw; height: 150px; top: 14%;
       z-index: 0; pointer-events: none;
