@@ -134,13 +134,17 @@
     /* Gespann tuckert hinter dem Menueinhalt durch (Gag auf der Creme-Wiese).
        Der Renderer liefert Fensterbreite x 150 px, der Streifen ist genauso
        proportioniert - so faehrt das Auto von ganz links bis ganz rechts,
-       ohne verzerrt zu werden. */
+       ohne verzerrt zu werden.
+       Sandwich-Reihenfolge: Das Gespann faehrt VOR der Handschrift
+       "Camper Hans" (z 1 < 2), aber HINTER "the game" und dem Emblem
+       (z 3 > 2) - nur die grosse Marke wird ueberfahren. */
     #menu-ride {
       position: fixed; left: 0; width: 100vw; height: 150px; top: 14%;
-      z-index: 0; pointer-events: none;
+      z-index: 2; pointer-events: none;
       object-fit: contain; object-position: center;
     }
-    #menu > *:not(#menu-ride) { position: relative; z-index: 1; }
+    #menu > *:not(#menu-ride):not(.menu-emblem):not(.menu-title) { position: relative; z-index: 1; }
+    #menu > .menu-emblem, #menu > .menu-title { position: relative; z-index: 3; }
 
     .menu-emblem {
       height: 72px; width: auto; border-radius: var(--ch-radius-pill);
