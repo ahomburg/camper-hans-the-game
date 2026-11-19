@@ -69,8 +69,12 @@ Annäherungsgeschwindigkeit entlang der Stoßnormalen (`crashPenalty()` in
 | 16 m/s | Totalschaden! | 23 🪙 |
 | Frontal (30 m/s) | Totalschaden! | max. 35 🪙 |
 
-Die Kasse geht nie unter 0. Der Verkehr passt sein Tempo automatisch an –
-wer gerammt wird, hat fast immer selbst gebremst oder gelenkt.
+Die Kasse geht nie unter 0. Der Verkehr fährt Hans nicht hinten auf:
+Verkehrsautos bremsen automatisch – hinter Hans gilt ein Folgegesetz
+(`Traffic.playerSpeedCap` in `src/traffic.js`, Zieltempo = Spielertempo +
+(Abstand − 8,5 m) × 0,9), das kontaktfrei auf ~8,5 m Abstand konvergiert
+und danach wieder auf Regeltempo beschleunigt. Wer trotzdem crashen will,
+muss selbst lenken oder bremsen.
 
 **Crash-Visualisierung** (`src/crashfx.js`, `src/audio.js`, `index.html`):
 Funken- und Trümmer-Partikel am Aufprallpunkt, Kamera-Wackeln, roter

@@ -219,6 +219,8 @@ export class Traffic {
 
     // Jedes Auto bekommt eine eigene Zufallsgeschwindigkeit (deutlich gestreut)
     const speed = this.baseSpeed * (0.6 + this.rand() * 0.8) * (0.92 + 0.04 * lane);
+    // baseSpeed: Regelttempo, auf das das Auto nach dem Folgen/Bremsen
+    // fuer Hans wieder beschleunigt (siehe playerSpeedCap).
     // GLB-Modell im Wechsel (car_mercedes/car_kaefer/car_ente-optimized): bei 30
     // Autos ab Start sind das genau 10x Mercedes, 10x Kaefer, 10x Ente.
     // Kisten-Fallback, falls die Modelle nicht geladen sind.
@@ -232,7 +234,7 @@ export class Traffic {
     this.scene.add(mesh);
     const collider = { x: 0, z: 0, r: 1.8 };
     const car = {
-      lane, ang, speed, omega: speed / this.laneRadii[lane], mesh, collider,
+      lane, ang, speed, baseSpeed: speed, omega: speed / this.laneRadii[lane], mesh, collider,
       honkVariant: modelIdx,          // jedes Automodell hat seine eigene Hupe
       nextHonk: 2 + this.rand() * 12, // zufaelliges Hupen
       bounceT: 0,                     // > 0: Auto prallt zurueck
@@ -266,6 +268,56 @@ export class Traffic {
     car.mesh.rotation.y = car.ang + Math.PI / 2; // Tangente, gegen Uhrzeigersinn
     car.collider.x = x;
     car.collider.z = z;
+  }
+
+  // Wie schnell darf dieses Auto hoechstens fahren, damit es Hans nicht
+  // auffaehrt? Hans (Zugfahrzeug, angekuppelter oder abgerissener Wohnwagen)
+  // ist ein Hindernis auf der Spur: Liegt er VOR dem Auto (in Sichtweite
+  // und seitlich auf der Spur), gilt ein einfaches Folgegesetz:
+  //     Zieltempo = Spielertempo + (Abstand - SicherhAbstand) * 0.9
+  //Ist der Abstand noch gross, faehrt das Auto ungebremst weiter; erreicht
+  // der Abstand den Sicherheitsabstand, tuckert es exakt im Spielertempo
+  // dahinter; rutscht es darunter, faellt es sanft zurueck. Kurvengetestet
+  // per Simulation: Konvergiert kontaktfrei auf ~8.5 m Abstand (Kontakt
+  // erst ab ~4.7 m Zentren-Abstand). Ohne Hindernis: Infinity.
+  playerSpeedCap(car, van, laneR) {
+    if (!van) return Infinity;
+    const LOOK = 18;   // Vorausschau entlang der Spur (m)
+    const SAFE = 8.5;  // Sicherheitsabstand hinter Hans (m)
+    const SIDE = 1.8;  // seitliche Toleranz: nur Koerper "auf meiner Spur"
+    let cap = Infinity;
+    const cang = car.ang;
+    const consider = (x, z, tangential) => {
+      const dx = x - this.arc.cx;
+      const dz = z - this.arc.cz;
+      if (Math.abs(Math.hypot(dx, dz) - laneR) > SIDE) return; // andere Spur
+      let dAng = Math.atan2(dx, dz) - cang;
+      if (dAng > Math.PI) dAng -= Math.PI * 2;
+      else if (dAng < -Math.PI) dAng += Math.PI * 2;
+      if (dAng <= 0) return;                  // hinter mir / neben mir
+      const ahead = dAng * laneR;              // Bogenlaenge bis zum Hindernis
+      if (ahead > LOOK) return;                // noch weit weg genug
+      const target = Math.max(0, tangential) + (ahead - SAFE) * 0.9;
+      cap = Math.min(cap, Math.max(0, target));
+    };
+    // Zugfahrzeug. Tangentialanteil der Geschwindigkeit entlang der Spur:
+    // v_t = speed * sin(heading - Winkel) - negativ, wenn Hans falsch herum
+    // faehrt (dann bremst das Auto auf ihn sowieso Richtung Stillstand).
+    consider(van.pos.x, van.pos.z, van.speed * Math.sin(van.heading - cang));
+    if (van.trailerGroup && !van.detached) {
+      // angekuppelter Wohnwagen: Mitte des Aufbaus (2.1 hinter der Kupplung)
+      const hh = van.heading - (van.psi || 0);
+      const kupX = van.pos.x - Math.sin(van.heading) * (van.hitchDist || 0);
+      const kupZ = van.pos.z - Math.cos(van.heading) * (van.hitchDist || 0);
+      consider(kupX - Math.sin(hh) * TRAILER_MID, kupZ - Math.cos(hh) * TRAILER_MID,
+        van.speed * Math.sin(van.heading - cang));
+    }
+    if (van.detached) {
+      // abgerissener Wohnwagen: freier Koerper mit eigener Geschwindigkeit
+      consider(van.trailerPos.x, van.trailerPos.z,
+        van.trailerSpeed * Math.sin(van.trailerHeading - cang));
+    }
+    return cap;
   }
 
   update(dt, van = null, colliders = [], worldHalf = 0) {
@@ -515,6 +567,19 @@ export class Traffic {
             });
           }
         }
+      }
+
+      // --- Folgendenverkehr hinter Hans: automatisch bremsen statt auffahren
+      // (Folgegesetz s. playerSpeedCap). Bremst das Auto weich unter das
+      // zulaessige Zieltempo, fuellt es danach sein Regeltempo (baseSpeed)
+      // wieder langsam auf - Staus loesen sich von selbst auf.
+      const cap = this.playerSpeedCap(car, van, this.laneRadii[car.lane]);
+      if (cap < car.speed) {
+        car.speed = Math.max(cap, car.speed - 22 * dt); // max. Verzoegerung
+        car.nextHonk -= dt * 3; // Frust-Hupe: Wer hinter Hans warten muss,
+                               // hupt oefter (Paris laesst gruessen)
+      } else if (car.speed < car.baseSpeed) {
+        car.speed = Math.min(car.baseSpeed, car.speed + 2.5 * dt); // Wiederanlauf
       }
 
       const r = this.laneRadii[car.lane];
