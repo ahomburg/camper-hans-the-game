@@ -421,6 +421,11 @@ function setupVehiclePreviews() {
 }
 function updateVehiclePreviews(dt, onlySelected = true) {
   if (!previewRenderer) return;
+  // Der Mini-Renderer wird mit der Menue-Durchfahrt (Fensterbreite x 150)
+  // geteilt: vor jedem Button-Render zurueck auf das quadratischere
+  // Button-Format schalten, sonst rendert die Drehscheibe in den flachen
+  // Streifen-Puffer und das Fahrzeug wirkt gequetscht/verzerrt.
+  previewRenderer.setSize(PREVIEW_W, PREVIEW_H);
   const src = previewRenderer.domElement;
   for (const pv of vehiclePreviews) {
     if (onlySelected && pv.id !== selectedVehicleId) continue; // nur die Auswahl dreht sich
