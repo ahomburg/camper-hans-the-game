@@ -94,6 +94,13 @@
     }
     #menu.hidden, #success.hidden, #failed.hidden { display: none; }
 
+    /* Gespann tuckert hinter dem Menueinhalt durch (Gag auf der Creme-Wiese) */
+    #menu-ride {
+      position: fixed; left: 0; width: 100vw; height: 150px; top: 34%;
+      z-index: 0; pointer-events: none;
+    }
+    #menu > *:not(#menu-ride) { position: relative; z-index: 1; }
+
     .menu-emblem {
       height: 72px; width: auto; border-radius: var(--ch-radius-pill);
       border: 3px solid var(--ch-night); box-shadow: var(--ch-shadow-soft); background: var(--ch-paper);
@@ -249,6 +256,7 @@
   <div id="toast"></div>
 
   <div id="menu">
+    <canvas id="menu-ride" aria-hidden="true"></canvas>
     <img class="menu-emblem" src="images/logos/logo-hans-emblem.png" alt="Camper Hans Logo">
     <span class="menu-brand">Camper Hans</span>
     <h1 class="ch-h1 menu-title">the game</h1>

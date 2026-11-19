@@ -435,6 +435,64 @@ function updateVehiclePreviews(dt, onlySelected = true) {
   }
 }
 
+// --- Gespann tuckert durchs Startmenue (Gag hinter den Karten) ---
+// Das gruene Auto mit Wohnwagen faehrt auf einem breiten, transparenten
+// Hintergrund-Streifen langsam von links nach rechts - huepft wie auf
+// Pflastersteinen und wackelt ein wenig. Nutzt denselben Mini-Renderer
+// wie die Fahrzeug-Buttons (pro Menue-Frame einmal umgroessiert).
+const RIDE_W = 720, RIDE_H = 150;
+let menuRide = null;
+function setupMenuRide() {
+  gespann.reset(); // definierte Pose: Zugwagen mit Wohnwagen an der Kupplung
+  const root = new THREE.Group();
+  root.add(gespann.group.clone(true));
+  root.add(gespann.trailerGroup.clone(true));
+  root.traverse((o) => { o.visible = true; });
+  const box = new THREE.Box3().setFromObject(root);
+  const center = box.getCenter(new THREE.Vector3());
+  root.children.forEach((ch) => ch.position.sub(center)); // Dreh-/Fahrtmitte in den Ursprung
+  const size = box.getSize(new THREE.Vector3());
+  const scene = new THREE.Scene(); // transparent: die Menue-Creme scheint durch
+  scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x51604a, 1.0));
+  const lamp = new THREE.DirectionalLight(0xffffff, 1.5);
+  lamp.position.set(3, 5, 6);
+  scene.add(lamp, root);
+  const cam = new THREE.PerspectiveCamera(30, RIDE_W / RIDE_H, 0.1, 100);
+  const dist = (size.y / 2) / Math.tan(cam.fov * Math.PI / 360) * 1.6;
+  cam.position.set(0, size.y * 0.4, dist); // Seitenansicht, leicht von oben
+  cam.lookAt(0, 0, 0);
+  // horizontaler FOV: wo das Gespann unsichtbar hinter dem Rand verschwindet
+  const halfHoriz = Math.atan(Math.tan(cam.fov * Math.PI / 360) * (RIDE_W / RIDE_H));
+  const span = dist * Math.tan(halfHoriz) + size.x / 2 + 1;
+  const canvas = document.getElementById('menu-ride');
+  menuRide = { root, scene, cam, canvas, ctx: canvas.getContext('2d'),
+    span, x: -span, t: 0, speed: (2 * span) / 11 }; // ~11 s pro Durchfahrt
+  updateMenuRide(0);
+}
+function updateMenuRide(dt) {
+  if (!previewRenderer || !menuRide) return;
+  const r = menuRide;
+  if (!reducedMotion) {
+    r.t += dt;
+    r.x += r.speed * dt;
+    if (r.x > r.span) r.x = -r.span; // naechste Durchfahrt
+  }
+  // Front nach rechts (lokale Fahrtrichtung +Z => 90-Grad-Drehung), leichtes Lenk-Wackeln
+  r.root.rotation.y = Math.PI / 2 + (reducedMotion ? 0 : 0.02 * Math.sin(r.t * 9));
+  r.root.position.x = r.x;
+  // Huepfen wie auf Pflastersteinen
+  r.root.position.y = reducedMotion ? 0 : 0.05 * Math.abs(Math.sin(r.t * 7));
+  previewRenderer.setSize(RIDE_W, RIDE_H);
+  previewRenderer.render(r.scene, r.cam);
+  const src = previewRenderer.domElement;
+  if (r.canvas.width !== src.width || r.canvas.height !== src.height) {
+    r.canvas.width = src.width;
+    r.canvas.height = src.height;
+  }
+  r.ctx.clearRect(0, 0, r.canvas.width, r.canvas.height);
+  r.ctx.drawImage(src, 0, 0);
+}
+
 const loading = document.getElementById('loading');
 const loadtext = document.getElementById('loadtext');
 try {
@@ -446,6 +504,7 @@ try {
   loadtext.textContent = 'Modellbilder fürs Menü …';
   try {
     setupVehiclePreviews();
+    setupMenuRide();
   } catch (err) {
     console.warn('Vorschau-Renderer nicht verfügbar:', err);
   }
@@ -634,8 +693,10 @@ function animate() {
 
   if (state === 'menu' && previewRenderer) {
     // Das Menue verdeckt die Spielflaeche komplett: statt der Welt die
-    // Fahrzeug-Drehscheiben in den Buttons aktualisieren (spart GPU).
+    // Fahrzeug-Drehscheiben in den Buttons und die Durchfahrt des Gespanns
+    // aktualisieren (spart GPU gegenueber dem Welt-Render).
     updateVehiclePreviews(dt);
+    updateMenuRide(dt);
   } else {
     renderer.render(scene, camera);
   }
