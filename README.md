@@ -51,9 +51,9 @@ Schlüssel `camperHansCoins`).
 
 | Aktion | Prämie |
 |---|---|
-| Volle Runde um den Arc de Triomphe | +10 🪙 |
-| Quest abgeschlossen | +50 🪙 |
-| Schnell knapp an einem Verkehrswagen vorbei (≥ 43 km/h, 4 s Sperre je Auto) | +3 🪙 |
+| Volle Runde um den Arc de Triomphe | +20 🪙 |
+| Quest abgeschlossen | +100 🪙 |
+| Schnell knapp an einem Verkehrswagen vorbei (≥ 32 km/h, 3 s Sperre je Auto) | +5 🪙 |
 
 **Zahlen:** Rammt man ein anderes Objekt (Verkehrswagen, Baum, Gebäude,
 Bordstein, Welt-Grenze, abgerissener Wohnwagen), wird der Crash visualisiert
@@ -63,15 +63,14 @@ Annäherungsgeschwindigkeit entlang der Stoßnormalen (`crashPenalty()` in
 
 | Closing-Speed | Kategorie | Kosten |
 |---|---|---|
-| unter 1,5 m/s (Streifen) | Lackschaden | 2 🪙 |
-| 3 m/s | Blechschaden | 9 🪙 |
-| 8 m/s | Crash! | 17 🪙 |
-| 16 m/s | Totalschaden! | 30 🪙 |
-| Frontal (30 m/s) | Totalschaden! | max. 45 🪙 |
+| unter 1,5 m/s (Streifen) | Lackschaden | 1 🪙 |
+| 3 m/s | Blechschaden | 7 🪙 |
+| 8 m/s | Crash! | 13 🪙 |
+| 16 m/s | Totalschaden! | 23 🪙 |
+| Frontal (30 m/s) | Totalschaden! | max. 35 🪙 |
 
-Die Kasse geht nie unter 0. Wer von einem Verkehrauto von hinten angerempelt
-wird, zahlt nichts – nur Crashs, die Hans zu verantworten hat (auch der eigene
-Wohnwagen, angerissen oder angekuppelt).
+Die Kasse geht nie unter 0. Der Verkehr passt sein Tempo automatisch an –
+wer gerammt wird, hat fast immer selbst gebremst oder gelenkt.
 
 **Crash-Visualisierung** (`src/crashfx.js`, `src/audio.js`, `index.html`):
 Funken- und Trümmer-Partikel am Aufprallpunkt, Kamera-Wackeln, roter

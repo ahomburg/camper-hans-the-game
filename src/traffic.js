@@ -499,16 +499,16 @@ export class Traffic {
       // Ueberhol-Praemie (Muenz-System): Wer schnell durch den Verkehr
       // schiebt, OHNE etwas zu treffen, verdient ein paar Muenzen. "Knapp
       // vorbei" = die um einen Sicherheitssaum (0.45 je Seite) aufgetriebenen
-      // Kollisionsradien ueberlappen, die echten nicht; nur ab 12 m/s
-      // (~43 km/h) und mit 4 s Sperre je Auto, damit statisch-parallel
+      // Kollisionsradien ueberlappen, die echten nicht; ab 9 m/s
+      // (~32 km/h) und mit 3 s Sperre je Auto, damit statisch-parallel
       // dahertuckern nichts abwirft.
       if (van && this.onNearMiss) {
         car.nearMissCool = Math.max(0, (car.nearMissCool || 0) - dt);
-        if (car.nearMissCool <= 0 && car.hitCool <= 0 && Math.abs(van.speed) >= 12) {
+        if (car.nearMissCool <= 0 && car.hitCool <= 0 && Math.abs(van.speed) >= 9) {
           const near = capsuleHit(van.pos.x, van.pos.z, van.heading, 1.55,
             car.collider.x, car.collider.z, car.mesh.rotation.y, 1.4);
           if (near) {
-            car.nearMissCool = 4;
+            car.nearMissCool = 3;
             this.onNearMiss({
               x: (van.pos.x + car.collider.x) / 2,
               z: (van.pos.z + car.collider.z) / 2,

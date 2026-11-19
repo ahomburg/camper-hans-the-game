@@ -2,9 +2,9 @@
 // Hans' Reisekasse: das Muenz-System.
 //
 // Verdienen:
-//   +10  pro volle Runde um den Arc de Triomphe (Rundenpraemie)
-//   +50  Quest abgeschlossen (Questbonus)
-//   +3   Schnell und knapp an einem Verkehrswagen vorbei (Ueberhol-Reaktion)
+//   +20  pro volle Runde um den Arc de Triomphe (Rundenpraemie)
+//   +100 Quest abgeschlossen (Questbonus)
+//   +5   Schnell und knapp an einem Verkehrswagen vorbei (Ueberhol-Reaktion)
 //
 // Zahlen:
 //   Crash gegen ein anderes Objekt (Verkehrswagen, Baum, Bordstein,
@@ -20,9 +20,12 @@ const STORAGE_KEY = 'camperHansCoins';
 
 // Reparaturkosten nach Crash-Härte. closing = Annäherungsgeschwindigkeit
 // in m/s entlang der Stossnormalen (0 =<Contact, max ~30 m/s bei Frontal).
+// Bewusst mild: Der Verkehr passt sein Tempo automatisch an, Crashs sind
+// fast immer Hans' eigene Schuld - dafuer verdienen Runden und Ueberholer
+// deutlich mehr und die Rechnung bleibt im Rahmen.
 export function crashPenalty(closing) {
-  if (closing < 1.5) return { coins: 2, tier: 'Lackschaden' };
-  const coins = Math.min(45, 4 + Math.round(closing * 1.6));
+  if (closing < 1.5) return { coins: 1, tier: 'Lackschaden' };
+  const coins = Math.min(35, 3 + Math.round(closing * 1.25));
   if (closing >= 16) return { coins, tier: 'TOTALSCHADEN!' };
   if (closing >= 8) return { coins, tier: 'Crash!' };
   return { coins, tier: 'Blechschaden' };

@@ -136,13 +136,13 @@ const traffic = new Traffic(scene, arc);
 traffic.setTarget(START_TRAFFIC);
 
 // --- Muenz-System: Hans' Reisekasse -----------------------------------------
-// Verdienen: +10 pro Runde um den Arc, +50 Questbonus, +3 fuer knappe
+// Verdienen: +20 pro Runde um den Arc, +100 Questbonus, +5 fuer knappe
 // Ueberholmanöver im Verkehr. Zahlen: Jeder Crash (Fahrzeug, Hindernis,
 // Welt-Grenze, abgerissener Wohnwagen) kostet Reparaturguthaben nach
 // Aufprall-Haerte. Die Kasse ueberlebt die Sitzung (localStorage).
 const wallet = new Wallet();
 const crashFX = new CrashFX(scene);
-const EARN = { lap: 10, quest: 50, nearMiss: 3 };
+const EARN = { lap: 20, quest: 100, nearMiss: 5 };
 let runCoins = 0;   // Bilanz der laufenden Fahrt (+ verdient / - Reparaturen)
 let runRepairs = 0; // Reparaturkosten der laufenden Fahrt (Scheitern-Screen)
 
