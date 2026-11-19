@@ -4,143 +4,167 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Camper Hans – Testfahrt</title>
+  <link rel="icon" type="image/png" href="images/logos/logo-hans-emblem.png">
+  <!-- Camper-Hans-CI: Variablen + ch-Komponenten (Source of Truth: camper-hans-ci) -->
+  <link rel="stylesheet" href="css/camper-hans.css">
   <style>
+    /* ---------- Spiel-Grundgerüst (CI: Creme-Papier statt Dunkelgrau) ---------- */
     html, body {
-      margin: 0; height: 100%; overflow: hidden; background: #0e1116;
+      margin: 0; height: 100%; overflow: hidden;
+      background: var(--ch-cream); color: var(--ch-night);
       touch-action: none; overscroll-behavior: none;
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: var(--ch-font-body);
     }
     #app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    /* Spielfläche als Sticker im Heft (CI-Regel für Canvas) */
+    #app canvas {
+      box-sizing: border-box;
+      border: 3px solid var(--ch-night);
+      border-radius: var(--ch-radius-lg);
+      box-shadow: var(--ch-shadow-soft);
+    }
 
+    /* ---------- HUD (oben, Sticker-Panels auf dem Papier) ---------- */
     #hud {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 5;
+      position: fixed; top: 12px; left: 14px; right: 14px; z-index: 5;
       display: flex; justify-content: space-between; align-items: flex-start;
-      padding: 12px 16px; pointer-events: none; color: #fff;
+      gap: 12px; pointer-events: none;
     }
-    #speed { font-size: 30px; font-weight: 700; text-shadow: 0 2px 6px rgba(0,0,0,.6); font-variant-numeric: tabular-nums; }
-    #speed small { font-size: 14px; font-weight: 500; opacity: .8; }
-    #side { text-align: right; }
-    #hint { font-size: 12px; opacity: .8; text-shadow: 0 1px 4px rgba(0,0,0,.6); max-width: 48vw; line-height: 1.5; }
-    #time, #highscore {
-      font-size: 14px; font-weight: 600; text-shadow: 0 1px 4px rgba(0,0,0,.6);
-      font-variant-numeric: tabular-nums; margin-top: 4px;
-    }
-    #highscore { color: #ffd27a; }
+    #speed { font-size: 1.9rem; padding: 6px 16px 4px; line-height: 1.1; }
+    #speed.ch-stat small { display: inline; font-size: 0.75rem; margin-left: 2px; }
+    #side { flex-direction: column; align-items: flex-end; gap: 4px; padding: 8px 14px; max-width: min(52vw, 460px); }
+    #hint { font-size: 11.5px; line-height: 1.5; color: var(--ch-night-soft); text-align: right; }
+    #time { font-family: var(--ch-font-display); font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ch-night); }
+    #highscore { font-family: var(--ch-font-display); font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ch-sun-dark); }
 
+    /* ---------- Quest-Anzeige (Karte mit Fortschrittsbalken) ---------- */
     #quest {
-      position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 5;
+      position: fixed; top: 96px; left: 50%; transform: translateX(-50%); z-index: 5;
       display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+      width: min(320px, 86vw);
     }
     .quest {
-      background: rgba(10,14,18,.75); border: 1px solid rgba(255,255,255,.14);
-      border-radius: 12px; padding: 8px 14px 10px; color: #fff; text-align: center;
-      min-width: 250px;
+      background: var(--ch-paper);
+      border: 2px solid var(--ch-night);
+      border-radius: var(--ch-radius-md);
+      box-shadow: var(--ch-shadow-soft);
+      padding: 8px 14px 10px; text-align: center;
     }
-    .quest .q-title { font-size: 14px; font-weight: 700; color: #ffb347; }
-    .quest .q-desc { font-size: 11px; opacity: .85; margin-top: 2px; line-height: 1.4; }
-    .quest .q-bar { margin-top: 6px; height: 7px; border-radius: 4px; background: rgba(255,255,255,.15); overflow: hidden; }
-    .quest .q-fill { height: 100%; width: 0; background: #ffb347; border-radius: 4px; transition: width .25s; }
-    .quest .q-text { font-size: 11px; margin-top: 4px; font-variant-numeric: tabular-nums; opacity: .9; }
-    .quest.done { border-color: rgba(90,220,120,.55); }
-    .quest.done .q-title { color: #5adc78; }
-    .quest.done .q-fill { background: #5adc78; }
+    .quest .q-title { font-family: var(--ch-font-display); font-weight: 700; font-size: 15px; color: var(--ch-campfire-dark); }
+    .quest .q-desc { font-size: 11.5px; color: var(--ch-night-soft); margin-top: 2px; line-height: 1.4; }
+    .quest .q-bar { margin-top: 6px; height: 12px; border-radius: var(--ch-radius-pill); background: var(--ch-sun-soft); border: 2px solid var(--ch-night); overflow: hidden; }
+    .quest .q-fill { height: 100%; width: 0; border-radius: var(--ch-radius-pill);
+      background: repeating-linear-gradient(45deg, var(--ch-sun) 0 8px, var(--ch-sun-dark) 8px 16px);
+      transition: width .25s; }
+    .quest .q-text { font-size: 11px; margin-top: 4px; font-variant-numeric: tabular-nums; color: var(--ch-night-soft); }
+    .quest.done { background: var(--ch-forest-soft); }
+    .quest.done .q-title { color: var(--ch-forest-dark); }
+    .quest.done .q-fill { background: repeating-linear-gradient(45deg, var(--ch-forest) 0 8px, var(--ch-forest-dark) 8px 16px); }
 
+    /* ---------- Toast (Hans' handgeschriebener Merkzettel) ---------- */
     #toast {
-      position: fixed; top: 32%; left: 50%; transform: translate(-50%,-50%) scale(.92); z-index: 8;
-      background: rgba(18,32,20,.88); border: 1px solid rgba(90,220,120,.6); color: #d9ffe3;
-      padding: 14px 26px; border-radius: 14px; font-size: 18px; font-weight: 700;
-      opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; text-align: center;
+      position: fixed; top: 32%; left: 50%; transform: translate(-50%,-50%) scale(.92) rotate(-1deg); z-index: 8;
+      background: var(--ch-night); color: var(--ch-sun-soft);
+      border: 2px solid var(--ch-night); border-radius: var(--ch-radius-md);
+      box-shadow: var(--ch-shadow-pop);
+      padding: 12px 26px; font-family: var(--ch-font-hand); font-size: 1.5rem; line-height: 1.2;
+      opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; text-align: center; max-width: 88vw;
     }
-    #toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    #toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1) rotate(-1deg); }
+
     body:not(.touch) .touch-only { display: none; }
     body.touch .kbd-only { display: none; }
 
+    /* ---------- Hauptmenü (Creme-Papier, Sticker-Karten) ---------- */
     #menu {
       position: fixed; inset: 0; z-index: 30; overflow-y: auto;
-      background: rgba(10,14,18,.93); color: #fff;
-      display: flex; flex-direction: column; align-items: center; gap: 14px;
-      padding: 42px 16px;
+      background: var(--ch-cream);
+      display: flex; flex-direction: column; align-items: center; gap: var(--ch-space-sm);
+      padding: 36px 16px 48px;
     }
     #menu.hidden, #success.hidden, #failed.hidden { display: none; }
-    #menu h1 { margin: 0; font-size: 34px; color: #ffb347; text-shadow: 0 2px 8px rgba(0,0,0,.6); }
-    .menu-sub { margin: 0; opacity: .8; font-size: 14px; }
 
-    #menu-vehicles { display: flex; gap: 10px; width: min(430px, 92vw); }
+    .menu-top { display: flex; align-items: center; gap: var(--ch-space-sm); }
+    .menu-emblem {
+      height: 72px; width: auto; border-radius: var(--ch-radius-pill);
+      border: 3px solid var(--ch-night); box-shadow: var(--ch-shadow-soft); background: var(--ch-paper);
+    }
+    .menu-hans { height: 120px; }
+    #menu h1 { margin: 0; }
+    .menu-title em { color: var(--ch-campfire-dark); }
+    .menu-sub { margin: 0; color: var(--ch-night-soft); font-size: 15px; text-align: center; }
+
+    #menu-vehicles { display: flex; gap: 10px; width: min(460px, 92vw); margin-top: var(--ch-space-3xs); }
     .veh-btn {
-      flex: 1; padding: 10px 10px 8px; border-radius: 10px; cursor: pointer;
-      border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.06);
-      color: #fff; font: 600 13px system-ui, sans-serif; line-height: 1.35; text-align: center;
+      flex: 1; padding: 10px 10px 12px; cursor: pointer;
+      font-family: var(--ch-font-display); font-weight: 700; font-size: 14px; line-height: 1.3;
+      color: var(--ch-night); text-align: left;
+      background: var(--ch-paper);
+      border: 2px solid var(--ch-night); border-radius: var(--ch-radius-md);
+      box-shadow: var(--ch-shadow-pop);
+      transition: transform var(--ch-fast) var(--ch-spring), background-color var(--ch-fast) ease;
     }
-    .veh-btn:hover { background: rgba(255,255,255,.12); }
-    .veh-btn.active { border-color: rgba(255,179,71,.85); background: rgba(255,179,71,.18); color: #ffd9a0; }
-    .veh-btn small { display: block; font-weight: 400; font-size: 11px; opacity: .75; margin-top: 3px; }
+    .veh-btn:hover { transform: translateY(2px); box-shadow: 0 4px 0 rgba(34,51,59,0.9); }
+    .veh-btn.active { background: var(--ch-sun-soft); border-color: var(--ch-sun-dark); }
+    .veh-btn small { display: block; font-family: var(--ch-font-body); font-weight: 400; font-size: 11px; color: var(--ch-night-soft); margin-top: 4px; line-height: 1.4; }
 
-    #menu-quests { display: flex; flex-direction: column; gap: 12px; width: min(430px, 92vw); }
+    #menu-quests { display: flex; flex-direction: column; gap: 12px; width: min(460px, 92vw); margin-top: var(--ch-space-3xs); }
     .menu-quest {
-      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.15);
-      border-radius: 12px; padding: 12px 16px;
+      background: var(--ch-paper);
+      border: 2px solid var(--ch-night); border-radius: var(--ch-radius-lg);
+      box-shadow: var(--ch-shadow-soft);
+      padding: 14px 16px;
     }
-    .menu-quest.done { border-color: rgba(90,220,120,.55); background: rgba(90,220,120,.07); }
+    .menu-quest.done { background: var(--ch-forest-soft); }
     .mq-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-    .mq-title { font-weight: 700; color: #ffb347; font-size: 15px; }
-    .menu-quest.done .mq-title { color: #5adc78; }
-    .mq-badge { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: rgba(255,255,255,.12); white-space: nowrap; }
-    .menu-quest.done .mq-badge { background: rgba(90,220,120,.22); color: #5adc78; }
-    .mq-desc { font-size: 12px; opacity: .85; margin-top: 4px; line-height: 1.45; }
-    .mq-start {
-      margin-top: 10px; width: 100%; padding: 9px; border-radius: 9px; cursor: pointer;
-      border: 1px solid rgba(255,179,71,.7); background: rgba(255,179,71,.16);
-      color: #ffd9a0; font: 600 13px system-ui, sans-serif;
-    }
-    .mq-start:hover { background: rgba(255,179,71,.32); }
-    #menu-highscore { color: #ffd27a; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .menu-hint { font-size: 11px; opacity: .55; }
+    .mq-title { font-family: var(--ch-font-display); font-weight: 700; font-size: 16px; color: var(--ch-night); }
+    .mq-desc { font-size: 12.5px; color: var(--ch-night-soft); margin-top: 4px; line-height: 1.45; }
+    .mq-start { margin-top: 12px; width: 100%; }
 
-    #success {
-      position: fixed; inset: 0; z-index: 25;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(8,14,10,.72); padding: 16px;
+    #menu-highscore {
+      font-family: var(--ch-font-display); font-weight: 700; font-size: 15px;
+      color: var(--ch-wood-dark); font-variant-numeric: tabular-nums;
     }
-    #success .box {
-      background: rgba(18,32,20,.96); border: 1px solid rgba(90,220,120,.6); color: #d9ffe3;
-      padding: 28px 36px; border-radius: 16px; text-align: center; max-width: 92vw;
-    }
-    #success h2 { margin: 0 0 12px; color: #5adc78; font-size: 24px; }
-    #success-time, #success-highscore { font-size: 14px; margin: 4px 0; font-variant-numeric: tabular-nums; }
-    #btn-to-menu {
-      margin-top: 18px; padding: 10px 24px; border-radius: 10px; cursor: pointer;
-      border: 1px solid rgba(90,220,120,.7); background: rgba(90,220,120,.15);
-      color: #d9ffe3; font: 600 14px system-ui, sans-serif;
-    }
-    #btn-to-menu:hover { background: rgba(90,220,120,.3); }
+    .menu-hint { font-family: var(--ch-font-hand); font-size: 1.25rem; color: var(--ch-campfire-dark); opacity: .9; text-align: center; max-width: min(460px, 92vw); }
 
-    #failed {
+    /* ---------- Erfolg / Scheitern (Sticker-Karten auf Nacht-Vorhang) ---------- */
+    #success, #failed {
       position: fixed; inset: 0; z-index: 26;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(18,8,8,.72); padding: 16px;
+      background: rgba(34, 51, 59, 0.55); padding: 16px;
     }
-    #failed .box {
-      background: rgba(34,16,16,.96); border: 1px solid rgba(220,90,90,.6); color: #ffd9d9;
-      padding: 28px 36px; border-radius: 16px; text-align: center; max-width: 92vw;
+    #success { z-index: 25; }
+    #success .box, #failed .box {
+      border: 3px solid var(--ch-night); border-radius: var(--ch-radius-lg);
+      box-shadow: var(--ch-shadow-sticker);
+      padding: 26px 34px; text-align: center; max-width: 92vw;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
     }
-    #failed h2 { margin: 0 0 10px; color: #ff7a7a; font-size: 24px; }
-    #fail-reason { font-size: 14px; line-height: 1.5; }
-    .fail-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
-    .fail-actions button { padding: 10px 20px; border-radius: 10px; cursor: pointer; font: 600 14px system-ui, sans-serif; }
-    #btn-retry { border: 1px solid rgba(255,179,71,.7); background: rgba(255,179,71,.16); color: #ffd9a0; }
-    #btn-retry:hover { background: rgba(255,179,71,.32); }
-    #btn-fail-menu { border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.08); color: #eee; }
-    #btn-fail-menu:hover { background: rgba(255,255,255,.16); }
+    #success .box { background: var(--ch-forest-soft); animation: ch-bounce var(--ch-slow) var(--ch-spring); }
+    #failed .box { background: var(--ch-fire-soft); animation: ch-shake var(--ch-slow) ease; }
+    #success h2, #failed h2 { margin: 0 0 6px; font-size: 24px; }
+    #success h2 { color: var(--ch-forest-dark); }
+    #failed h2 { color: var(--ch-campfire-dark); }
+    .result-hans { height: 96px; }
+    #success-time, #success-highscore { font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ch-night); }
+    #success-highscore { font-weight: 700; color: var(--ch-wood-dark); }
+    #fail-reason { font-size: 14.5px; line-height: 1.5; color: var(--ch-night); }
+    .fail-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
 
+    /* ---------- Ladebildschirm ---------- */
     #loading {
-      position: fixed; inset: 0; z-index: 50; background: #0e1116; color: #dfe6ee;
-      display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center;
+      position: fixed; inset: 0; z-index: 50;
+      background: var(--ch-cream); color: var(--ch-night);
+      display: flex; flex-direction: column; gap: var(--ch-space-md); align-items: center; justify-content: center;
       transition: opacity .4s;
     }
     #loading.done { opacity: 0; pointer-events: none; }
-    .spinner { width: 42px; height: 42px; border: 4px solid rgba(255,255,255,.15); border-top-color: #ffb347; border-radius: 50%; animation: spin 1s linear infinite; }
+    #loading .menu-emblem { animation: ch-float 3s ease-in-out infinite; }
+    .spinner { width: 42px; height: 42px; border: 4px solid var(--ch-forest-soft); border-top-color: var(--ch-campfire); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    #loadtext { font-family: var(--ch-font-display); font-weight: 600; font-size: 18px; color: var(--ch-night-soft); }
 
+    /* ---------- Touch-Steuerung (dicke Sticker-Buttons) ---------- */
     #touch { display: none; }
     body.touch #touch { display: block; }
     .cluster { position: fixed; bottom: max(18px, env(safe-area-inset-bottom)); display: flex; gap: 14px; z-index: 6; }
@@ -148,23 +172,24 @@
     .cluster.right { right: 18px; flex-direction: column; }
     .cluster button {
       width: 70px; height: 70px; border-radius: 50%;
-      border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.18);
-      color: #fff; font: 600 12px system-ui, sans-serif; letter-spacing: .04em;
+      border: 3px solid var(--ch-night); background: var(--ch-paper); color: var(--ch-night);
+      font-family: var(--ch-font-display); font-weight: 700; font-size: 12px; letter-spacing: .04em;
+      box-shadow: var(--ch-shadow-pop);
       touch-action: none; user-select: none; -webkit-user-select: none;
     }
-    .cluster.right button { width: 78px; height: 58px; border-radius: 16px; }
-    .cluster button.active { background: rgba(255,179,71,.45); border-color: rgba(255,179,71,.85); }
+    .cluster.right button { width: 82px; height: 58px; border-radius: var(--ch-radius-md); }
+    .cluster button.active { background: var(--ch-sun); border-color: var(--ch-sun-dark); transform: translateY(4px); box-shadow: 0 2px 0 rgba(34,51,59,0.9); }
   </style>
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }
   </script>
 </head>
-<body>
+<body class="ch-body">
   <div id="app"></div>
 
   <div id="hud">
-    <div id="speed">0 <small>km/h</small></div>
-    <div id="side">
+    <div id="speed" class="ch-hud ch-stat">0 <small>km/h</small></div>
+    <div id="side" class="ch-hud">
       <div id="hint">
         <span class="kbd-only">Pfeiltasten / WASD fahren &middot; im Kreisverkehr: LINKS/RECHTS = Spurwechsel &middot; H = Hupe &middot; R = zur&uuml;cksetzen &middot; ESC = Men&uuml;</span>
         <span class="touch-only">Buttons unten zum Fahren &middot; im Kreisverkehr wechseln LINKS/RECHTS die Spur</span>
@@ -178,38 +203,45 @@
   <div id="toast"></div>
 
   <div id="menu">
-    <h1>Camper Hans</h1>
-    <p class="menu-sub">W&auml;hle Fahrzeug und Quest:</p>
+    <div class="menu-top">
+      <img class="ch-hans ch-float menu-hans" src="images/character/hans-standing.png" alt="Hans steht bereit">
+      <img class="menu-emblem" src="images/logos/logo-hans-emblem.png" alt="Camper Hans Logo">
+    </div>
+    <h1 class="ch-h1 menu-title">Camper <em>Hans</em></h1>
+    <p class="menu-sub">Zelt auf, L&auml;cheln an! W&auml;hle Fahrzeug und Quest – dann hei&szlig;t es: Kaffee ans Lagerfeuer, wir fahren los!</p>
     <div id="menu-vehicles">
       <button class="veh-btn" data-veh="campervan">Campervan<small>hoher Schwerpunkt &ndash; kippt bei Volllenkung &uuml;ber ~70 km/h</small></button>
       <button class="veh-btn" data-veh="gespann">Gr&uuml;nes Auto mit Wohnwagen<small>der Wohnwagen schlingert &uuml;ber ~70 km/h und kann abrei&szlig;en</small></button>
     </div>
     <div id="menu-quests"></div>
     <div id="menu-highscore">Highscore: –</div>
-    <div class="menu-hint">ESC = Quest abbrechen &middot; H = Hupe &middot; Kippen oder abgerissener Wohnwagen = Quest gescheitert</div>
+    <div class="menu-hint">ESC = Quest abbrechen &middot; H = Hupe &middot; Kippen oder abgerissener Wohnwagen = Quest gescheitert &mdash; Hans</div>
   </div>
 
   <div id="success" class="hidden">
     <div class="box">
-      <h2>Glückwunsch, du hast es geschafft!</h2>
+      <img class="ch-portrait result-hans" src="images/logos/logo-hans-portrait.png" alt="Camper Hans">
+      <h2 class="ch-h2">Geschafft, du hast es geparkt!</h2>
       <div id="success-time"></div>
       <div id="success-highscore"></div>
-      <button id="btn-to-menu">Zurück zum Hauptmenü</button>
+      <button id="btn-to-menu" class="ch-btn ch-btn-primary ch-mt-sm">Zurück zum Hauptmenü</button>
     </div>
   </div>
 
   <div id="failed" class="hidden">
     <div class="box">
-      <h2>Quest gescheitert!</h2>
+      <img class="ch-hans ch-hans-flip result-hans" src="images/character/hans-standing.png" alt="Hans hobelt am Camper">
+      <h2 class="ch-h2">Quest gescheitert!</h2>
       <div id="fail-reason"></div>
       <div class="fail-actions">
-        <button id="btn-retry">Neu starten</button>
-        <button id="btn-fail-menu">Hauptmenü</button>
+        <button id="btn-retry" class="ch-btn ch-btn-fire">Neu starten</button>
+        <button id="btn-fail-menu" class="ch-btn ch-btn-ghost">Hauptmenü</button>
       </div>
     </div>
   </div>
 
   <div id="loading">
+    <img class="menu-emblem" src="images/logos/logo-hans-emblem.png" alt="Camper Hans Logo">
     <div class="spinner"></div>
     <div id="loadtext">Lade Campervan …</div>
   </div>

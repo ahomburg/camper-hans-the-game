@@ -4,7 +4,8 @@ WORKDIR /app
 
 # Stabile Assets zuerst, damit Code-Aenderungen die Asset-Layer im Build-Cache lassen
 COPY assets/ ./assets/
-COPY *.mp3 ./
+COPY css/ ./css/
+COPY images/ ./images/
 COPY vendor/ ./vendor/
 COPY src/ ./src/
 COPY index.html serve.mjs ./

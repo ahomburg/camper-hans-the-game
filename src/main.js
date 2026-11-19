@@ -195,9 +195,9 @@ function renderMenu() {
   menuQuestsEl.innerHTML = quests.quests.map((q) => {
     const done = isDone(q.id);
     return `<div class="menu-quest${done ? ' done' : ''}">
-      <div class="mq-head"><span class="mq-title">${q.title}</span><span class="mq-badge">${done ? 'Erledigt' : 'Offen'}</span></div>
+      <div class="mq-head"><span class="mq-title">${q.title}</span><span class="ch-badge${done ? ' ch-badge-forest' : ' ch-badge-sun'}">${done ? 'Erledigt' : 'Offen'}</span></div>
       <div class="mq-desc">${q.desc}</div>
-      <button class="mq-start" data-id="${q.id}">${done ? 'Erneut starten' : 'Starten'}</button>
+      <button class="ch-btn ch-btn-primary mq-start" data-id="${q.id}">${done ? 'Erneut starten' : 'Starten'}</button>
     </div>`;
   }).join('');
   menuQuestsEl.querySelectorAll('button[data-id]').forEach((b) => {

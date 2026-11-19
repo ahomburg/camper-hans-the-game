@@ -1,0 +1,559 @@
+/* ============================================================
+   CAMPER HANS – Corporate Identity Stylesheet
+   Version 1.3.0
+   Kopiere diese Datei in dein Projekt und nutze die ch-Klassen.
+   Source of Truth für Werte: tokens/camper-hans.tokens.json
+   ============================================================ */
+
+/* ---------- Google Fonts (einmal pro Seite einbinden) ---------- */
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Nunito:wght@400;600;700&family=Caveat:wght@500;600;700&display=swap');
+
+/* ---------- Design-Tokens ---------- */
+:root {
+  /* Farben */
+  --ch-cream:        #FFF6E3;
+  --ch-paper:        #FFFDF5;
+  --ch-night:        #22333B;
+  --ch-night-soft:   #4E5D66;
+
+  --ch-forest:       #4E9F3D;
+  --ch-forest-dark:  #37762B;
+  --ch-forest-soft:  #E4F2DC;
+
+  --ch-sky:          #6FC3E8;
+  --ch-lake:         #2F7FA6;
+  --ch-sky-soft:     #E1F3FB;
+
+  --ch-sun:          #FFCB3C;
+  --ch-sun-dark:     #F0AE1F;
+  --ch-sun-soft:     #FFF3CE;
+
+  --ch-campfire:     #E8623C;
+  --ch-campfire-dark:#C6451F;
+  --ch-fire-soft:    #FCE3D9;
+
+  --ch-wood:         #8B5A2B;
+  --ch-wood-dark:    #6E431F;
+  --ch-wood-soft:    #F3E6D7;
+
+  --ch-berry:        #B14E8D;
+  --ch-berry-soft:   #F9E1F1;
+
+  /* Schriften */
+  --ch-font-display: 'Lora', serif;
+  --ch-font-body:    'Nunito', sans-serif;
+  --ch-font-hand:    'Caveat', cursive;
+
+  /* Größen */
+  --ch-radius-sm: 8px;
+  --ch-radius-md: 14px;
+  --ch-radius-lg: 20px;
+  --ch-radius-xl: 28px;
+  --ch-radius-pill: 999px;
+
+  --ch-space-3xs: 4px;
+  --ch-space-2xs: 8px;
+  --ch-space-xs:  12px;
+  --ch-space-sm:  16px;
+  --ch-space-md:  24px;
+  --ch-space-lg:  32px;
+  --ch-space-xl:  48px;
+  --ch-space-2xl: 64px;
+  --ch-space-3xl: 96px;
+
+  /* Schatten */
+  --ch-shadow-soft:   0 4px 14px rgba(34, 51, 59, 0.12);
+  --ch-shadow-pop:    0 6px 0 rgba(34, 51, 59, 0.9);
+  --ch-shadow-sticker: 0 8px 0 rgba(34, 51, 59, 0.85);
+
+  /* Bewegung */
+  --ch-fast:   120ms;
+  --ch-normal: 200ms;
+  --ch-slow:   300ms;
+  --ch-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ---------- Basis ---------- */
+* { box-sizing: border-box; }
+
+.ch-body, body.ch-body {
+  margin: 0;
+  background-color: var(--ch-cream);
+  color: var(--ch-night);
+  font-family: var(--ch-font-body);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.ch-container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--ch-space-sm);
+}
+
+/* Überschriften: rund, verspielt, immer Display-Font */
+h1.ch-h1, h2.ch-h2, h3.ch-h3,
+.ch-h1, .ch-h2, .ch-h3 {
+  font-family: var(--ch-font-display);
+  line-height: 1.15;
+  margin: 0 0 var(--ch-space-xs);
+  color: var(--ch-night);
+}
+
+.ch-h1 { font-size: clamp(2rem, 5vw, 3.25rem); font-weight: 700; }
+.ch-h2 { font-size: clamp(1.5rem, 3.5vw, 2rem);   font-weight: 700; }
+.ch-h3 { font-size: clamp(1.125rem, 2.5vw, 1.5rem); font-weight: 700; }
+
+.ch-h1 em, .ch-h2 em, .ch-title em {
+  font-style: normal;
+  color: var(--ch-forest-dark);
+}
+
+.ch-hand {
+  font-family: var(--ch-font-hand);
+  font-size: 1.35em;
+  color: var(--ch-campfire-dark);
+}
+
+.ch-lead { font-size: 1.125rem; color: var(--ch-night-soft); }
+
+.ch-hr {
+  border: none;
+  border-top: 3px dashed var(--ch-wood);
+  margin: var(--ch-space-md) 0;
+}
+
+.ch-link {
+  color: var(--ch-lake);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+.ch-link:hover { color: var(--ch-campfire-dark); }
+
+/* ---------- Buttons (Sticker-Stil mit Pop-Schatten) ---------- */
+.ch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ch-space-2xs);
+  font-family: var(--ch-font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  padding: var(--ch-space-2xs) var(--ch-space-md);
+  min-height: 48px;
+  border: 2px solid var(--ch-night);
+  border-radius: var(--ch-radius-md);
+  background: var(--ch-paper);
+  color: var(--ch-night);
+  cursor: pointer;
+  box-shadow: var(--ch-shadow-pop);
+  transition: transform var(--ch-fast) var(--ch-spring),
+              box-shadow var(--ch-fast) var(--ch-spring),
+              background-color var(--ch-fast) ease;
+  text-decoration: none;
+  user-select: none;
+}
+.ch-btn:hover { transform: translateY(2px); box-shadow: 0 4px 0 rgba(34, 51, 59, 0.9); }
+.ch-btn:active { transform: translateY(6px); box-shadow: 0 0 0 rgba(34, 51, 59, 0.9); }
+.ch-btn:focus-visible { outline: 3px solid var(--ch-sun); outline-offset: 2px; }
+.ch-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: var(--ch-shadow-pop); }
+
+.ch-btn-primary { background: var(--ch-forest); color: #fff; }
+.ch-btn-primary:hover { background: var(--ch-forest-dark); }
+
+.ch-btn-sun { background: var(--ch-sun); color: var(--ch-night); }
+.ch-btn-sun:hover { background: var(--ch-sun-dark); }
+
+.ch-btn-sky { background: var(--ch-sky); color: var(--ch-night); }
+.ch-btn-sky:hover { background: var(--ch-lake); color: #fff; }
+
+.ch-btn-fire { background: var(--ch-campfire); color: #fff; }
+.ch-btn-fire:hover { background: var(--ch-campfire-dark); }
+
+.ch-btn-berry { background: var(--ch-berry); color: #fff; }
+.ch-btn-berry:hover { background: #8E3B70; }
+
+.ch-btn-ghost {
+  background: transparent;
+  box-shadow: none;
+  border-color: var(--ch-night-soft);
+  border-style: dashed;
+}
+.ch-btn-ghost:hover { box-shadow: none; background: var(--ch-sun-soft); }
+
+.ch-btn-sm { min-height: 38px; font-size: 0.9rem; padding: 6px var(--ch-space-sm); }
+.ch-btn-lg { min-height: 60px; font-size: 1.3rem; padding: var(--ch-space-xs) var(--ch-space-lg); }
+
+/* ---------- Cards (Lagerplatz für Inhalte) ---------- */
+.ch-card {
+  background: var(--ch-paper);
+  border: 2px solid var(--ch-night);
+  border-radius: var(--ch-radius-lg);
+  box-shadow: var(--ch-shadow-soft);
+  padding: var(--ch-space-md);
+  margin-bottom: var(--ch-space-sm);
+}
+.ch-card-tight { padding: var(--ch-space-sm); }
+
+.ch-card > h3, .ch-card > .ch-h3 { margin-top: 0; }
+
+.ch-card-sun    { background: var(--ch-sun-soft); }
+.ch-card-sky    { background: var(--ch-sky-soft); }
+.ch-card-forest { background: var(--ch-forest-soft); }
+.ch-card-fire   { background: var(--ch-fire-soft); }
+.ch-card-wood   { background: var(--ch-wood-soft); }
+.ch-card-berry  { background: var(--ch-berry-soft); }
+
+.ch-grid { display: grid; gap: var(--ch-space-sm); }
+.ch-grid-2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.ch-grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.ch-grid-4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+
+/* ---------- Badges & Tags (Sticker-Stil) ---------- */
+.ch-badge {
+  display: inline-block;
+  font-family: var(--ch-font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 2px var(--ch-space-xs);
+  border: 2px solid var(--ch-night);
+  border-radius: var(--ch-radius-pill);
+  background: var(--ch-sun);
+  color: var(--ch-night);
+  transform: rotate(-2deg);
+}
+.ch-badge-forest { background: var(--ch-forest); color: #fff; }
+.ch-badge-sun    { background: var(--ch-sun); }
+.ch-badge-sky    { background: var(--ch-sky); }
+.ch-badge-fire   { background: var(--ch-campfire); color: #fff; }
+.ch-badge-wood   { background: var(--ch-wood); color: #fff; }
+.ch-badge-berry  { background: var(--ch-berry); color: #fff; }
+
+.ch-tag {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: var(--ch-radius-sm);
+  background: var(--ch-forest-soft);
+  color: var(--ch-forest-dark);
+  border: 1px solid currentColor;
+}
+.ch-tag i { font-style: normal; margin-right: 4px; }
+
+/* ---------- Sticker (Bilder/Gadget mit Dickem Rand) ---------- */
+.ch-sticker {
+  display: inline-block;
+  border: 3px solid var(--ch-night);
+  border-radius: var(--ch-radius-md);
+  box-shadow: var(--ch-shadow-sticker);
+  background: var(--ch-paper);
+  padding: var(--ch-space-2xs);
+  transform: rotate(-1.5deg);
+}
+.ch-sticker img { display: block; border-radius: calc(var(--ch-radius-md) - 2px); }
+.ch-sticker-right { transform: rotate(1.5deg); }
+
+/* ---------- Alerts (Lagerfeuer-Durchsagen) ---------- */
+.ch-alert {
+  border: 2px solid var(--ch-night);
+  border-left-width: 10px;
+  border-radius: var(--ch-radius-md);
+  background: var(--ch-paper);
+  padding: var(--ch-space-sm) var(--ch-space-md);
+  margin-bottom: var(--ch-space-sm);
+  box-shadow: var(--ch-shadow-soft);
+}
+.ch-alert-title {
+  font-family: var(--ch-font-display);
+  font-weight: 700;
+  margin: 0 0 var(--ch-space-3xs);
+}
+.ch-alert-info    { background: var(--ch-sky-soft);    border-left-color: var(--ch-lake); }
+.ch-alert-success { background: var(--ch-forest-soft); border-left-color: var(--ch-forest-dark); }
+.ch-alert-warning { background: var(--ch-sun-soft);    border-left-color: var(--ch-sun-dark); }
+.ch-alert-error   { background: var(--ch-fire-soft);    border-left-color: var(--ch-campfire-dark); color: var(--ch-campfire-dark); }
+.ch-alert-error .ch-alert-title { color: var(--ch-campfire-dark); }
+
+/* ---------- Formulare ---------- */
+.ch-label {
+  display: block;
+  font-family: var(--ch-font-display);
+  font-weight: 600;
+  margin-bottom: var(--ch-space-3xs);
+}
+
+.ch-input, .ch-textarea, .ch-select {
+  font-family: var(--ch-font-body);
+  font-size: 1rem;
+  color: var(--ch-night);
+  background: var(--ch-paper);
+  border: 2px solid var(--ch-night);
+  border-radius: var(--ch-radius-md);
+  padding: var(--ch-space-2xs) var(--ch-space-xs);
+  min-height: 48px;
+  width: 100%;
+  transition: box-shadow var(--ch-fast) ease, transform var(--ch-fast) var(--ch-spring);
+}
+.ch-input:focus, .ch-textarea:focus, .ch-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--ch-sun-soft), 0 4px 0 var(--ch-sun);
+  transform: translateY(-2px);
+}
+
+.ch-textarea { min-height: 120px; resize: vertical; }
+
+.ch-help {
+  font-size: 0.85rem;
+  color: var(--ch-night-soft);
+  margin-top: var(--ch-space-3xs);
+}
+
+/* ---------- Header & Navigation (Wegweiser) ---------- */
+.ch-header {
+  background: var(--ch-paper);
+  border-bottom: 3px solid var(--ch-night);
+  box-shadow: var(--ch-shadow-soft);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.ch-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ch-space-sm);
+  padding: var(--ch-space-2xs) var(--ch-space-sm);
+  max-width: 1080px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+.ch-logo {
+  font-family: var(--ch-font-display);
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: var(--ch-night);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ch-space-2xs);
+}
+.ch-logo b { color: var(--ch-forest-dark); }
+
+/* Logo-Bilder (images/logos/): Emblem im Header, Porträt für Steckbrief-Ecken */
+.ch-logo img {
+  height: 36px;
+  width: auto;
+  border-radius: var(--ch-radius-pill);
+}
+.ch-logo-sm img { height: 28px; }
+.ch-logo-lg img { height: 56px; }
+
+.ch-portrait {
+  border: 3px solid var(--ch-night);
+  border-radius: var(--ch-radius-pill);
+  box-shadow: var(--ch-shadow-soft);
+  height: 64px;
+  width: 64px;
+  object-fit: cover;
+}
+.ch-portrait-lg { height: 120px; width: 120px; }
+.ch-portrait-sm { height: 40px; width: 40px; }
+
+/* ---------- Hans (Charakter-Figuren, images/character/) ---------- */
+.ch-hans {
+  display: inline-block;
+  height: 160px;
+  width: auto;
+  filter: drop-shadow(0 4px 6px rgba(34, 51, 59, 0.2));
+}
+.ch-hans-sm { height: 90px; }
+.ch-hans-lg { height: 240px; }
+
+/* Laufrichtung umkehren (nur Charakter, nie Logos) */
+.ch-hans-flip { transform: scaleX(-1); }
+
+/* Schritt-Animation: versetzt dem walk-Frame Leben (Wippen auf der Stelle) */
+@keyframes ch-walk {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-7px) rotate(-1.2deg); }
+  50% { transform: translateY(0) rotate(0deg); }
+  75% { transform: translateY(7px) rotate(1.2deg); }
+}
+.ch-hans-walk { animation: ch-walk 0.7s ease-in-out infinite; }
+
+.ch-nav { display: flex; gap: var(--ch-space-2xs); flex-wrap: wrap; }
+.ch-nav a {
+  font-family: var(--ch-font-display);
+  font-weight: 600;
+  color: var(--ch-night);
+  text-decoration: none;
+  padding: 6px var(--ch-space-xs);
+  border-radius: var(--ch-radius-pill);
+  border: 2px solid transparent;
+  transition: background-color var(--ch-fast) ease, border-color var(--ch-fast) ease;
+}
+.ch-nav a:hover { background: var(--ch-sun-soft); border-color: var(--ch-sun-dark); }
+.ch-nav a.ch-active { background: var(--ch-forest); color: #fff; }
+
+/* ---------- Hero (Startwiese) ---------- */
+.ch-hero {
+  background-image: url('../images/background-cover-mit-Hans2.png');
+  background-size: cover;
+  background-position: center;
+  border-bottom: 3px solid var(--ch-night);
+  padding: var(--ch-space-3xl) var(--ch-space-sm);
+  text-align: center;
+}
+.ch-hero-inner { max-width: 720px; margin: 0 auto; }
+.ch-hero h1 {
+  font-family: var(--ch-font-display);
+  font-size: clamp(2.25rem, 6vw, 4rem);
+  font-weight: 700;
+  margin: 0 0 var(--ch-space-2xs);
+  color: var(--ch-night);
+  text-shadow: 0 2px 0 rgba(255, 253, 245, 0.85);
+}
+
+/* ---------- Footer (Lagerfeuer-Stelle) ---------- */
+.ch-footer {
+  background: var(--ch-wood);
+  color: var(--ch-cream);
+  border-top: 3px solid var(--ch-night);
+  margin-top: var(--ch-space-xl);
+  padding: var(--ch-space-lg) var(--ch-space-sm) var(--ch-space-md);
+}
+.ch-footer a { color: var(--ch-sun); }
+.ch-footer-cols {
+  display: grid;
+  gap: var(--ch-space-md);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.ch-footer h4 {
+  font-family: var(--ch-font-display);
+  margin: 0 0 var(--ch-space-2xs);
+}
+.ch-footer-copy {
+  text-align: center;
+  font-family: var(--ch-font-hand);
+  font-size: 1.3rem;
+  margin-top: var(--ch-space-md);
+  opacity: 0.9;
+}
+
+/* ---------- Spiele-Elemente (Browsergames) ---------- */
+.ch-hud {
+  display: flex;
+  gap: var(--ch-space-xs);
+  align-items: center;
+  flex-wrap: wrap;
+  background: var(--ch-paper);
+  border: 3px solid var(--ch-night);
+  border-radius: var(--ch-radius-md);
+  padding: var(--ch-space-2xs) var(--ch-space-sm);
+  box-shadow: var(--ch-shadow-soft);
+}
+
+.ch-progress {
+  width: 100%;
+  height: 20px;
+  background: var(--ch-paper);
+  border: 2px solid var(--ch-night);
+  border-radius: var(--ch-radius-pill);
+  overflow: hidden;
+}
+.ch-progress-bar {
+  display: block;
+  height: 100%;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--ch-forest) 0 10px,
+    var(--ch-forest-dark) 10px 20px
+  );
+  border-radius: var(--ch-radius-pill);
+  transition: width var(--ch-slow) var(--ch-spring);
+}
+.ch-progress-bar.ch-fire   { background: repeating-linear-gradient(45deg, var(--ch-campfire) 0 10px, var(--ch-campfire-dark) 10px 20px); }
+.ch-progress-bar.ch-sun    { background: repeating-linear-gradient(45deg, var(--ch-sun) 0 10px, var(--ch-sun-dark) 10px 20px); }
+.ch-progress-bar.ch-berry  { background: repeating-linear-gradient(45deg, var(--ch-berry) 0 10px, #8E3B70 10px 20px); }
+
+.ch-tooltip-wrap { position: relative; display: inline-block; }
+.ch-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) rotate(-1deg);
+  background: var(--ch-night);
+  color: var(--ch-sun-soft);
+  font-family: var(--ch-font-hand);
+  font-size: 1.1rem;
+  padding: 2px 12px;
+  border-radius: var(--ch-radius-sm);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ch-fast) ease;
+  z-index: 20;
+}
+.ch-tooltip-wrap:hover .ch-tooltip,
+.ch-tooltip-wrap:focus-within .ch-tooltip { opacity: 1; }
+
+/* Score-Zähler etc. */
+.ch-stat {
+  font-family: var(--ch-font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ch-forest-dark);
+}
+.ch-stat small {
+  display: block;
+  font-family: var(--ch-font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ch-night-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Wackel-Animation für Fehler/Feedback im Spiel */
+@keyframes ch-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+.ch-shake { animation: ch-shake var(--ch-slow) ease; }
+
+/* Hüpf-Animation für Erfolge / Hover-Belohnung */
+@keyframes ch-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-10px) scale(1.05); }
+  60% { transform: translateY(-4px) scale(1.02); }
+}
+.ch-bounce { animation: ch-bounce var(--ch-slow) var(--ch-spring); }
+
+/* Leichte Schwebe-Animation für Sticker/Maskottchen */
+@keyframes ch-float {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
+}
+.ch-float { animation: ch-float 3s ease-in-out infinite; }
+
+/* ---------- Utilities ---------- */
+.ch-text-center { text-align: center; }
+.ch-text-muted   { color: var(--ch-night-soft); }
+.ch-mt-sm  { margin-top: var(--ch-space-sm); }
+.ch-mt-md  { margin-top: var(--ch-space-md); }
+.ch-mt-lg  { margin-top: var(--ch-space-lg); }
+.ch-mb-sm  { margin-bottom: var(--ch-space-sm); }
+.ch-mb-md  { margin-bottom: var(--ch-space-md); }
+
+/*---------- Reduced Motion: Animationen respektieren ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .ch-shake, .ch-bounce, .ch-float, .ch-hans-walk { animation: none; }
+  .ch-btn, .ch-input { transition: none; }
+}
