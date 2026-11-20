@@ -1,4 +1,4 @@
-// Tastatur (Pfeiltasten + WASD) und Touch-Buttons -> einheitlicher Input-State.
+// Tastatur (Pfeiltasten + WASD) -> einheitlicher Input-State.
 export class Controls {
   constructor() {
     this.state = { up: false, down: false, left: false, right: false };
@@ -29,33 +29,6 @@ export class Controls {
     });
     window.addEventListener('blur', () => this.reset());
 
-    this.bindButton('btn-up', 'up');
-    this.bindButton('btn-down', 'down');
-    this.bindButton('btn-left', 'left');
-    this.bindButton('btn-right', 'right');
-
-    if (window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window || navigator.maxTouchPoints > 0) {
-      document.body.classList.add('touch');
-    }
-  }
-
-  bindButton(id, key) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const set = (v) => (e) => {
-      e.preventDefault();
-      this.state[key] = v;
-      el.classList.toggle('active', v);
-    };
-    el.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      try { el.setPointerCapture(e.pointerId); } catch { /* ignorieren */ }
-      set(true)(e);
-    });
-    el.addEventListener('pointerup', set(false));
-    el.addEventListener('pointercancel', set(false));
-    el.addEventListener('lostpointercapture', set(false));
-    el.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
   reset() {

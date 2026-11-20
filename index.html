@@ -20,16 +20,42 @@
     #app canvas {
       box-sizing: border-box;
       border: 3px solid var(--ch-night);
-      border-radius: var(--ch-radius-lg);
+      border-radius: 0;
       box-shadow: var(--ch-shadow-soft);
     }
 
     /* ---------- HUD (oben, Sticker-Panels auf dem Papier) ---------- */
     #hud {
       position: fixed; top: 12px; left: 14px; right: 14px; z-index: 5;
-      display: flex; justify-content: space-between; align-items: flex-start;
+      display: flex; justify-content: flex-end; align-items: flex-start;
       gap: 12px; pointer-events: none;
     }
+    /* ---------- Dashboard unten Mitte: Tacho + Tankuhr + Radio wie in einem Auto ---------- */
+    #dashboard {
+      position: fixed; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%;
+      transform: translateX(-50%); z-index: 5;
+      display: flex; align-items: center; gap: 14px;
+      padding: 10px 16px;
+      background: linear-gradient(180deg, var(--ch-wood) 0%, var(--ch-wood-dark) 100%);
+      border: 3px solid var(--ch-night);
+      border-radius: var(--ch-radius-lg);
+      box-shadow: var(--ch-shadow-pop);
+      pointer-events: none;
+    }
+    /* Hupe auf dem Dashboard: grosser runder Sticker-Button */
+    .dash-horn {
+      pointer-events: auto;
+      flex: none; width: 64px; height: 64px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 27px; line-height: 1; cursor: pointer;
+      background: var(--ch-paper); color: var(--ch-night);
+      border: 3px solid var(--ch-night);
+      box-shadow: var(--ch-shadow-pop);
+      transition: transform var(--ch-fast) var(--ch-spring), box-shadow var(--ch-fast) ease, background-color var(--ch-fast) ease;
+    }
+    .dash-horn:hover { background: var(--ch-sun-soft); }
+    .dash-horn:active, .dash-horn.active { background: var(--ch-sun); transform: translateY(4px); box-shadow: 0 2px 0 rgba(34, 51, 59, 0.9); }
+    .dash-horn:focus-visible { outline: 3px solid var(--ch-sun); outline-offset: 2px; }
     #speedo {
       flex: none; width: 118px; height: 118px;
       background: var(--ch-paper);
@@ -43,7 +69,7 @@
     .speedo-unit { font-size: 8.5px; font-weight: 700; letter-spacing: .06em; fill: var(--ch-night-soft); }
     .speedo-tick { font-size: 8.5px; font-weight: 700; fill: var(--ch-night-soft); }
     /* ---------- Tankanzeige: kleine Schwester des Tacho-Stickers ---------- */
-    #hud-gauges { flex: none; display: flex; align-items: flex-start; gap: 10px; }
+    #hud-gauges { flex: none; display: flex; align-items: center; gap: 10px; }
     #tank-gauge {
       flex: none; width: 96px; height: 96px;
       background: var(--ch-paper);
@@ -67,6 +93,10 @@
     @media (max-width: 720px) {
       #tank-gauge { width: 72px; height: 72px; }
       #hud-gauges { gap: 6px; }
+      #speedo { width: 88px; height: 88px; }
+      #dashboard { gap: 10px; padding: 8px 10px; }
+      #radio { width: 178px; }
+      .dash-horn { width: 52px; height: 52px; font-size: 22px; }
     }
     #side { flex-direction: column; align-items: flex-end; gap: 2px; padding: 10px 16px; }
     #time, #highscore, #coins {
@@ -84,11 +114,10 @@
       box-sizing: border-box;
       border: 3px solid var(--ch-night);
       border-radius: 14px 14px var(--ch-radius-md) var(--ch-radius-md);
-      background: linear-gradient(180deg, var(--ch-wood) 0%, var(--ch-wood-dark) 100%);
+      background: linear-gradient(180deg, var(--ch-sky) 0%, var(--ch-lake) 100%);
       box-shadow: var(--ch-shadow-pop);
       padding: 8px 9px 9px;
       display: flex; flex-direction: column; gap: 7px;
-      margin-top: 6px;
       transition: box-shadow var(--ch-fast) ease;
     }
     #radio.on { box-shadow: var(--ch-shadow-pop), 0 0 0 3px rgba(255, 204, 92, 0.5); }
@@ -254,15 +283,17 @@
        proportioniert - so faehrt das Auto von ganz links bis ganz rechts,
        ohne verzerrt zu werden.
        Sandwich-Reihenfolge: Das Gespann faehrt VOR der Handschrift
-       "Camper Hans" (z 1 < 2), aber HINTER "the game" und dem Emblem
-       (z 3 > 2) - nur die grosse Marke wird ueberfahren. */
+       "Camper Hans" (z 1 < 2), aber HINTER "the game"/Emblem (z 3)
+       und der Fahrzeug-/Kassen-Zeile (z 4) - die wird nicht ueberfahren. */
     #menu-ride {
       position: fixed; left: 0; width: 100vw; height: 150px; top: calc(14% + 20px);
       z-index: 2; pointer-events: none;
       object-fit: contain; object-position: center;
     }
-    #menu > *:not(#menu-ride):not(.menu-emblem):not(.menu-title) { position: relative; z-index: 1; }
+    #menu > *:not(#menu-ride):not(.menu-emblem):not(.menu-title):not(#menu-garage-row) { position: relative; z-index: 1; }
     #menu > .menu-emblem, #menu > .menu-title { position: relative; z-index: 3; }
+    /* Fahrzeugkarte + Reisekasse ganz vorne: das Gespann faehrt dahinter durch */
+    #menu > #menu-garage-row { position: relative; z-index: 4; }
     /* Emblem dichter an die Marke ran (setzt den 16-px-Flex-Gap teilweise aus) */
     #menu > .menu-brand { margin-top: -12px; }
 
@@ -478,7 +509,7 @@
       font-family: var(--ch-font-display); font-weight: 700;
       font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase;
       background: var(--ch-sun); color: var(--ch-night);
-      border: 2px solid var(--ch-night); border-top: none;
+      border: none;
       border-radius: 0 0 5px 5px;
       box-shadow: 2px 2px 0 rgba(34, 51, 59, 0.35);
       transform: rotate(2.5deg);
@@ -486,9 +517,9 @@
     .book-ribbon::after { /* Kerbe im Bändchen unten */
       content: '';
       position: absolute;
-      left: -2px; right: -2px; bottom: -13px; height: 14px;
+      left: 0; right: 0; bottom: -13px; height: 14px;
       background: inherit;
-      border: 2px solid var(--ch-night); border-top: none;
+      border: none;
       clip-path: polygon(0 0, 100% 0, 50% 100%, 0 0);
     }
     .book-ribbon.done { background: var(--ch-forest); color: #fff; }
@@ -582,7 +613,13 @@
       font-size: clamp(1.6rem, 4vw, 2.1rem); line-height: 1.1;
       color: var(--ch-sun-dark); font-variant-numeric: tabular-nums;
     }
-    .coins-label { font-family: var(--ch-font-hand); font-size: 1.02rem; color: var(--ch-night-soft); }
+    .coins-label {
+      font-family: var(--ch-font-display); font-weight: 700;
+      /* Lora gibt es nur bis 700 - fetter geht per Kontur in eigener Farbe */
+      -webkit-text-stroke: 0.7px currentColor;
+      font-size: clamp(1.1rem, 3vw, 1.35rem); letter-spacing: .05em;
+      color: var(--ch-sun-dark);
+    }
     .menu-hint { font-family: var(--ch-font-hand); font-size: 1.25rem; color: var(--ch-campfire-dark); opacity: .9; text-align: center; max-width: min(460px, 92vw); }
 
     /* ---------- Erfolg / Scheitern (Sticker-Karten auf Nacht-Vorhang) ---------- */
@@ -651,29 +688,13 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     #loadtext { font-family: var(--ch-font-display); font-weight: 600; font-size: 18px; color: var(--ch-night-soft); }
 
-    /* ---------- Touch-Steuerung (dicke Sticker-Buttons) ---------- */
-    #touch { display: none; }
-    body.touch #touch { display: block; }
-    .cluster { position: fixed; bottom: max(18px, env(safe-area-inset-bottom)); display: flex; gap: 14px; z-index: 6; }
-    .cluster.left { left: 18px; }
-    .cluster.right { right: 18px; flex-direction: column; }
-    .cluster button {
-      width: 70px; height: 70px; border-radius: 50%;
-      border: 3px solid var(--ch-night); background: var(--ch-paper); color: var(--ch-night);
-      font-family: var(--ch-font-display); font-weight: 700; font-size: 12px; letter-spacing: .04em;
-      box-shadow: var(--ch-shadow-pop);
-      touch-action: none; user-select: none; -webkit-user-select: none;
-    }
-    .cluster.right button { width: 82px; height: 58px; border-radius: var(--ch-radius-md); }
-    .cluster button.active { background: var(--ch-sun); border-color: var(--ch-sun-dark); transform: translateY(4px); box-shadow: 0 2px 0 rgba(34,51,59,0.9); }
-
     /* ---------- Hupe & Ansicht (Sticker-Buttons mit Tasten-Tooltip) ---------- */
+    /* Ansicht-Button oben links (unter der Kapitel-Anzeige auf schmalen Screens) */
     #aux {
-      position: fixed; left: 18px; bottom: max(18px, env(safe-area-inset-bottom));
+      position: fixed; left: 14px; top: 12px;
       display: flex; gap: 10px; z-index: 6;
     }
-    /* Auf Touch-Geraeten ueber den Lenk-Buttons, damit sich nichts ueberlappt */
-    body.touch #aux { flex-direction: column; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 96px); }
+    @media (max-width: 720px) { #aux { top: 138px; } }
     .aux-btn {
       display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
       font-family: var(--ch-font-display); font-weight: 700; font-size: 13px; line-height: 1;
@@ -695,19 +716,16 @@
   <div id="app"></div>
 
   <div id="hud">
+    <div id="side" class="ch-hud">
+      <div id="time">Zeit: 0.0 s</div>
+      <div id="highscore">Highscore: –</div>
+      <div id="coins">🪙 <span id="coins-num">0</span></div>
+    </div>
+  </div>
+
+  <!-- Dashboard unten in der Mitte: Tacho, Tankuhr und Radio wie in einem Auto -->
+  <div id="dashboard">
     <div id="hud-gauges">
-      <div id="speedo" role="img" aria-label="Tacho">
-        <svg id="speedo-svg" viewBox="0 0 120 120" aria-hidden="true">
-          <g id="speedo-scale"></g>
-          <g id="speedo-needle" transform="rotate(-135 60 60)">
-            <polygon points="60,25 57,62 63,62" fill="var(--ch-campfire)" stroke="var(--ch-night)" stroke-width="1"></polygon>
-            <circle cx="60" cy="60" r="5" fill="var(--ch-night)"></circle>
-            <circle cx="60" cy="60" r="2" fill="var(--ch-cream)"></circle>
-          </g>
-          <text id="speedo-num" x="60" y="90" text-anchor="middle" class="speedo-num">0</text>
-          <text x="60" y="101" text-anchor="middle" class="speedo-unit">km/h</text>
-        </svg>
-      </div>
       <!-- Tankuhr: Zeiger von E (leer, links) nach V (voll, rechts), roter
            Reserve-Bogen fuers letzte Viertel, Leuchte + Blinken bei Reserve.
            aria-Update (valuenow/-text) uebernimmt renderFuelGauge in main.js. -->
@@ -737,13 +755,23 @@
           <text x="60" y="107" text-anchor="middle" class="speedo-unit">Tank</text>
         </svg>
       </div>
+      <div id="speedo" role="img" aria-label="Tacho">
+        <svg id="speedo-svg" viewBox="0 0 120 120" aria-hidden="true">
+          <g id="speedo-scale"></g>
+          <g id="speedo-needle" transform="rotate(-135 60 60)">
+            <polygon points="60,25 57,62 63,62" fill="var(--ch-campfire)" stroke="var(--ch-night)" stroke-width="1"></polygon>
+            <circle cx="60" cy="60" r="5" fill="var(--ch-night)"></circle>
+            <circle cx="60" cy="60" r="2" fill="var(--ch-cream)"></circle>
+          </g>
+          <text id="speedo-num" x="60" y="90" text-anchor="middle" class="speedo-num">0</text>
+          <text x="60" y="101" text-anchor="middle" class="speedo-unit">km/h</text>
+        </svg>
+      </div>
     </div>
-    <div id="side" class="ch-hud">
-      <div id="time">Zeit: 0.0 s</div>
-      <div id="highscore">Highscore: –</div>
-      <div id="coins">🪙 <span id="coins-num">0</span></div>
-      <!-- Autoradio-Blende: fester Breite, getrennte Schalter (Ein/Aus + Sender) -->
-      <div id="radio" role="group" aria-label="Autoradio">
+    <!-- Hupe: grosser runder Button zwischen Instrumenten und Radio -->
+    <button id="btn-horn" class="dash-horn" aria-label="Hupe (Taste H)" title="Taste H">📢</button>
+    <!-- Autoradio-Blende: feste Breite, getrennte Schalter (Ein/Aus + Sender) -->
+    <div id="radio" role="group" aria-label="Autoradio">
         <div class="radio-top">
           <span class="radio-knob" aria-hidden="true"></span>
           <span class="radio-display" id="radio-label">RADIO AUS</span>
@@ -758,7 +786,6 @@
           </div>
         </div>
       </div>
-    </div>
   </div>
 
   <div id="coin-pop"></div>
@@ -789,9 +816,9 @@
         </div>
       </button>
       <div id="menu-coins" class="coins-tile" aria-label="Reisekasse">
+        <span class="coins-label">Reisekasse</span>
         <span class="coins-coin" aria-hidden="true">🪙</span>
         <span id="menu-coins-num" class="coins-num">0</span>
-        <span class="coins-label">Reisekasse</span>
       </div>
     </div>
     <!-- Kapitelauswahl: aufgeschlagenes Buch, jedes Kapitel eine Doppelseite -->
@@ -882,23 +909,8 @@
     <div id="loadtext">Lade Campervan …</div>
   </div>
 
-  <div id="touch">
-    <div class="cluster left">
-      <button id="btn-left" aria-label="Links lenken">LINKS</button>
-      <button id="btn-right" aria-label="Rechts lenken">RECHTS</button>
-    </div>
-    <div class="cluster right">
-      <button id="btn-up" aria-label="Gas geben">GAS</button>
-      <button id="btn-down" aria-label="Bremsen / Rückwärts">BREMS</button>
-    </div>
-  </div>
-
   <!-- Hupe & Ansicht: auch klickbar, Tooltip nennt die Tastenkürzel -->
   <div id="aux">
-    <span class="ch-tooltip-wrap">
-      <button id="btn-horn" class="aux-btn" aria-label="Hupe (Taste H)">📢 Hupe</button>
-      <span class="ch-tooltip" role="tooltip">Taste H</span>
-    </span>
     <span class="ch-tooltip-wrap">
       <button id="btn-view" class="aux-btn" aria-label="Ansicht wechseln (Taste C)">📷 Ansicht</button>
       <span class="ch-tooltip" role="tooltip">Taste C</span>

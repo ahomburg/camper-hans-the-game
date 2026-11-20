@@ -934,10 +934,20 @@ controls.onCycleView = cycleView;
 // --- Hupe & Ansicht auch anklickbar (Tooltips nennen die Tastenkürzel) ---
 // pointerdown statt click: reagiert sofort und preventDefault haelt den
 // Fokus weg vom Button, damit Enter/Space danach nicht versehentlich hupen.
-document.getElementById('btn-horn').addEventListener('pointerdown', (e) => {
+const hornBtn = document.getElementById('btn-horn');
+hornBtn.addEventListener('pointerdown', (e) => {
   e.preventDefault();
+  hornBtn.classList.add('active');
   truckHonk(); // Hans' Hupe: immer voll auf 1
 });
+const hornRelease = () => hornBtn.classList.remove('active');
+hornBtn.addEventListener('pointerup', hornRelease);
+hornBtn.addEventListener('pointercancel', hornRelease);
+hornBtn.addEventListener('lostpointercapture', hornRelease);
+// H-Taste spiegelt den Button auf dem Dashboard: runter = gedrueckt, los = losgelassen
+window.addEventListener('keydown', (e) => { if (e.code === 'KeyH') hornBtn.classList.add('active'); });
+window.addEventListener('keyup', (e) => { if (e.code === 'KeyH') hornBtn.classList.remove('active'); });
+window.addEventListener('blur', hornRelease);
 document.getElementById('btn-view').addEventListener('pointerdown', (e) => {
   e.preventDefault();
   cycleView();
@@ -1256,13 +1266,17 @@ const INTRO_ANGLE = Math.atan2(5, 8); // Startwinkel vor der Front (seitlich)
 const INTRO_RADIUS = Math.hypot(8, 5); // ~9.43, passend zur Front-Ansicht
 const INTRO_HEIGHT = 2.6;
 const CHASE_RADIUS = 9;
-const CHASE_HEIGHT = 4.4;
+// Hoeher und Blick etwas staerker aufs Fahrzeug gerichtet, damit das
+// Dashboard unten das Auto nicht verdeckt.
+const CHASE_HEIGHT = 5.4;
+const CHASE_LOOK_FWD = 6;   // Blickziel vor dem Fahrzeug
+const CHASE_LOOK_Y = 1.1;   // Blickziel-Hoehe
 const introLook = new THREE.Vector3();
 function placeCameraBehindCar() {
   const fx = Math.sin(car.heading);
   const fz = Math.cos(car.heading);
-  camera.position.set(car.pos.x - fx * 9, 4.4, car.pos.z - fz * 9);
-  camera.lookAt(car.pos.x + fx * 7, 1.8, car.pos.z + fz * 7);
+  camera.position.set(car.pos.x - fx * CHASE_RADIUS, CHASE_HEIGHT, car.pos.z - fz * CHASE_RADIUS);
+  camera.lookAt(car.pos.x + fx * CHASE_LOOK_FWD, CHASE_LOOK_Y, car.pos.z + fz * CHASE_LOOK_FWD);
 }
 placeCameraBehindCar();
 
@@ -1426,8 +1440,8 @@ function animate() {
     lookTarget.set(car.pos.x - ox * 6, 2.2, car.pos.z - oz * 6); // Blick ueber den Van zum Arc
     camera.lookAt(lookTarget);
   } else {
-    desired.set(car.pos.x - fx * 9, 4.4, car.pos.z - fz * 9);
-    lookTarget.set(car.pos.x + fx * 7, 1.8, car.pos.z + fz * 7);
+    desired.set(car.pos.x - fx * CHASE_RADIUS, CHASE_HEIGHT, car.pos.z - fz * CHASE_RADIUS);
+    lookTarget.set(car.pos.x + fx * CHASE_LOOK_FWD, CHASE_LOOK_Y, car.pos.z + fz * CHASE_LOOK_FWD);
     if (introT < 1) {
       // Kamerafahrt nach dem Kapitel-Start: Kreisbogen um das Fahrzeug vom
       // Startwinkel (32 Grad vor der Front, Blick auf das Fahrzeug) bis
