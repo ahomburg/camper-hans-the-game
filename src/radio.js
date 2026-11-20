@@ -1,12 +1,12 @@
 // ---------------------------------------------------------------------------
-// Hans' Autoradio: Drei Sender (Roi du Camping, Camping-Hop, Schlager), per
-// Taste M oder Klick auf die Radio-Blende im HUD umzuschalten. Der Knopf
-// haelt sich im Zyklus
-//   aus -> Sender 1 -> Sender 2 -> Sender 3 -> aus
-// Kapitel 1 startetRadio mit "Le Roi du Camping" (siehe main.js: tune()),
-// die anderen Sender kommen per Knopfdruck danach. Der zuletzt gewaehlte
-// Sender bleibt ueber Sitzungen gespeichert (localStorage) - ob das Radio
-// an ist, bewusst nicht: Nach einem Reload soll es still sein.
+// Hans' Autoradio: Drei Sender (Roi du Camping, Camping-Hop, Schlager). Die
+// Blende im HUD (siehe index.html) hat getrennte Schalter:
+//   "⏻"  = ein/aus (auch Taste M), wechselt nie den Sender
+//   1..3 = Senderspeichertasten, waehlen den Sender (und schalten ein)
+// Kapitel 1 startet das Radio mit "Le Roi du Camping" (siehe main.js: tune()),
+// die anderen Sender kommen per Sendertaste. Der zuletzt gewaehlte Sender
+// bleibt ueber Sitzungen gespeichert (localStorage) - ob das Radio an ist,
+// bewusst nicht: Nach einem Reload soll es still sein.
 //
 // Die Musik pausiert ausserhalb des Spiels (Menue, Erfolg, Scheitern) und
 // laeuft beim naechsten Kapitel an derselben Stelle weiter (siehe
@@ -48,17 +48,22 @@ export class Radio {
 
   get station() { return this.on ? STATIONS[this.index] : null; }
 
-  // Knopfdruck: aus -> Sender 1 -> Sender 2 -> Sender 3 -> aus. Beim Einschalten
-  // laeuft der gespeicherte (bzw. per tune() gewaehlte) Sender los. Gibt die
-  // neue Einstellung zurueck (station | null, null = aus).
-  cycle() {
-    if (!this.on) {
-      this.on = true;
-    } else if (this.index >= STATIONS.length - 1) {
-      this.on = false;
-    } else {
-      this.index += 1;
-    }
+  // Ein-/Ausschalten ohne den Sender zu wechseln (Schalter "⏻" oder Taste M).
+  // Beim Einschalten laeuft der gespeicherte bzw. per tune() gewaehlte Sender.
+  powerToggle() {
+    this.on = !this.on;
+    this.apply();
+    if (this.onChange) this.onChange(this.station);
+    return this.station;
+  }
+
+  // Sendertaste: direkt auf diesen Sender drehen und Radio einschalten
+  // (auch wenn es aus war - wie die Senderspeichertasten im echten Autoradio).
+  select(key) {
+    const i = STATIONS.findIndex((s) => s.key === key);
+    if (i < 0) return null;
+    this.index = i;
+    this.on = true;
     this.persist();
     this.apply();
     if (this.onChange) this.onChange(this.station);
@@ -66,7 +71,7 @@ export class Radio {
   }
 
   // Direkt auf einen Sender drehen (ohne an/aus zu schalten): Kapitel 1
-  // startet z.B. mit "Le Roi du Camping" - cycle() laeuft danach normal weiter.
+  // startet z.B. mit "Le Roi du Camping" (main.js ruft tune vor powerToggle).
   tune(key) {
     const i = STATIONS.findIndex((s) => s.key === key);
     if (i < 0) return;

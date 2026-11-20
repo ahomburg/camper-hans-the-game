@@ -102,17 +102,29 @@ function playFile(url, volume, synthFallback) {
   }
 }
 
+// Ein-/Ausschalten der Verkehrshupen-Ducking: Laeuft das Autoradio, werden
+// die Hupen der Verkehrsautos (Ente, Mercedes, Kaefer) deutlich leiser
+// gezogen, damit Hans' Musik nicht uebertoent wird. main.js meldet den
+// Radiostatus (siehe renderRadio).
+let radioDucking = false;
+export function setRadioDucking(on) { radioDucking = !!on; }
+
 // variant = 0, 1 oder 2 -> car_mercedes.mp3 / car_kaefer.mp3 / car_ente.mp3
 export function carHonk(variant = 0) {
   const v = ((variant % HORN_FILES.length) + HORN_FILES.length) % HORN_FILES.length;
-  playFile(HORN_FILES[v], 0.7, () => synthHonk(CAR_HONKS[v]));
+  // Ducking: 0.7 auf 0.18 (deutlich leiser), Synth-Fallback im gleichen Zug
+  const vol = radioDucking ? 0.18 : 0.7;
+  playFile(HORN_FILES[v], vol, () =>
+    synthHonk({ ...CAR_HONKS[v], gain: CAR_HONKS[v].gain * (radioDucking ? 0.3 : 1) })
+  );
 }
 
 // LKW-Hupe des Campers (Taste H) -> campervan_horn.mp3.
-// volume < 0.9 = "Ducking": Laeuft das Autoradio, hupt Hans leiser (main.js).
-export function truckHonk(volume = 0.9) {
-  playFile(TRUCK_HORN_FILE, Math.min(1, Math.max(0, volume)), () =>
-    synthHonk({ freqs: [196, 233], dur: 0.7, gain: 0.22 * Math.min(1, Math.max(0.1, volume)), type: 'sawtooth', attack: 0.02, detune: 4 })
+// Hans' eigene Hupe darf immer voll aufdrehen (volume = 1).
+export function truckHonk(volume = 1) {
+  const vol = Math.min(1, Math.max(0, volume));
+  playFile(TRUCK_HORN_FILE, vol, () =>
+    synthHonk({ freqs: [196, 233], dur: 0.7, gain: 0.25 * vol, type: 'sawtooth', attack: 0.02, detune: 4 })
   );
 }
 

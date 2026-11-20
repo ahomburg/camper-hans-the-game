@@ -7,7 +7,7 @@ import { Controls } from './controls.js';
 import { Traffic } from './traffic.js';
 import { ChapterManager, createArcLapChapter, createSpeedChapter } from './chapters.js';
 import { Radio } from './radio.js';
-import { truckHonk, crashSound } from './audio.js';
+import { truckHonk, crashSound, setRadioDucking } from './audio.js';
 import { Wallet, crashPenalty } from './coins.js';
 import { CrashFX } from './crashfx.js';
 import { placeBuildings } from './buildings.js';
@@ -665,7 +665,7 @@ controls.onReset = () => {
   timerRunning = state === 'playing';
   failTimer = 0;
 };
-controls.onHonk = () => truckHonk(honkVolume());
+controls.onHonk = () => truckHonk();
 
 // --- Kamera-Ansichten (Taste C): 0 Standard, 1 First Person, 2 hinten links ---
 let viewMode = 0;
@@ -679,7 +679,7 @@ controls.onCycleView = cycleView;
 // Fokus weg vom Button, damit Enter/Space danach nicht versehentlich hupen.
 document.getElementById('btn-horn').addEventListener('pointerdown', (e) => {
   e.preventDefault();
-  truckHonk(honkVolume());
+  truckHonk(); // Hans' Hupe: immer voll auf 1
 });
 document.getElementById('btn-view').addEventListener('pointerdown', (e) => {
   e.preventDefault();
@@ -712,35 +712,47 @@ controls.onEscape = () => {
   if (state !== 'menu') toMenu(); // Kapitel abbrechen / Scheitern-Bildschirm -> Startbildschirm
 };
 
-// --- Autoradio (Taste M oder Klick auf die Radio-Blende im HUD) ------------
-// Zyklus: aus -> Sender 1 -> Sender 2 -> Sender 3 -> aus. Kapitel 1 startet
-// mit "Le Roi du Camping" (Hans' Pariser Camping-Hit), danach kommen die
-// anderen Sender. Der gewaehlte Sender bleibt gespeichert; ob das Radio an
-// ist, nicht (nach Reload erst still).
+// --- Autoradio (Ein/Aus-Schalter + Sendertasten, Taste M = Ein/Aus) --------
+// Getrennte Schalter: "⏻" schaltet nur ein/aus (Sender bleibt), die Tasten
+// 1-3 waehlen den Sender (und schalten ein). Kapitel 1 startet mit "Le Roi
+// du Camping" - Hans' Pariser Camping-Hit. Der gewaehlte Sender bleibt
+// gespeichert; ob das Radio an ist, nicht (nach Reload erst still).
 const radio = new Radio();
 const radioEl = document.getElementById('radio');
 const radioDisplayEl = document.getElementById('radio-label');
-const radioPresetsEl = document.getElementById('radio-presets');
+const radioPresetsEl = document.querySelector('.radio-presets');
+const radioPowerBtn = document.getElementById('radio-power');
 function renderRadio() {
   const s = radio.station;
   radioEl.classList.toggle('on', !!s);
-  radioEl.setAttribute('aria-pressed', String(!!s));
+  radioPowerBtn.setAttribute('aria-pressed', String(!!s));
   radioDisplayEl.textContent = s ? s.display : 'RADIO AUS';
-  const idx = s ? radio.index : -1;
-  radioPresetsEl.querySelectorAll('i').forEach((p, i) => p.classList.toggle('active', i === idx));
+  radioPresetsEl.querySelectorAll('.radio-preset').forEach((p) => {
+    p.classList.toggle('active', !!s && p.dataset.station === s.key);
+  });
+  setRadioDucking(!!s); // Verkehrshupen leiser, solange Musik laeuft
 }
-function toggleRadio() {
-  if (state !== 'playing') return; // nur waehrend der Fahrt, wie im echten Auto
-  // Einschalten in Kapitel 1: erstmal Hans' Pariser Hit auflegen
+function toggleRadioPower() {
+  if (state !== 'playing') return; // Radio nur waehrend der Fahrt, wie im echten Auto
   if (!radio.on && activeChapter?.id === 'arc-de-triomphe') radio.tune('roi');
-  const s = radio.cycle();
+  const s = radio.powerToggle();
   renderRadio();
   showToast(s ? `${s.name} an!` : 'Radio aus.');
 }
-// Hupe leiser, solange das Radio laeuft (Ducking wie im echten Auto)
-function honkVolume() { return radio.station ? 0.35 : 0.9; }
-controls.onRadio = toggleRadio;
-radioEl.addEventListener('click', toggleRadio);
+function selectRadioStation(key) {
+  if (state !== 'playing') return;
+  const alreadyOn = radio.on;
+  const s = radio.select(key);
+  if (!s) return;
+  renderRadio();
+  showToast(alreadyOn ? `Sender: ${s.name}` : `${s.name} an!`);
+}
+controls.onRadio = toggleRadioPower; // M = Ein/Aus-Schalter
+radioPowerBtn.addEventListener('click', toggleRadioPower);
+radioPresetsEl.addEventListener('click', (e) => {
+  const b = e.target.closest('.radio-preset');
+  if (b) selectRadioStation(b.dataset.station);
+});
 renderRadio();
 
 // Kippen oder Abreissen zeigt zunaechst einen Toast; das Kapitel scheitert

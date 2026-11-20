@@ -50,20 +50,23 @@
     #time { color: var(--ch-night); }
     #highscore { color: var(--ch-sun-dark); }
     #coins { color: var(--ch-wood-dark); }
-    /* Autoradio-Blende (Taste M oder Klick): Holzgehaeuse wie im Dashboard,
-       LED-Display, Senderspeicher-Tasten und zwei Drehknoefe. */
+    /* Autoradio-Blende mit FESTER BREITE: Drehknoepfe + LED-Display oben,
+       darunter getrennte Schalter - links Ein/Aus, rechts Sendertasten 1-3. */
     #radio {
-      pointer-events: auto; cursor: pointer;
+      pointer-events: auto;
+      width: 212px; /* feste Breite: nichts verzieht sich beim Senderwechsel */
+      box-sizing: border-box;
       border: 3px solid var(--ch-night);
-      border-top-left-radius: var(--ch-radius-pill); border-top-right-radius: var(--ch-radius-pill);
+      border-radius: 14px 14px var(--ch-radius-md) var(--ch-radius-md);
       background: linear-gradient(180deg, var(--ch-wood) 0%, var(--ch-wood-dark) 100%);
       box-shadow: var(--ch-shadow-pop);
-      display: flex; align-items: center; gap: 9px;
-      padding: 7px 9px; margin-top: 6px;
+      padding: 8px 9px 9px;
+      display: flex; flex-direction: column; gap: 7px;
+      margin-top: 6px;
       transition: box-shadow var(--ch-fast) ease;
     }
-    #radio:hover { box-shadow: var(--ch-shadow-pop), 0 0 0 3px rgba(227, 106, 43, 0.45); }
-    #radio:focus-visible { outline: 3px solid var(--ch-sun); outline-offset: 2px; }
+    #radio.on { box-shadow: var(--ch-shadow-pop), 0 0 0 3px rgba(255, 204, 92, 0.5); }
+    .radio-top { display: flex; align-items: center; gap: 8px; }
     /* Drehknoepfe links/rechts mit Zeiger-Marker */
     .radio-knob {
       flex: none; position: relative;
@@ -71,7 +74,6 @@
       background: radial-gradient(circle at 35% 30%, #FFFDF5, #E9D9B6 55%, #C9A260 100%);
       border: 2px solid var(--ch-night);
       box-shadow: inset 0 -2px 3px rgba(34, 51, 59, 0.45);
-      transition: transform var(--ch-fast) var(--ch-spring);
     }
     .radio-knob::after { /* Zeiger auf dem Knopf */
       content: ''; position: absolute; top: 2px; left: 50%;
@@ -80,31 +82,50 @@
     }
     #radio:not(.on) .radio-knob::after { opacity: .55; }
     /* LED-Display: aus = graugruen und stumm, an = Sonnengelb mit Glow */
-    .radio-mid { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
     .radio-display {
+      flex: 1;
       font-family: var(--ch-font-display); font-weight: 700;
       font-size: 12px; letter-spacing: .07em;
-      font-variant-numeric: tabular-nums; white-space: nowrap;
+      font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden;
       background: #16241D; color: #57685E;
       border: 2px solid var(--ch-night); border-radius: 6px;
-      padding: 4px 9px; min-width: 148px; text-align: center;
+      padding: 4px 6px; text-align: center;
       transition: color var(--ch-fast) ease;
     }
     #radio.on .radio-display {
       color: var(--ch-sun);
       text-shadow: 0 0 7px rgba(255, 204, 92, 0.8);
     }
-    /* Senderspeicher: drei Kasten, der laufende leuchtet Lagerfeuer-Orange */
-    .radio-presets { display: flex; gap: 5px; justify-content: center; }
-    .radio-presets i {
-      width: 12px; height: 6px; border-radius: 2px;
-      background: rgba(255, 253, 245, 0.22);
-      border: 1px solid rgba(34, 51, 59, 0.55);
-      transition: background-color var(--ch-fast) ease, box-shadow var(--ch-fast) ease;
+    /* Getrennte Schalter unten: Ein/Aus links, Sendertasten rechts */
+    .radio-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .radio-power {
+      width: 36px; height: 26px; padding: 0;
+      font-family: var(--ch-font-display); font-weight: 700; font-size: 14px; line-height: 1;
+      color: var(--ch-night);
+      background: var(--ch-paper);
+      border: 2px solid var(--ch-night); border-radius: var(--ch-radius-pill);
+      cursor: pointer;
+      transition: background-color var(--ch-fast) ease, color var(--ch-fast) ease, box-shadow var(--ch-fast) ease;
     }
-    #radio.on .radio-presets i.active {
-      background: var(--ch-campfire);
-      box-shadow: 0 0 5px rgba(227, 106, 43, 0.9);
+    #radio.on .radio-power {
+      background: var(--ch-campfire); color: #fff;
+      box-shadow: 0 0 9px rgba(227, 106, 43, 0.95);
+    }
+    .radio-power:focus-visible, .radio-preset:focus-visible { outline: 3px solid var(--ch-sun); outline-offset: 2px; }
+    .radio-presets { display: flex; gap: 5px; }
+    .radio-preset {
+      min-width: 30px; height: 26px; padding: 0 6px;
+      font-family: var(--ch-font-display); font-weight: 700; font-size: 13px; line-height: 1;
+      color: var(--ch-night);
+      background: var(--ch-paper);
+      border: 2px solid var(--ch-night); border-radius: 6px;
+      cursor: pointer;
+      transition: transform var(--ch-fast) ease, background-color var(--ch-fast) ease, box-shadow var(--ch-fast) ease;
+    }
+    .radio-preset:hover { transform: translateY(1px); }
+    #radio.on .radio-preset.active {
+      background: var(--ch-sun); border-color: var(--ch-sun-dark);
+      box-shadow: 0 0 6px rgba(240, 180, 60, 0.8);
     }
     #coins.bump { animation: coin-bump .45s var(--ch-spring); }
     @keyframes coin-bump { 30% { transform: scale(1.35) rotate(-4deg); } }
@@ -598,15 +619,22 @@
       <div id="time">Zeit: 0.0 s</div>
       <div id="highscore">Highscore: –</div>
       <div id="coins">🪙 <span id="coins-num">0</span></div>
-      <!-- Autoradio: Blende wie im Dashboard (Klick oder Taste M) -->
-      <button id="radio" aria-label="Autoradio umschalten (Taste M)" title="Taste M">
-        <span class="radio-knob" aria-hidden="true"></span>
-        <span class="radio-mid">
+      <!-- Autoradio-Blende: fester Breite, getrennte Schalter (Ein/Aus + Sender) -->
+      <div id="radio" role="group" aria-label="Autoradio">
+        <div class="radio-top">
+          <span class="radio-knob" aria-hidden="true"></span>
           <span class="radio-display" id="radio-label">RADIO AUS</span>
-          <span class="radio-presets" id="radio-presets" aria-hidden="true"><i></i><i></i><i></i></span>
-        </span>
-        <span class="radio-knob" aria-hidden="true"></span>
-      </button>
+          <span class="radio-knob" aria-hidden="true"></span>
+        </div>
+        <div class="radio-bottom">
+          <button id="radio-power" class="radio-power" aria-label="Radio ein/aus (Taste M)" title="Taste M">⏻</button>
+          <div class="radio-presets" aria-label="Senderwahl">
+            <button class="radio-preset" data-station="roi" aria-label="Sender 1: Le Roi du Camping" title="Le Roi du Camping">1</button>
+            <button class="radio-preset" data-station="hiphop" aria-label="Sender 2: Camping-Hop" title="Camping-Hop">2</button>
+            <button class="radio-preset" data-station="schlager" aria-label="Sender 3: Schlager-Radio" title="Schlager-Radio">3</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
