@@ -42,6 +42,32 @@
     .speedo-num { font-family: var(--ch-font-display); font-weight: 700; font-size: 17px; fill: var(--ch-night); }
     .speedo-unit { font-size: 8.5px; font-weight: 700; letter-spacing: .06em; fill: var(--ch-night-soft); }
     .speedo-tick { font-size: 8.5px; font-weight: 700; fill: var(--ch-night-soft); }
+    /* ---------- Tankanzeige: kleine Schwester des Tacho-Stickers ---------- */
+    #hud-gauges { flex: none; display: flex; align-items: flex-start; gap: 10px; }
+    #tank-gauge {
+      flex: none; width: 96px; height: 96px;
+      background: var(--ch-paper);
+      border: 3px solid var(--ch-night);
+      border-radius: 50%;
+      box-shadow: var(--ch-shadow-pop);
+      padding: 5px;
+      transition: border-color var(--ch-fast) ease;
+    }
+    #tank-gauge svg { width: 100%; height: 100%; display: block; }
+    .tank-label { font-family: var(--ch-font-display); font-size: 10px; font-weight: 700; fill: var(--ch-night-soft); }
+    .tank-num { font-family: var(--ch-font-display); font-weight: 700; font-size: 13px; fill: var(--ch-night); }
+    /* Reserve-Leuchte: grau im Normalbetrieb, glueht rot bei knappem Tank */
+    #tank-lamp { fill: #A9AB98; stroke: var(--ch-night); stroke-width: 1.5; }
+    #tank-gauge.low { border-color: var(--ch-campfire); animation: tank-blink 1.1s infinite; }
+    #tank-gauge.low #tank-lamp { fill: var(--ch-campfire); }
+    @keyframes tank-blink {
+      0%, 55% { box-shadow: var(--ch-shadow-pop), 0 0 0 4px rgba(227, 106, 43, 0.55); }
+      80%, 100% { box-shadow: var(--ch-shadow-pop); }
+    }
+    @media (max-width: 720px) {
+      #tank-gauge { width: 72px; height: 72px; }
+      #hud-gauges { gap: 6px; }
+    }
     #side { flex-direction: column; align-items: flex-end; gap: 2px; padding: 10px 16px; }
     #time, #highscore, #coins {
       font-family: var(--ch-font-display); font-weight: 700; font-size: 16px;
@@ -206,7 +232,7 @@
       display: flex; flex-direction: column; align-items: center; gap: var(--ch-space-sm);
       padding: 36px 16px 48px;
     }
-    #menu.hidden, #success.hidden, #failed.hidden, #garage.hidden { display: none; }
+    #menu.hidden, #success.hidden, #failed.hidden, #garage.hidden, #fuelstop.hidden { display: none; }
 
     /* Gespann tuckert hinter dem Menueinhalt durch (Gag auf der Creme-Wiese).
        Der Renderer liefert Fensterbreite x 150 px, der Streifen ist genauso
@@ -494,6 +520,7 @@
     /* Ohne Bewegung: Blatt legen statt schwingen */
     @media (prefers-reduced-motion: reduce) {
       .book-leaf.fwd, .book-leaf.bwd, .book-leaf .leaf-shade, .book-pages.swap { animation-duration: 0.01s; }
+      #tank-gauge.low { animation: none; box-shadow: var(--ch-shadow-pop), 0 0 0 4px rgba(227, 106, 43, 0.55); }
     }
 
     /* Fahrzeugkarte + Reisekasse-Kachel stehen im Startmenue nebeneinander */
@@ -545,6 +572,33 @@
     #fail-reason { font-size: 18px; line-height: 1.45; color: var(--ch-night); }
     #failed-coins { font-size: 18px; }
     .fail-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+
+    /* ---------- Tankstopp (leerer Tank haelt die Fahrt an der Tanke) ---------- */
+    #fuelstop {
+      position: fixed; inset: 0; z-index: 24;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(34, 51, 59, 0.55); padding: 16px;
+    }
+    #fuelstop .box {
+      border: 3px solid var(--ch-night); border-radius: var(--ch-radius-lg);
+      box-shadow: var(--ch-shadow-sticker);
+      background: var(--ch-sun-soft);
+      padding: 26px 34px; text-align: center; max-width: 92vw; min-width: min(420px, 92vw);
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      animation: ch-bounce var(--ch-slow) var(--ch-spring);
+    }
+    #fuelstop h2 { margin: 0 0 2px; font-size: 24px; color: var(--ch-wood-dark); }
+    .fuel-price {
+      font-family: var(--ch-font-display); font-weight: 700; font-size: 18px;
+      color: var(--ch-night); font-variant-numeric: tabular-nums;
+    }
+    /* Wolfsgang-Zettel: Handschrift, nur lesbar, wenn die Reisekasse leer ist */
+    .fuel-wolf {
+      font-family: var(--ch-font-hand); font-size: 1.3rem; line-height: 1.4;
+      color: var(--ch-campfire-dark); max-width: 40ch;
+    }
+    .fuel-wolf strong { font-weight: 700; }
+    #fuelstop .fail-actions { margin-top: 10px; }
 
     /* ---------- Ladebildschirm ---------- */
     #loading {
@@ -603,17 +657,48 @@
   <div id="app"></div>
 
   <div id="hud">
-    <div id="speedo" role="img" aria-label="Tacho">
-      <svg id="speedo-svg" viewBox="0 0 120 120" aria-hidden="true">
-        <g id="speedo-scale"></g>
-        <g id="speedo-needle" transform="rotate(-135 60 60)">
-          <polygon points="60,25 57,62 63,62" fill="var(--ch-campfire)" stroke="var(--ch-night)" stroke-width="1"></polygon>
-          <circle cx="60" cy="60" r="5" fill="var(--ch-night)"></circle>
-          <circle cx="60" cy="60" r="2" fill="var(--ch-cream)"></circle>
-        </g>
-        <text id="speedo-num" x="60" y="90" text-anchor="middle" class="speedo-num">0</text>
-        <text x="60" y="101" text-anchor="middle" class="speedo-unit">km/h</text>
-      </svg>
+    <div id="hud-gauges">
+      <div id="speedo" role="img" aria-label="Tacho">
+        <svg id="speedo-svg" viewBox="0 0 120 120" aria-hidden="true">
+          <g id="speedo-scale"></g>
+          <g id="speedo-needle" transform="rotate(-135 60 60)">
+            <polygon points="60,25 57,62 63,62" fill="var(--ch-campfire)" stroke="var(--ch-night)" stroke-width="1"></polygon>
+            <circle cx="60" cy="60" r="5" fill="var(--ch-night)"></circle>
+            <circle cx="60" cy="60" r="2" fill="var(--ch-cream)"></circle>
+          </g>
+          <text id="speedo-num" x="60" y="90" text-anchor="middle" class="speedo-num">0</text>
+          <text x="60" y="101" text-anchor="middle" class="speedo-unit">km/h</text>
+        </svg>
+      </div>
+      <!-- Tankuhr: Zeiger von E (leer, links) nach V (voll, rechts), roter
+           Reserve-Bogen fuers letzte Viertel, Leuchte + Blinken bei Reserve.
+           aria-Update (valuenow/-text) uebernimmt renderFuelGauge in main.js. -->
+      <div id="tank-gauge" role="meter" aria-label="Benzin im Tank"
+           aria-valuemin="0" aria-valuemax="80" aria-valuenow="80" aria-valuetext="80 von 80 Litern">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <!-- Reserve-Zone: Bogen von E bis zum ersten Viertel -->
+          <path d="M 10 60 A 50 50 0 0 1 24.64 24.64" fill="none"
+                stroke="var(--ch-campfire)" stroke-width="6" stroke-linecap="round" opacity=".75"></path>
+          <!-- Skala: E | 1/4 | 1/2 | 3/4 | V -->
+          <g stroke="var(--ch-night)" stroke-linecap="round">
+            <line x1="22" y1="60" x2="16" y2="60" stroke-width="2"></line>
+            <line x1="33.13" y1="33.13" x2="28.94" y2="28.94" stroke-width="1.5"></line>
+            <line x1="60" y1="22" x2="60" y2="16" stroke-width="2"></line>
+            <line x1="86.87" y1="33.13" x2="91.06" y2="28.94" stroke-width="1.5"></line>
+            <line x1="98" y1="60" x2="104" y2="60" stroke-width="2"></line>
+          </g>
+          <text x="31" y="68" text-anchor="middle" class="tank-label">E</text>
+          <text x="89" y="68" text-anchor="middle" class="tank-label">V</text>
+          <circle id="tank-lamp" cx="60" cy="76" r="5.5"></circle>
+          <g id="tank-needle" transform="rotate(90 60 60)">
+            <polygon points="60,24 57.5,60 62.5,60" fill="var(--ch-campfire)" stroke="var(--ch-night)" stroke-width="1"></polygon>
+            <circle cx="60" cy="60" r="5" fill="var(--ch-night)"></circle>
+            <circle cx="60" cy="60" r="2" fill="var(--ch-cream)"></circle>
+          </g>
+          <text id="tank-num" x="60" y="97" text-anchor="middle" class="tank-num">80 L</text>
+          <text x="60" y="107" text-anchor="middle" class="speedo-unit">Tank</text>
+        </svg>
+      </div>
     </div>
     <div id="side" class="ch-hud">
       <div id="time">Zeit: 0.0 s</div>
@@ -719,6 +804,21 @@
       <div class="fail-actions">
         <button id="btn-retry" class="ch-btn ch-btn-fire">Neu starten</button>
         <button id="btn-fail-menu" class="ch-btn ch-btn-ghost">Hauptmenü</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tankstopp: Der Tank ist leer, die Fahrt pausiert an der Tanke. Zahlen
+       kann Hans selbst (Reisekasse) - oder sein Freund Wolfsgang uebernimmt
+       die Rechnung, wenn die Kasse leer ist. Verdrahtet in main.js. -->
+  <div id="fuelstop" class="hidden">
+    <div class="box">
+      <h2 class="ch-h2">⛽ Tank leer!</h2>
+      <div id="fuelstop-price" class="fuel-price"></div>
+      <div id="fuelstop-wolf" class="fuel-wolf"></div>
+      <div class="fail-actions">
+        <button id="btn-refuel" class="ch-btn ch-btn-primary"></button>
+        <button id="btn-fuel-giveup" class="ch-btn ch-btn-ghost">Kapitel abbrechen</button>
       </div>
     </div>
   </div>

@@ -85,6 +85,32 @@ Rand-Blitz, Handschrift-Banner („💥 Blechschaden −14 🪙“), Crash-Sound
 (WebAudio: Blech-Rauschen + dumpfer Aufprall) und ein Coin-Popup an der
 Reisekasse. Mehrfach-Treffer im selben Aufprall werden zusammengefasst.
 
+## Tank, Tankstelle & Wolfsgang
+
+Der Van hat einen 80-Liter-Tank (`src/fuel.js`) und säuft Lehr für Lehr: Die
+Tankuhr im HUD (SVG-Sticker neben dem Tacho) leert sich mit der Zeit – auch
+im Stand (Standgas 0,3 l/s), richtig durstig wird der Van bei Tempo (bis
++0,6 l/s bei 120 km/h). Gemütliches Cruisen mit ~60 km/h trägt rund zwei
+Minuten; jedes Kapitel startet mit vollem Tank.
+
+| Meldung | Bedeutung |
+|---|---|
+| Reserve-Leuchte rot + blinkende Uhr (ab 20 L) | „Der Tank läuft auf Reserve, Hans!" |
+| Tank leer | Motor stirbt hörbar (`engineSputter`), Gas ist weg, Van rollt aus |
+| Van steht | Tankstopp pausiert die Fahrt (auch der Kapitel-Timer) |
+
+Wer am Tankstopp zahlt, entscheidet die Reisekasse:
+
+- **Reisekasse reicht:** Volle Tankfüllung kostet **25 🪙** (`FUEL_PRICE`).
+- **Reisekasse leer:** Hans' Freund **Wolfsgang** springt ein und übernimmt
+  die Rechnung – Hans zahlt nichts. Wolfsgang legt still ein Schäfchen
+  darauf, wie oft das schon nötig war (localStorage, Schlüssel
+  `camperHansWolfsgang`).
+
+Tankkosten fließen in die Fahrtbilanz (Erfolgs-/Scheitern-Screen,
+Aufschlüsselung „davon Benzin"). Wer nicht tanken will, kann am Tankstopp
+auch das Kapitel abbrechen.
+
 ## Docker
 
 ```bash

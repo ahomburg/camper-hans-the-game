@@ -128,6 +128,28 @@ export function truckHonk(volume = 1) {
   );
 }
 
+// Motor-Sterben bei leerem Tank (siehe fuel.js): drei kurze, immer leiser
+// und tiefer werdende Saegezahn-Hoepfer, wie wenn der Vergaser nur noch
+// Luft saeuft. Rein synthetisch, kein Sample noetig.
+export function engineSputter() {
+  const c = ensureCtx();
+  if (!c || c.state !== 'running') return;
+  const t0 = c.currentTime;
+  for (let i = 0; i < 3; i++) {
+    const t = t0 + i * 0.17;
+    const osc = c.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(120 - i * 28, t);
+    osc.frequency.exponentialRampToValueAtTime(46, t + 0.13);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.14 - i * 0.035, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    osc.connect(g).connect(c.destination);
+    osc.start(t);
+    osc.stop(t + 0.15);
+  }
+}
+
 // Crash-Geraeusch (Blechschaden), rein synthetisch: abklingendes Rauschen
 // (Krachen) ueber Tiefpass + dumpfer Tiefton-Schlag (Aufprall-Masse).
 // intensity: 0..1 nach Crash-Haerte - lauter, laenger und haerter.
