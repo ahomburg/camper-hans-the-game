@@ -292,6 +292,29 @@
     #menu-vehicle-btn .veh-img { height: 110px; }
     #menu-vehicle-name { font-family: var(--ch-font-display); font-weight: 700; font-size: 15px; color: var(--ch-night); }
     .menu-vehicle-hint { font-family: var(--ch-font-hand); font-size: 1rem; color: var(--ch-campfire-dark); }
+    /* Tankfuellung als Fortschrittsbalken: Startmenue-Kachel des gewaehlten
+       Fahrzeugs und jede Werkstatt-Karte. Gefuellt im Sonnen-Streifen wie der
+       Kapitel-Balken, in Reserve (letztes Viertel) warnrot gestreift. */
+    .veh-fuel { width: 100%; display: flex; flex-direction: column; gap: 3px; margin-top: 3px; }
+    .veh-fuel-bar {
+      height: 12px; border-radius: var(--ch-radius-pill);
+      background: var(--ch-sun-soft); border: 2px solid var(--ch-night); overflow: hidden;
+    }
+    .veh-fuel-fill {
+      height: 100%; width: 100%; border-radius: var(--ch-radius-pill);
+      background: repeating-linear-gradient(45deg, var(--ch-sun) 0 10px, var(--ch-sun-dark) 10px 20px);
+      transition: width .3s;
+    }
+    .veh-fuel.low .veh-fuel-fill {
+      background: repeating-linear-gradient(45deg, var(--ch-campfire) 0 10px, var(--ch-campfire-dark) 10px 20px);
+    }
+    .veh-fuel-label {
+      font-family: var(--ch-font-display); font-weight: 700; font-size: 11.5px;
+      color: var(--ch-night-soft); text-align: center; font-variant-numeric: tabular-nums;
+    }
+    .veh-fuel.low .veh-fuel-label { color: var(--ch-campfire-dark); }
+    /* Noch nicht gekauft: auch der Tank-Balken verblasst mit dem Modell */
+    .garage-veh.locked .veh-fuel { opacity: .45; }
     .veh-img { display: block; width: 100%; height: 110px; object-fit: contain; border-radius: calc(var(--ch-radius-md) - 3px); }
 
     /* ---------- Werkstatt (Garage): Fahrzeuge auswaehlen und kaufen ---------- */
@@ -741,6 +764,13 @@
       <button id="menu-vehicle-btn" aria-label="Werkstatt öffnen: Fahrzeug wechseln oder kaufen">
         <img class="veh-img" alt="Aktuelles Fahrzeug">
         <span id="menu-vehicle-name"></span>
+        <!-- Tankfüllung des gewählten Fahrzeugs (bleibt über Kapitel gespeichert,
+             Wert pflegt renderVehicleFuelBadges() in main.js) -->
+        <div class="veh-fuel" role="meter" aria-label="Tankfüllung des Fahrzeugs"
+             aria-valuemin="0" aria-valuemax="80">
+          <div class="veh-fuel-bar"><div class="veh-fuel-fill"></div></div>
+          <span class="veh-fuel-label"></span>
+        </div>
         <span class="menu-vehicle-hint">🔧 Werkstatt</span>
       </button>
       <div id="menu-coins" class="coins-tile" aria-label="Reisekasse">
@@ -772,12 +802,20 @@
         <img class="veh-img" alt="Grünes Auto mit Wohnwagen">
         <div class="garage-name">Peugeot mit Wohnwagen</div>
         <div class="garage-desc">Hans' treues Gespann – wackelt gern, aber es gehört ihm.</div>
+        <div class="veh-fuel" role="meter" aria-label="Tankfüllung" aria-valuemin="0" aria-valuemax="80">
+          <div class="veh-fuel-bar"><div class="veh-fuel-fill"></div></div>
+          <span class="veh-fuel-label"></span>
+        </div>
         <button class="ch-btn ch-btn-sm garage-action"></button>
       </div>
       <div class="garage-veh" data-veh="campervan">
         <img class="veh-img" alt="Campervan">
         <div class="garage-name">Campervan</div>
         <div class="garage-desc">Ganz ohne Wohnwagen – dafür chipst Liesel beim Fahren.</div>
+        <div class="veh-fuel" role="meter" aria-label="Tankfüllung" aria-valuemin="0" aria-valuemax="80">
+          <div class="veh-fuel-bar"><div class="veh-fuel-fill"></div></div>
+          <span class="veh-fuel-label"></span>
+        </div>
         <button class="ch-btn ch-btn-sm garage-action"></button>
       </div>
     </div>

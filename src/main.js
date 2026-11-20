@@ -9,7 +9,7 @@ import { ChapterManager, createArcLapChapter, createSpeedChapter } from './chapt
 import { Radio } from './radio.js';
 import { truckHonk, crashSound, setRadioDucking, engineSputter } from './audio.js';
 import { Wallet, crashPenalty } from './coins.js';
-import { Tank, TANK_MAX, FUEL_PRICE } from './fuel.js';
+import { Tank, TANK_MAX, FUEL_PRICE, loadFuelLevels, saveFuelLevels } from './fuel.js';
 import { CrashFX } from './crashfx.js';
 import { placeBuildings } from './buildings.js';
 import { isMobile } from './device.js';
@@ -107,6 +107,131 @@ const gespann = new Gespann(scene);
 let car = campervan; // aktives Fahrzeug, im Menue umschaltbar
 const controls = new Controls();
 
+// --- Tank: Der Van saeuft Lehr fuer Lehr - und der Tank gehoert dem Auto ---
+// Jedes Fahrzeug hat einen EIGENEN 80-L-Tank (siehe fuel.js), der ueber
+// Kapitel und Sitzungen gespeichert wird (localStorage): Wer ein Kapitel
+// beendet, startet das naechste mit dem Restbestand - getankt wird am
+// Tankstopp, nicht beim Kapitelwechsel. Der Tank leert sich mit der Zeit
+// (Standgas im Stand, Vollgas richtig). Faehrt der Tank auf Reserve, blinkt
+// die Tankuhr im HUD; laeuft er ganz leer, stirbt der Motor (kein Gas mehr),
+// der Van rollt aus und die Fahrt haelt am Tankstopp: Eine volle
+// Tankfuellung kostet FUEL_PRICE Muenzen aus der Reisekasse - ist die leer,
+// uebernimmt Hans' Freund Wolfsgang grosszuegig die Rechnung (und legt still
+// ein Schaefchen darauf, wie oft das schon noetig war).
+const tanks = { gespann: new Tank(), campervan: new Tank() };
+const storedFuel = loadFuelLevels(Object.keys(tanks));
+for (const id of Object.keys(tanks)) {
+  tanks[id].level = storedFuel[id];
+  // Tank leer: Motor stirbt hoerbar, Gas ist weg, der Van rollt aus - sobald
+  // er (fast) steht oder nach spaetestens 3 s oeffnet der Tankstopp.
+  tanks[id].onEmpty = () => {
+    if (state !== 'playing' || refueling) return;
+    stalled = true;
+    stallTimer = 0;
+    engineSputter();
+  };
+}
+let tank = tanks.gespann; // Tank des aktiven Fahrzeugs; setVehicle() schaltet um
+
+let refueling = false;   // Tankstopp offen: Simulation + Kapitel-Timer stehen
+let stalled = false;     // Motor ausgebrannt: Van rollt aus, dann erst Tankstopp
+let stallTimer = 0;      // wie lange der Van schon ohne Sprit rollt
+let lowFuelWarned = false; // Reserve-Toast nur einmal pro Leerfahrt
+let runFuel = 0;         // Tankkosten der laufenden Fahrt (Erfolgs-/Scheitern-Screen)
+let fuelSaveAcc = 0;      // 5-S-Takt: Fuellstaende unterwegs regelmaessig sichern
+const WOLF_KEY = 'camperHansWolfsgang'; // wie oft Wolfsgang schon eingesprungen ist
+let wolfsgang = 0;
+try {
+  wolfsgang = parseInt(localStorage.getItem(WOLF_KEY), 10);
+  if (!Number.isFinite(wolfsgang) || wolfsgang < 0) wolfsgang = 0;
+} catch { wolfsgang = 0; } // Private Mode o. ae.: nur keine Persistenz
+
+const tankGaugeEl = document.getElementById('tank-gauge');
+const tankNeedleEl = document.getElementById('tank-needle');
+const tankNumEl = document.getElementById('tank-num');
+const fuelstopEl = document.getElementById('fuelstop');
+const fuelPriceEl = document.getElementById('fuelstop-price');
+const fuelWolfEl = document.getElementById('fuelstop-wolf');
+const btnRefuelEl = document.getElementById('btn-refuel');
+
+// Alle Fuellstaende sichern (wird beim Tanken, alle 5 s unterwegs und am
+// Kapitel-/Fahrtende aufgerufen).
+function saveFuel() {
+  saveFuelLevels({ gespann: tanks.gespann.level, campervan: tanks.campervan.level });
+}
+
+function renderFuelGauge() {
+  const f = tank.fraction;
+  tankNeedleEl.setAttribute('transform', `rotate(${-90 + f * 180} 60 60)`);
+  tankNumEl.textContent = `${Math.ceil(tank.level)} L`;
+  tankGaugeEl.classList.toggle('low', tank.low);
+  tankGaugeEl.setAttribute('aria-valuenow', String(Math.round(tank.level)));
+  tankGaugeEl.setAttribute('aria-valuetext', `${Math.ceil(tank.level)} von ${TANK_MAX} Litern`);
+}
+
+// Tankfuellung als Fortschrittsbalken: Startmenue-Kachel des gewaehlten
+// Fahrzeugs + jede Werkstatt-Karte (jeder Balken zeigt den persistierten
+// Stand seines eigenen Fahrzeugs, auch das ungewaehlte behaelt seinen Rest).
+function renderVehicleFuelBadges() {
+  const paint = (root, tk) => {
+    if (!root || !tk) return;
+    const fill = root.querySelector('.veh-fuel-fill');
+    const label = root.querySelector('.veh-fuel-label');
+    if (!fill || !label) return;
+    fill.style.width = `${(tk.fraction * 100).toFixed(1)}%`;
+    label.textContent = `⛽ ${Math.ceil(tk.level)} / ${TANK_MAX} L`;
+    root.setAttribute('aria-valuenow', String(Math.ceil(tk.level)));
+    root.setAttribute('aria-valuetext', `${Math.ceil(tk.level)} von ${TANK_MAX} Litern`);
+    root.classList.toggle('low', tk.low);
+  };
+  paint(document.querySelector('#menu-vehicle-btn .veh-fuel'), tanks[selectedVehicleId]);
+  document.querySelectorAll('.garage-veh').forEach((card) =>
+    paint(card.querySelector('.veh-fuel'), tanks[card.dataset.veh]));
+}
+
+function openFuelStop() {
+  refueling = true;
+  const afford = wallet.amount >= FUEL_PRICE;
+  fuelPriceEl.textContent = `Volle Tankfüllung: ${FUEL_PRICE} 🪙 · Reisekasse: ${wallet.amount} 🪙`;
+  fuelWolfEl.classList.toggle('hidden', afford);
+  if (!afford) {
+    fuelWolfEl.innerHTML =
+      `„Kein Sou in der Kasse, Hans? Kein Problem – <strong>Wolfsgang</strong> übernimmt die Rechnung!”` +
+      (wolfsgang > 0 ? `<br>Schon ${wolfsgang}× ist Wolfsgang für Hans eingesprungen.` : '');
+    btnRefuelEl.textContent = 'Wolfsgang, zahl mal! 🐺';
+  } else {
+    btnRefuelEl.textContent = `Volltanken · ${FUEL_PRICE} 🪙`;
+  }
+  fuelstopEl.classList.remove('hidden');
+}
+
+function refuelAndResume() {
+  if (wallet.amount >= FUEL_PRICE) {
+    const { paid } = wallet.deduct(FUEL_PRICE);
+    runCoins -= paid;
+    runFuel += paid;
+    popCoin(-paid, 'Vollgetankt');
+    renderCoins();
+    showToast('Vollgetankt – der Van brennt wieder!');
+  } else {
+    wolfsgang += 1;
+    try { localStorage.setItem(WOLF_KEY, String(wolfsgang)); } catch { /* Private Mode: nur keine Persistenz */ }
+    showToast(`Wolfsgang springt ein (${wolfsgang}. Rechnung): „Passt schon, alter Freund!” 🐺`);
+  }
+  tank.fill();
+  saveFuel(); // Fuellstand des eigenen Fahrzeugs gleich mit sichern
+  renderFuelGauge();
+  renderVehicleFuelBadges();
+  lowFuelWarned = false;
+  stalled = false;
+  refueling = false;
+  fuelstopEl.classList.add('hidden');
+}
+
+btnRefuelEl.addEventListener('click', refuelAndResume);
+document.getElementById('btn-fuel-giveup').addEventListener('click', toMenu);
+renderFuelGauge();
+
 // --- Fahrzeugauswahl & Werkstatt (bleibt ueber Sitzungen gespeichert) -----
 // Grundidee: Hans startet mit dem Gespann, weitere Fahrzeuge werden in der
 // Werkstatt mit Muenzen aus der Reisekasse gekauft. Das Startmenue zeigt nur
@@ -146,12 +271,15 @@ function setVehicle(id) {
   if (!isOwnedVehicle(id)) return; // nicht gekauft: nicht waehlbar
   selectedVehicleId = id;
   car = id === 'gespann' ? gespann : campervan;
+  tank = tanks[id]; // der Tank gehoert dem Fahrzeug: Beim Wechsel bleibt der Rest im jeweiligen Tank stehen
   campervan.group.visible = id !== 'gespann';
   gespann.group.visible = id === 'gespann';
   gespann.trailerGroup.visible = id === 'gespann';
   car.reset();
   try { localStorage.setItem(VEHICLE_KEY, id); } catch { /* Private Mode o. ae. */ }
   updateMenuVehicleName();
+  renderFuelGauge(); // Tankuhr und Kachel-Balken zeigen den Stand des gewaehlten Autos
+  renderVehicleFuelBadges();
 }
 document.getElementById('menu-vehicle-btn').addEventListener('click', () => {
   if (state === 'menu') openGarage();
@@ -205,6 +333,7 @@ const garageEl = document.getElementById('garage');
 function renderGarage() {
   const coins = document.getElementById('garage-coins');
   if (coins) coins.textContent = `Reisekasse: ${wallet.amount} 🪙`;
+  renderVehicleFuelBadges(); // Tank-Balken auf jeder Karte auf den gespeicherten Stand bringen
   document.querySelectorAll('.garage-veh').forEach((card) => {
     const v = VEHICLES.find((x) => x.id === card.dataset.veh);
     if (!v) return;
@@ -334,94 +463,6 @@ traffic.onNearMiss = () => earn(EARN.nearMiss, 'knapp!');
 campervan.onObstacleCrash = handleCrash;
 gespann.onObstacleCrash = handleCrash;
 
-// --- Tank: Der Van saeuft Lehr fuer Lehr --------------------------------------
-// Der Tank (80 L, siehe fuel.js) leert sich mit der Zeit - Standgas saeuft im
-// Stand, Vollgas richtig. Faehrt der Tank auf Reserve, blinkt die Tankuhr
-// im HUD. Laeuft er ganz leer, stirbt der Motor (kein Gas mehr), der Van
-// rollt aus und die Fahrt haelt am Tankstopp: Eine volle Tankfuellung kostet
-// FUEL_PRICE Muenzen aus der Reisekasse - ist die leer, uebernimmt Hans'
-// Freund Wolfsgang grosszuegig die Rechnung (und legt still ein Schaefchen
-// darauf, wie oft das schon noetig war).
-const tank = new Tank();
-let refueling = false;   // Tankstopp offen: Simulation + Kapitel-Timer stehen
-let stalled = false;     // Motor ausgebrannt: Van rollt aus, dann erst Tankstopp
-let stallTimer = 0;      // wie lange der Van schon ohne Sprit rollt
-let lowFuelWarned = false; // Reserve-Toast nur einmal pro Leerfahrt
-let runFuel = 0;          // Tankkosten der laufenden Fahrt (Erfolgs-/Scheitern-Screen)
-const WOLF_KEY = 'camperHansWolfsgang'; // wie oft Wolfsgang schon eingesprungen ist
-let wolfsgang = 0;
-try {
-  wolfsgang = parseInt(localStorage.getItem(WOLF_KEY), 10);
-  if (!Number.isFinite(wolfsgang) || wolfsgang < 0) wolfsgang = 0;
-} catch { wolfsgang = 0; } // Private Mode o. ae.: nur keine Persistenz
-
-const tankGaugeEl = document.getElementById('tank-gauge');
-const tankNeedleEl = document.getElementById('tank-needle');
-const tankNumEl = document.getElementById('tank-num');
-const fuelstopEl = document.getElementById('fuelstop');
-const fuelPriceEl = document.getElementById('fuelstop-price');
-const fuelWolfEl = document.getElementById('fuelstop-wolf');
-const btnRefuelEl = document.getElementById('btn-refuel');
-
-function renderFuelGauge() {
-  const f = tank.fraction;
-  tankNeedleEl.setAttribute('transform', `rotate(${-90 + f * 180} 60 60)`);
-  tankNumEl.textContent = `${Math.ceil(tank.level)} L`;
-  tankGaugeEl.classList.toggle('low', tank.low);
-  tankGaugeEl.setAttribute('aria-valuenow', String(Math.round(tank.level)));
-  tankGaugeEl.setAttribute('aria-valuetext', `${Math.ceil(tank.level)} von ${TANK_MAX} Litern`);
-}
-
-// Tank leer: Motor stirbt hörbar, Gas ist weg, der Van rollt aus - sobald er
-// (fast) steht oder nach spätestens 3 s öffnet der Tankstopp.
-tank.onEmpty = () => {
-  if (state !== 'playing' || refueling) return;
-  stalled = true;
-  stallTimer = 0;
-  engineSputter();
-};
-
-function openFuelStop() {
-  refueling = true;
-  const afford = wallet.amount >= FUEL_PRICE;
-  fuelPriceEl.textContent = `Volle Tankfüllung: ${FUEL_PRICE} 🪙 · Reisekasse: ${wallet.amount} 🪙`;
-  fuelWolfEl.classList.toggle('hidden', afford);
-  if (!afford) {
-    fuelWolfEl.innerHTML =
-      `„Kein Sou in der Kasse, Hans? Kein Problem – <strong>Wolfsgang</strong> übernimmt die Rechnung!”` +
-      (wolfsgang > 0 ? `<br>Schon ${wolfsgang}× ist Wolfsgang für Hans eingesprungen.` : '');
-    btnRefuelEl.textContent = 'Wolfsgang, zahl mal! 🐺';
-  } else {
-    btnRefuelEl.textContent = `Volltanken · ${FUEL_PRICE} 🪙`;
-  }
-  fuelstopEl.classList.remove('hidden');
-}
-
-function refuelAndResume() {
-  if (wallet.amount >= FUEL_PRICE) {
-    const { paid } = wallet.deduct(FUEL_PRICE);
-    runCoins -= paid;
-    runFuel += paid;
-    popCoin(-paid, 'Vollgetankt');
-    renderCoins();
-    showToast('Vollgetankt – der Van brennt wieder!');
-  } else {
-    wolfsgang += 1;
-    try { localStorage.setItem(WOLF_KEY, String(wolfsgang)); } catch { /* Private Mode: nur keine Persistenz */ }
-    showToast(`Wolfsgang springt ein (${wolfsgang}. Rechnung): „Passt schon, alter Freund!” 🐺`);
-  }
-  tank.fill();
-  lowFuelWarned = false;
-  stalled = false;
-  refueling = false;
-  fuelstopEl.classList.add('hidden');
-  renderFuelGauge();
-}
-
-btnRefuelEl.addEventListener('click', refuelAndResume);
-document.getElementById('btn-fuel-giveup').addEventListener('click', toMenu);
-renderFuelGauge();
-
 // --- Kapitel ---
 const ROUNDS_TARGET = 5;
 const chapters = new ChapterManager();
@@ -549,6 +590,7 @@ function renderMenu() {
   bookNextBtn.disabled = bookIndex === chapters.chapters.length - 1;
   renderHighscore();
   renderCoins();
+  renderVehicleFuelBadges(); // Fahrzeug-Kachel zeigt den mitgebrachten Tankstand
 }
 
 // Buchhoehe an den laengsten Text anpassen: Alle Doppelseiten werden in einem
@@ -674,7 +716,9 @@ function startChapter(q) {
   stalled = false;
   lowFuelWarned = false;
   fuelstopEl.classList.add('hidden');
-  tank.fill(); // jedes Kapitel beginnt mit vollem Tank
+  // KEIN tank.fill() mehr: Der Tank gehoert dem Fahrzeug und bleibt ueber
+  // Kapitel gespeichert - wer leer in die Fahrt startet, tankt erst am
+  // Tankstopp (der oeffnet nach der Kamerafahrt, siehe Hauptschleife).
   renderFuelGauge();
   introT = 0; // Kamerafahrt: schraeg von vorne auf die Chase-Position
   menuEl.classList.add('hidden');
@@ -689,6 +733,7 @@ function startChapter(q) {
 function failChapter(reason) {
   timerRunning = false;
   state = 'failed';
+  saveFuel(); // mitgebrachter Tankstand des Fahrzeugs sichern
   radio.pauseForMetaScreens(); // Musik aus, bis wieder gefahren wird
   failReasonEl.textContent = reason;
   // Scheitern selbst ist kostenlos - nur die unterwegs bezahlten
@@ -712,6 +757,7 @@ function toMenu() {
   state = 'menu';
   activeChapter = null;
   timerRunning = false;
+  saveFuel(); // Tankstand mit ins Menue/Speicher nehmen
   refueling = false; // ein offener Tankstopp gehoert zur Fahrt, nicht ins Menue
   stalled = false;
   fuelstopEl.classList.add('hidden');
@@ -735,6 +781,7 @@ chapters.on('progress', (q) => {
 chapters.on('completed', (q) => {
   timerRunning = false;
   saveDone(q.id);
+  saveFuel(); // Restbestand des Fahrzeugs fuer das naechste Kapitel sichern
   earn(EARN.chapter, 'Kapitelbonus');
   state = 'success';
   radio.pauseForMetaScreens(); // Geschafft! -> Feier ohne Radiomusik
@@ -1183,6 +1230,17 @@ function animate() {
       stallTimer += dt;
       if (Math.abs(car.speed) < 0.6 || stallTimer > 3) openFuelStop();
     }
+    // Mit leerem (persistiertem) Tank ins Kapitel gestartet? Nach der
+    // Kamerafahrt oeffnet der Tankstopp - erst zapfen, dann orgeln.
+    if (tank.empty && !stalled && !refueling && introT >= 1) openFuelStop();
+
+    // Fuellstaende regelmaessig sichern: Ein Reload mitten in der Fahrt
+    // verliert hoechstens ein paar Sekunden Sprit.
+    fuelSaveAcc += dt;
+    if (fuelSaveAcc >= 5) {
+      fuelSaveAcc = 0;
+      saveFuel();
+    }
 
     // Umgekippt oder Wohnwagen abgerissen? Kurz zeigen, dann ist die
     // Kapitel gescheitert (Scheitern-Bildschirm mit Neustart).
@@ -1302,4 +1360,4 @@ function animate() {
 animate();
 
 // Debug-/Test-Zugang
-window.__game = { scene, camera, renderer, get car() { return car; }, controls, world, arc, traffic, chapters, wallet, tank, radio, get state() { return state; }, startChapter, toMenu };
+window.__game = { scene, camera, renderer, get car() { return car; }, controls, world, arc, traffic, chapters, wallet, tanks, tank, radio, get state() { return state; }, startChapter, toMenu };

@@ -1,18 +1,41 @@
 // ---------------------------------------------------------------------------
 // Tank & Tankstelle: Der Van saeuft Lehr fuer Lehr.
 //
-// Der Tank leert sich mit der Zeit - auch im Stand (Standgas), aber richtig
-// durstig wird der Van erst bei Tempo. Faehrt der Tank auf Reserve, leuchtet
-// die Tankanzeige rot; laeuft er ganz leer, stirbt der Motor (kein Gas mehr)
-// und die Fahrt haelt an der Tankstelle:
+// Jedes Fahrzeug hat einen EIGENEN 80-L-Tank, der ueber Kapitel und Sitzungen
+// gespeichert wird (localStorage, siehe loadFuelLevels/saveFuelLevels): Wer
+// ein Kapitel beendet, startet das naechste mit dem Restbestand - getankt
+// wird am Tankstopp, nicht beim Kapitelwechsel. Der Tank leert sich mit der
+// Zeit - auch im Stand (Standgas), aber richtig durstig wird der Van erst
+// bei Tempo. Faehrt der Tank auf Reserve, leuchtet die Tankanzeige rot;
+// laeuft er ganz leer, stirbt der Motor (kein Gas mehr) und die Fahrt
+// haelt an der Tankstelle:
 //
 //   - Volle Tankfuellung: FUEL_PRICE Muenzen aus Hans' Reisekasse.
 //   - Ohne Geld in der Kasse? Zum Glueck hat Hans einen Freund: Wolfsgang
 //     springt ein und uebernimmt die Rechnung (Hans zahlt dann nichts).
-//
-// Ein Kapitel beginnt immer mit vollem Tank - gespart wird innerhalb der
-// Fahrt, nicht ueber Sitzungen (anders als die Reisekasse in coins.js).
 // ---------------------------------------------------------------------------
+
+const FUEL_KEY = 'camperHansTank'; // localStorage: { "<fahrzeug-id>": Liter }
+
+// Fuellstaende pro Fahrzeug laden (ids = Liste der Fahrzeug-IDs, siehe
+// VEHICLES in main.js). Ungespeicherte oder ungueltige Werte gelten als
+// Volltank - ein frisches Spiel startet mit vollen Tanks. Private Mode
+// ohne localStorage liefert genauso Volle Tanks (nur ohne Persistenz).
+export function loadFuelLevels(ids) {
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem(FUEL_KEY)) || {}; } catch { /* s.o. */ }
+  const levels = {};
+  for (const id of ids) {
+    const v = parseFloat(stored[id]);
+    levels[id] = Number.isFinite(v) && v >= 0 && v <= TANK_MAX ? v : TANK_MAX;
+  }
+  return levels;
+}
+
+// Fuellstaende speichern: levels = { "<fahrzeug-id>": Liter, ... }
+export function saveFuelLevels(levels) {
+  try { localStorage.setItem(FUEL_KEY, JSON.stringify(levels)); } catch { /* Private Mode o. ae. */ }
+}
 
 export const TANK_MAX = 80;    // Fassung in Litern (Voll = 80 L)
 export const FUEL_PRICE = 25; // Muenzen pro voller Tankfuellung

@@ -87,17 +87,24 @@ Reisekasse. Mehrfach-Treffer im selben Aufprall werden zusammengefasst.
 
 ## Tank, Tankstelle & Wolfsgang
 
-Der Van hat einen 80-Liter-Tank (`src/fuel.js`) und säuft Lehr für Lehr: Die
-Tankuhr im HUD (SVG-Sticker neben dem Tacho) leert sich mit der Zeit – auch
-im Stand (Standgas 0,3 l/s), richtig durstig wird der Van bei Tempo (bis
+Der Tank gehört zum **Fahrzeug**, nicht zum Kapitel: Gespann und Campervan
+haben je einen eigenen 80-Liter-Tank (`src/fuel.js`), der über Kapitel und
+Sitzungen gespeichert wird (localStorage, Schlüssel `camperHansTank`).
+Wer ein Kapitel beendet, startet das nächste mit dem Restbestand –
+Vollgetankt wird nur am Tankstopp.
+
+Die Tankuhr im HUD (SVG-Sticker neben dem Tacho) leert sich mit der Zeit –
+auch im Stand (Standgas 0,3 l/s), richtig durstig wird der Van bei Tempo (bis
 +0,6 l/s bei 120 km/h). Gemütliches Cruisen mit ~60 km/h trägt rund zwei
-Minuten; jedes Kapitel startet mit vollem Tank.
+Minuten. Als Fortschrittsbalken steht die Tankfüllung auch im Startmenü auf
+der Fahrzeug-Kachel und in der Werkstatt auf jeder Fahrzeugkarte.
 
 | Meldung | Bedeutung |
 |---|---|
-| Reserve-Leuchte rot + blinkende Uhr (ab 20 L) | „Der Tank läuft auf Reserve, Hans!" |
+| Reserve-Leuchte rot + blinkende Uhr (ab 20 L), Balken wird rot | „Der Tank läuft auf Reserve, Hans!" |
 | Tank leer | Motor stirbt hörbar (`engineSputter`), Gas ist weg, Van rollt aus |
 | Van steht | Tankstopp pausiert die Fahrt (auch der Kapitel-Timer) |
+| Kapitel mit leerem Tank gestartet | Tankstopp öffnet nach der Kamerafahrt |
 
 Wer am Tankstopp zahlt, entscheidet die Reisekasse:
 
