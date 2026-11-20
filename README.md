@@ -220,8 +220,9 @@ Landstraße (Spline, ~510 m, min. Kurvenradius ~20 m – bei 120 km/h muss
 Hans in den engen Kurven vom Gas), Birken-Gruppen und einzelne Zelte im Gras,
 Hecke als Weltgrenze. Wer weiter als Straße + Schotter-Schulter von der
 Mittellinie abkommt, verliert das Kapitel. Fahrdynamik pro Map einstellbar
-(`tuning`): Auf der Huegelland-Map darf der Van bis 38 m/s (136,8 km/h)
-rennen (Stadt-Default: 30 m/s = 108 km/h), damit das Ziel 120 km/h erreichbar ist.
+(`tuning`): Auf der Huegelland-Map darf der Van bis ~36 m/s (129,6 km/h)
+rennen (Stadt-Default: 30 m/s = 108 km/h), damit das Ziel 120 km/h erreichbar ist
+(accel 18 -> 120 km/h nach ~5 s / ~122 m Vollgas).
 
 ## Technik
 

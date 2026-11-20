@@ -267,9 +267,10 @@ export function buildHillsMap(parent) {
     roadHalf,
     spawn,
     // Kapitel-Ziel ist 120 km/h (33,3 m/s) - die Stadt-Defaults kommen nur auf
-    // 108 km/h. Hier darf der Van bis 38 m/s (136,8 km/h) rennen; 120 km/h sind
-    // nach ~2,4 s Vollgas (~65 m) erreicht.
-    tuning: { maxSpeed: 38, accel: 24, drag: 0.5 },
+    // 108 km/h. Sanftere Beschleunigung als die Stadt (accel 18 statt 15, aber
+    // Endgeschwindigkeit ~36 m/s = 129,6 km/h): 120 km/h nach ~5 s Vollgas
+    // (~122 m) - die laengste Gerade der Strecke ist ~165 m lang.
+    tuning: { maxSpeed: 38, accel: 18, drag: 0.5 },
     distanceToRoad: (x, z) => distanceToRoad(x, z, 1),
     dispose() {
       parent.remove(group);
