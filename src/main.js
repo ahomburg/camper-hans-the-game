@@ -6,6 +6,7 @@ import { Gespann } from './gespann.js';
 import { Controls } from './controls.js';
 import { Traffic } from './traffic.js';
 import { ChapterManager, createArcLapChapter, createSpeedChapter } from './chapters.js';
+import { Radio } from './radio.js';
 import { truckHonk, crashSound } from './audio.js';
 import { Wallet, crashPenalty } from './coins.js';
 import { CrashFX } from './crashfx.js';
@@ -583,6 +584,7 @@ function startChapter(q) {
   menuEl.classList.add('hidden');
   successEl.classList.add('hidden');
   failedEl.classList.add('hidden');
+  radio.resumeForGameplay(); // Radio laeuft weiter, wenn es angelassen wurde
   renderChapter();
 }
 
@@ -591,6 +593,7 @@ function startChapter(q) {
 function failChapter(reason) {
   timerRunning = false;
   state = 'failed';
+  radio.pauseForMetaScreens(); // Musik aus, bis wieder gefahren wird
   failReasonEl.textContent = reason;
   // Scheitern selbst ist kostenlos - nur die unterwegs bezahlten
   // Reparaturen werden (informativ) nochmal genannt.
@@ -610,6 +613,7 @@ function toMenu() {
   state = 'menu';
   activeChapter = null;
   timerRunning = false;
+  radio.pauseForMetaScreens();
   successEl.classList.add('hidden');
   failedEl.classList.add('hidden');
   garageEl.classList.add('hidden'); // falls aus der Werkstatt heraus (ESC) gestartet wurde
@@ -631,6 +635,7 @@ chapters.on('completed', (q) => {
   saveDone(q.id);
   earn(EARN.chapter, 'Kapitelbonus');
   state = 'success';
+  radio.pauseForMetaScreens(); // Geschafft! -> Feier ohne Radiomusik
   successTimeEl.textContent = `Zeit: ${fmtTime(elapsed)}`;
   if (q.id === 'arc-de-triomphe') {
     const hs = loadHighscore();
@@ -706,6 +711,28 @@ if (debugCam) {
 controls.onEscape = () => {
   if (state !== 'menu') toMenu(); // Kapitel abbrechen / Scheitern-Bildschirm -> Startbildschirm
 };
+
+// --- Autoradio (Taste M oder Klick aufs HUD-Sticker) -----------------------
+// Zyklus: aus -> Camping-Hop -> Schlager-Radio -> aus. Der gewaehlte Sender
+// bleibt gespeichert; ob das Radio an ist, nicht (nach Reload erst still).
+const radio = new Radio();
+const radioEl = document.getElementById('radio');
+const radioLabelEl = document.getElementById('radio-label');
+function renderRadio() {
+  const s = radio.station;
+  radioEl.classList.toggle('on', !!s);
+  radioEl.setAttribute('aria-pressed', String(!!s));
+  radioLabelEl.textContent = s ? s.name : 'Radio aus';
+}
+function toggleRadio() {
+  if (state !== 'playing') return; // nur waehrend der Fahrt, wie im echten Auto
+  const s = radio.cycle();
+  renderRadio();
+  showToast(s ? `${s.name} an!` : 'Radio aus.');
+}
+controls.onRadio = toggleRadio;
+radioEl.addEventListener('click', toggleRadio);
+renderRadio();
 
 // Kippen oder Abreissen zeigt zunaechst einen Toast; das Kapitel scheitert
 // kurz danach (failTimer in der Hauptschleife), damit man den Sturz noch sieht.
@@ -1131,4 +1158,4 @@ function animate() {
 animate();
 
 // Debug-/Test-Zugang
-window.__game = { scene, camera, renderer, get car() { return car; }, controls, world, arc, traffic, chapters, wallet, get state() { return state; }, startChapter, toMenu };
+window.__game = { scene, camera, renderer, get car() { return car; }, controls, world, arc, traffic, chapters, wallet, radio, get state() { return state; }, startChapter, toMenu };

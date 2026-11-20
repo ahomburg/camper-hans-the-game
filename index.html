@@ -43,13 +43,25 @@
     .speedo-unit { font-size: 8.5px; font-weight: 700; letter-spacing: .06em; fill: var(--ch-night-soft); }
     .speedo-tick { font-size: 8.5px; font-weight: 700; fill: var(--ch-night-soft); }
     #side { flex-direction: column; align-items: flex-end; gap: 2px; padding: 10px 16px; }
-    #time, #highscore, #coins {
+    #time, #highscore, #coins, #radio {
       font-family: var(--ch-font-display); font-weight: 700; font-size: 16px;
       font-variant-numeric: tabular-nums; line-height: 1.3;
     }
     #time { color: var(--ch-night); }
     #highscore { color: var(--ch-sun-dark); }
     #coins { color: var(--ch-wood-dark); }
+    /* Autoradio-Knopf (Taste M oder Klick): aus = Papier, an = Sonnengelb */
+    #radio {
+      pointer-events: auto; cursor: pointer;
+      border: none; background: none; border-radius: var(--ch-radius-md);
+      color: var(--ch-night); font-size: 15px;
+      display: flex; align-items: center; gap: 7px;
+      padding: 2px 4px; margin: 1px -4px 0;
+      transition: background-color var(--ch-fast) ease;
+    }
+    #radio:hover { background: var(--ch-sun-soft); }
+    #radio.on { background: var(--ch-sun-soft); }
+    #radio:focus-visible { outline: 3px solid var(--ch-sun); outline-offset: 2px; }
     #coins.bump { animation: coin-bump .45s var(--ch-spring); }
     @keyframes coin-bump { 30% { transform: scale(1.35) rotate(-4deg); } }
 
@@ -542,6 +554,10 @@
       <div id="time">Zeit: 0.0 s</div>
       <div id="highscore">Highscore: –</div>
       <div id="coins">🪙 <span id="coins-num">0</span></div>
+      <button id="radio" class="ch-hud-item" aria-label="Autoradio umschalten (Taste M)" title="Taste M">
+        <span class="radio-speaker" aria-hidden="true">📻</span>
+        <span id="radio-label">Radio aus</span>
+      </button>
     </div>
   </div>
 
@@ -580,7 +596,7 @@
         <button id="book-next" class="ch-btn ch-btn-ghost ch-btn-sm" aria-label="Nächstes Kapitel">Blättern ▶</button>
       </div>
     </div>
-    <div class="menu-hint">ESC = Kapitel abbrechen</div>
+    <div class="menu-hint">ESC = Kapitel abbrechen · M = Radio · H = Hupe
   </div>
 
   <!-- Werkstatt: Fahrzeuge auswaehlen (gekauft) bzw. mit Muenzen kaufen.
