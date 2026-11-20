@@ -937,6 +937,7 @@ renderMenu();
 // beide Szenen, solange das Menue offen ist; die Spiel-Szene wird dann nicht
 // mitgerendert (das Menue verdeckt sie ohnehin vollstaendig).
 const PREVIEW_W = 256, PREVIEW_H = 176;
+const MENU_PREVIEW_ZOOM = 0.72; // Startmenue-Knopf: Kamera dieser Faktor naeher am Fahrzeug
 let previewRenderer = null;
 const vehiclePreviews = [];
 let menuVehPreview = null; // Canvas im Startmenue-Knopf: zeigt das gewaehlte Fahrzeug
@@ -966,6 +967,12 @@ function setupVehiclePreviews() {
     const maxDim = Math.max(size.x, size.y, size.z);
     cam.position.set(maxDim * 0.9, maxDim * 0.55, maxDim * 1.5);
     cam.lookAt(0, 0, 0);
+    // Der Knopf im Startmenue zeigt denselben Drehteller staerker
+    // herangezoomt: gleiche Kamera, nur naeher dran (Rahmengroesse des
+    // Canvas bleibt unberuehrt, nur der Bildausschnitt rueckt ans Auto).
+    const menuCam = cam.clone();
+    menuCam.position.multiplyScalar(MENU_PREVIEW_ZOOM); // < 1: Kamera wandert Richtung Ursprung
+    menuCam.lookAt(0, 0, 0);
     // <img> in der Werkstatt-Karte durch den Ziel-<canvas> ersetzen (Faellt-
     // Software aus: ohne Vorschau bleibt der Alt-Text stehen, die Werkstatt
     // bleibt bedienbar).
@@ -973,7 +980,7 @@ function setupVehiclePreviews() {
     const canvas = document.createElement('canvas');
     canvas.className = 'veh-img';
     placeholder.replaceWith(canvas);
-    vehiclePreviews.push({ id, scene, root, cam, canvas, ctx: canvas.getContext('2d') });
+    vehiclePreviews.push({ id, scene, root, cam, menuCam, canvas, ctx: canvas.getContext('2d') });
   }
   // Startmenue-Knopf: eigenes Canvas, auf dem immer das aktuell gewaehlte
   // Fahrzeug dreht (die Werkstatt-Canvas bleibt bei ihrer Karte).
@@ -1008,7 +1015,12 @@ function updateVehiclePreviews(dt, onlySelected = true) {
     if (!reducedMotion) pv.root.rotation.y += dt * 0.7; // langsamer Drehteller
     previewRenderer.render(pv.scene, pv.cam);
     paint(pv);
-    if (pv.id === selectedVehicleId && menuVehPreview) paint(menuVehPreview);
+    if (pv.id === selectedVehicleId && menuVehPreview) {
+      // Knopf-Canvas bekommt einen eigenen Render mit der naeheren Kamera -
+      // nicht einfach den Karten-Frame kopieren, sonst fehlt der Zoom.
+      previewRenderer.render(pv.scene, pv.menuCam);
+      paint(menuVehPreview);
+    }
   }
 }
 
