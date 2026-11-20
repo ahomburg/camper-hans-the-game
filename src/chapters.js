@@ -133,15 +133,20 @@ export function createArcLapChapter(arc, traffic, { target = 10, startTraffic = 
   return chapter;
 }
 
-// Kapitel 2: Temposuender – erreichte Hoechstgeschwindigkeit in km/h.
-export function createSpeedChapter({ target = 100 } = {}) {
+// Kapitel 2: Temposuender – Ziel ist weiterhin Tempo 100, aber auf der eigenen
+// Huegelland-Map (siehe hills.js): eine schlaengelnde Landstrasse durch Gruen.
+// Neu: Wer von der Strasse abkommt (ueber Schotter-Schulter hinaus ins Gras),
+// hat das Kapitel verloren -> mgr.emit('failed'). Die Map liegt in ctx.map
+// (wird von main.js beim Kapitel-Start lazy geladen und mitgegeben).
+
+export function createSpeedChapter({ target = 100, offroadMargin = 2.5 } = {}) {
   const state = { max: 0 };
   return new Chapter({
     id: 'temposuender',
     title: 'Kapitel 2: Temposünder',
-    desc: `Erreiche ${target} km/h.`,
-    story: `<p>„Heute”, verkündet Liesel und klammert sich ans Armaturenbrett, „will ich Autobahn-Wind in den Haaren! Mindestens ${target} km/h, Hans – sonst ist das kein Rums, sondern Gemüsefahren!”</p>
-      <p>Hans grinst und knipst die Zündung an: „Anschnallen, mein Schatz. Wir hängen die Wohnwagen-Rallye einfach ab.”</p>`,
+    desc: `Erreiche ${target} km/h – ohne von der Straße abzukommen!`,
+    story: `<p>„Draußen auf dem Land”, ruft Liesel und kurbelt das Fenster herunter, „da kann Hans mal zeigen, was der Wagen kann! Mindestens ${target} km/h – aber bitte auf dem Asphalt bleiben, ja?”</p>
+      <p>Hans nickt grimmig und lässt den Motor aufheulen: „Keine Sorge, Schatz. Die Wiese ist zum Zelten da, nicht zum Fahren. Anschnallen!”</p>`,
     target,
     extra: () => `Top: ${Math.floor(state.max * 3.6)} km/h`,
     update(dt, ctx, mgr, c) {
@@ -155,6 +160,13 @@ export function createSpeedChapter({ target = 100 } = {}) {
           c.completed = true;
           mgr.emit('completed', c);
         }
+      }
+      // Von der Strasse abgekommen? (Abstand zur Mittellinie groesser als
+      // halbe Strassenbreite + Schulter) -> Kapitel gescheitert.
+      const m = ctx.map;
+      if (m && typeof m.distanceToRoad === 'function') {
+        const d = m.distanceToRoad(ctx.car.pos.x, ctx.car.pos.z);
+        if (d > m.roadHalf + offroadMargin) mgr.emit('failed', c);
       }
     },
     onReset() {

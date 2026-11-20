@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { buildWorld } from './world.js';
+
+import { buildHillsMap } from './hills.js';
 import { buildArc, loadArcMonument } from './arc.js';
 import { Car } from './car.js';
 import { Gespann } from './gespann.js';
@@ -100,8 +102,15 @@ sun.shadow.bias = -0.0005;
 scene.add(sun, sun.target);
 
 // --- Welt, Auto, Steuerung ---
-const world = buildWorld(scene);
-const arc = buildArc(scene);
+// Kapitel-Maps: Jede Map ist eine eigene Gruppe in der Szene; nur die aktive
+// Map ist sichtbar. Kapitel 1 (Stadt mit Arc de Triomphe) wird hier beim
+// Start gebaut; die Huegelland-Map von Kapitel 2 wird ERST beim ersten
+// Auswaehlen des Kapitels geladen (Lazy Load, siehe ensureMap/startChapter).
+const cityGroup = new THREE.Group();
+scene.add(cityGroup);
+
+const world = buildWorld(cityGroup);
+const arc = buildArc(cityGroup);
 const campervan = new Car(scene);
 const gespann = new Gespann(scene);
 let car = campervan; // aktives Fahrzeug, im Menue umschaltbar
@@ -288,7 +297,7 @@ setVehicle(storedVehicle());
 
 // --- Verkehr auf dem Kreisverkehr (alle Kapitel starten mit 30 Autos) ---
 const START_TRAFFIC = 30;
-const traffic = new Traffic(scene, arc);
+const traffic = new Traffic(cityGroup, arc);
 traffic.setTarget(START_TRAFFIC);
 
 // --- Muenz-System: Hans' Reisekasse -----------------------------------------
@@ -468,6 +477,44 @@ const ROUNDS_TARGET = 5;
 const chapters = new ChapterManager();
 chapters.add(createArcLapChapter(arc, traffic, { target: ROUNDS_TARGET, startTraffic: START_TRAFFIC }));
 chapters.add(createSpeedChapter({ target: 100 }));
+
+// --- Kapitel-Maps: Registry + aktive Map -------------------------------------
+// Kapitel 1 nutzt die Stadt-Map (cityGroup, oben beim Start gebaut). Kapitel 2
+// bekommt seine eigene Huegelland-Map (hills.js) ERST beim ersten Auswaehlen
+// des Kapitels - die Map wird also lazy geladen, nicht beim Spielstart.
+const cityMap = {
+  id: 'arc-de-triomphe',
+  group: cityGroup,
+  get colliders() { return world.colliders.concat(arc.colliders); },
+  half: world.half,
+  arc,
+  spawn: { x: 0, z: -100, heading: 0 }, // wie der Car-Default-Spawn an der Champs-Elysees
+};
+const chapterMaps = new Map([['arc-de-triomphe', cityMap]]);
+let activeMap = cityMap;
+
+function setActiveMap(m) {
+  activeMap = m;
+  for (const [, mm] of chapterMaps) mm.group.visible = mm === m; // nur aktive Map sichtbar
+}
+
+// Lazy Load: Eine noch nicht gebaute Kapitel-Map wird hier zum ersten Mal
+// erzeugt (mit Ladebildschirm); danach bleibt sie gecacht und wird nur noch
+// sichtbar/unsichtbar geschaltet.
+async function ensureMap(q) {
+  if (!chapterMaps.has(q.id)) {
+    loading.classList.remove('done');
+    loadtext.textContent = `Lade ${q.title} …`;
+    await new Promise((r) => setTimeout(r, 60)); // Ladebildschirm kurz sichtbar machen
+    if (q.id === 'temposuender') {
+      const m = buildHillsMap(scene);
+      m.id = q.id;
+      chapterMaps.set(q.id, m);
+    }
+    loading.classList.add('done');
+  }
+  setActiveMap(chapterMaps.get(q.id));
+}
 
 // --- Spielzustand: 'menu' | 'playing' | 'success' | 'failed' ---
 let state = 'menu';
@@ -698,13 +745,21 @@ function showToast(msg) {
   toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3500);
 }
 
-function startChapter(q) {
-  activeChapter = q;
-  q.reset();
-  failTimer = 0;
-  car.reset();
-  traffic.setTarget(0); // alle Autos weg, damit die Verteilung 10/10/10 von vorne beginnt
-  traffic.setTarget(START_TRAFFIC);
+let startingChapter = false;
+async function startChapter(q) {
+  if (startingChapter) return; // Doppelklick auf "Aufschlagen" abfangen
+  startingChapter = true;
+  try {
+    activeChapter = q;
+    q.reset();
+    failTimer = 0;
+    await ensureMap(q); // Map des Kapitels laden/aktivieren (Kapitel 2: lazy)
+    car.spawn = activeMap.spawn; // Spawn zur Map (Kapitel 2: Start der Landstrasse)
+    car.reset();
+    // Verkehr pro Kapitel: Stadt = Kreisverkehr, Landstrasse = freie Fahrt.
+    // setTarget(0) zuerst, damit die Verteilung von vorne beginnt.
+    traffic.setTarget(0);
+    traffic.setTarget(q.id === 'temposuender' ? 0 : START_TRAFFIC);
   elapsed = 0;
   timerRunning = true;
   state = 'playing';
@@ -726,6 +781,9 @@ function startChapter(q) {
   failedEl.classList.add('hidden');
   radio.resumeForGameplay(); // Radio laeuft weiter, wenn es angelassen wurde
   renderChapter();
+  } finally {
+    startingChapter = false;
+  }
 }
 
 // Kippen bzw. Abreissen beendet das Kapitel: kurz den Schwenk/Bruch zeigen,
@@ -806,6 +864,14 @@ chapters.on('completed', (q) => {
 });
 
 document.getElementById('btn-to-menu').addEventListener('click', toMenu);
+
+// Kapitel 2 (Temposuender): Wer von der Strasse abkommt, hat das Kapitel
+// verloren - Scheitern-Bildschirm mit Grund "abgekommen".
+chapters.on('failed', (q) => {
+  if (activeChapter === q && state === 'playing') {
+    failChapter('Von der Straße abgekommen! Nächstes Mal bleibt Hans auf dem Asphalt …');
+  }
+});
 
 controls.onReset = () => {
   if (refueling) return; // am Tankstopp entscheidet der Klick, nicht die R-Taste
@@ -1120,8 +1186,8 @@ try {
     loadtext.textContent = `Lade Autos … ${i}/${n}`;
   });
   loadtext.textContent = 'Lade Arc de Triomphe …';
-  await loadArcMonument(scene, arc.cx, arc.cz);
-  await placeBuildings(scene, world, arc, (i, n) => {
+  await loadArcMonument(cityGroup, arc.cx, arc.cz);
+  await placeBuildings(cityGroup, world, arc, (i, n) => {
     loadtext.textContent = `Lade Gebäude … ${i}/${n}`;
   });
 } catch (err) {
@@ -1224,11 +1290,14 @@ function animate() {
     // Ohne Sprit kein Gas: Ist der Tank leer, gibt der Motor keinen Vortrieb
     // mehr, egal wie tief Hans aufs Pedal tritt.
     const input = tank.empty ? { ...controls.state, up: false } : controls.state;
-    car.update(dt, input, world.colliders.concat(arc.colliders), world.half, arc);
+    // Kollisionsdaten + Welt-Grenze + Kreisverkehr kommen von der AKTIVEN
+    // Kapitel-Map (Stadt: world/arc, Kapitel 2: Huegelland-Map ohne Arc).
+    const mapColliders = activeMap.colliders;
+    car.update(dt, input, mapColliders, activeMap.half, activeMap.arc || null);
     // colliders/worldHalf: dafuer die Kollision des abgerissenen Wohnwagens
     // mit Hindernissen und Welt-Grenze (siehe traffic.update).
-    traffic.update(dt, car, world.colliders.concat(arc.colliders), world.half);
-    if (activeChapter) activeChapter.update(dt, { car, arc }, chapters);
+    traffic.update(dt, car, mapColliders, activeMap.half);
+    if (activeChapter) activeChapter.update(dt, { car, arc, map: activeMap }, chapters);
 
     // Tank leert sich mit der Zeit (Standgas + Tempo-Anteil, siehe fuel.js).
     // Faehrt der Tank auf Reserve, warnt der Toast einmalig pro Leerfahrt;
@@ -1372,4 +1441,4 @@ function animate() {
 animate();
 
 // Debug-/Test-Zugang
-window.__game = { scene, camera, renderer, get car() { return car; }, controls, world, arc, traffic, chapters, wallet, tanks, tank, radio, get state() { return state; }, startChapter, toMenu };
+window.__game = { scene, camera, renderer, get car() { return car; }, controls, world, arc, traffic, chapters, wallet, tanks, tank, radio, chapterMaps, get activeMap() { return activeMap; }, ensureMap, get state() { return state; }, startChapter, toMenu };

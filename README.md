@@ -191,7 +191,9 @@ Auf Touch-Geräten erscheinen Buttons unten (GAS / BREMS / LINKS / RECHTS).
 `localStorage` gespeichert). Per Klick auf „Aufschlagen“ startet man ein Kapitel.
 - **Kapitel 1 – Arc de Triomphe**: 5 Runden gegen den Uhrzeigersinn um den Kreis.
 Pro Runde +5 Autos. Highscore (schnellste Zeit) wird gespeichert.
-- **Kapitel 2 – Temposünder**: 100 km/h erreichen.
+- **Kapitel 2 – Temposünder**: 100 km/h erreichen – ohne von der Straße abzukommen.
+Die eigene Huegelland-Map (sanfte Hügel, schlängelnde Landstraße, Bäume, Zelte, keine Häuser)
+wird erst beim Auswählen des Kapitels geladen (Lazy Load, `src/hills.js`).
 - **Erfolgsbildschirm**: „Glückwunsch, du hast es geschafft!“ mit Zeit und
 Highscore; bei Kapitel 1 bleibt das Bild stehen und die Kamera fährt nach
 hinten/oben zur Außenseite des Kreises, sodass der Arc im Hintergrund sieht.
@@ -212,6 +214,11 @@ zurückgeschleudert (Kapsel-Kollision, damit Nachbarspuren nicht „treffen“).
 - Champs-Élysée (Startstraße, 21 m breit) mit Birken-Allee und anschließender,
 lückenloser Gebäudezeile (`building2/3/4.glb`, Fenster nur aus den GLB-Texturen).
 - Gebäude auch direkt am Kreis, mit Freiraum an den Ausfahrten.
+- **Huegelland-Map (nur Kapitel 2, `src/hills.js`)**: grüne Wiese mit sanften
+Hügeln (nahe der Straße abgeflacht), eine schlängelnde asphaltierte Landstraße
+(Spline, ~490 m, min. Kurvenradius ~34 m), Birken-Gruppen und einzelne Zelte im
+Gras, Hecke als Weltgrenze. Wer weiter als Straße + Schotter-Schulter von der
+Mittellinie abkommt, verliert das Kapitel.
 
 ## Technik
 
@@ -231,7 +238,8 @@ Fallback, falls eine Datei fehlt).
 index.html      HUD, Menü, Erfolgsbildschirm, Touch-Buttons
 serve.mjs       statischer Server (node serve.mjs -> :8080)
 src/main.js     Spielzustände (Menü/Spiel/Erfolg), Kamera, Zeitmessung
-src/world.js    Welt, Straßen, Birken-Allee
+src/world.js    Welt, Straßen, Birken-Allee (Kapitel-1-Map)
+src/hills.js    Huegelland-Map für Kapitel 2 (lazy geladen)
 src/arc.js      Kreisverkehr, Arc de Triomphe (arch.glb)
 src/car.js      Van: Physik, Spurhaltung im Kreis
 src/traffic.js  Verkehr: GLB-Autos, Zufallsgeschwindigkeit, Hupen, Kollision
