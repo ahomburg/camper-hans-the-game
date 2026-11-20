@@ -205,6 +205,8 @@
       perspective: 1400px;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
+      height: 300px; /* fixe Hoehe: alle Kapitel-Doppelseiten gleich gross, das
+                        Blatt hat beim Umblaettern immer dasselbe Format */
       background: var(--ch-paper);
       border: 3px solid var(--ch-night);
       border-radius: 3px 10px 10px 3px;
@@ -372,7 +374,7 @@
     /* Schmale Bildschirme: Buch wird hoch geklappt, Falz-Schatten weg, dafuer
        Blatt-Trennlinie zwischen den uebereinander liegenden Seiten */
     @media (max-width: 720px) {
-      .book-pages { grid-template-columns: 1fr; }
+      .book-pages { grid-template-columns: 1fr; height: auto; }
       .book-pages::before { display: none; }
       .book-page + .book-page { border-top: 2px solid rgba(34, 51, 59, 0.14); }
       .book-page { min-height: 0; padding: 20px 20px 16px; }

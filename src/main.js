@@ -325,11 +325,11 @@ function chapterPageHTML(q, side) {
       <h3 class="bp-title">${bookTitle}</h3>
       <div class="bp-rule" aria-hidden="true">✦</div>
       <p class="bp-desc">${q.desc}</p>
+      <button class="ch-btn ch-btn-primary ch-btn-sm bp-start" data-id="${q.id}">${done ? 'Erneut lesen' : 'Aufschlagen'}</button>
     </div>`;
   }
   return `<div class="book-page side-right">
       <div class="bp-story">${q.story}</div>
-      <button class="ch-btn ch-btn-primary ch-btn-sm bp-start" data-id="${q.id}">${done ? 'Erneut lesen' : 'Aufschlagen'}</button>
     </div>`;
 }
 
