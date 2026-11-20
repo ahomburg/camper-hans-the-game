@@ -133,13 +133,13 @@ export function createArcLapChapter(arc, traffic, { target = 10, startTraffic = 
   return chapter;
 }
 
-// Kapitel 2: Temposuender – Ziel ist weiterhin Tempo 100, aber auf der eigenen
+// Kapitel 2: Temposuender – Ziel ist Tempo 120, aber auf der eigenen
 // Huegelland-Map (siehe hills.js): eine schlaengelnde Landstrasse durch Gruen.
 // Neu: Wer von der Strasse abkommt (ueber Schotter-Schulter hinaus ins Gras),
 // hat das Kapitel verloren -> mgr.emit('failed'). Die Map liegt in ctx.map
 // (wird von main.js beim Kapitel-Start lazy geladen und mitgegeben).
 
-export function createSpeedChapter({ target = 100, offroadMargin = 2.5 } = {}) {
+export function createSpeedChapter({ target = 120, offroadMargin = 2.5 } = {}) {
   const state = { max: 0 };
   return new Chapter({
     id: 'temposuender',

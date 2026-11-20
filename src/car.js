@@ -10,6 +10,18 @@ import { isTouchDevice, limitTextureSize } from './device.js';
 const MODEL_ROT_Y = -Math.PI / 2;
 const TARGET_LENGTH = 4.4; // Laenge des vans in Welt-Einheiten
 
+// Fahrdynamik-Defaults (Stadt/Kapitel 1: 30 m/s = 108 km/h). Eine Kapitel-Map
+// kann ueber ihr `tuning`-Feld davon abweichen (Kapitel 2 braucht mehr, damit
+// 120 km/h ueberhaupt erreichbar sind - siehe hills.js / main.js startChapter).
+export const CAR_TUNING = {
+  maxSpeed: 30,      // m/s, harte Klemme
+  maxReverse: 9,     // m/s
+  accel: 15,         // m/s^2, Endgeschwindigkeit ~ accel/drag
+  brake: 28,         // m/s^2
+  reverseAccel: 9,   // m/s^2
+  drag: 0.5,         // linearer Luft-/Rollwiderstand (1/s)
+};
+
 export class Car {
   constructor(scene) {
     this.group = new THREE.Group();
@@ -22,6 +34,7 @@ export class Car {
     this.speed = 0;
     this.radius = 1.6; // Kollisions-Radius
     this.spawn = { x: 0, z: -100, heading: 0 }; // weiter weg vom Arc de Triomphe
+    Object.assign(this, CAR_TUNING); // Fahrdynamik (pro Kapitel-Map umstellbar)
 
     // Spurhaltung im Kreisverkehr: sobald der Van den Ring erreicht hat,
     // faehrt er in einer Spur weiter; LINKS/RECHTS wechselt nur die Spur.
@@ -116,11 +129,7 @@ export class Car {
   // LINKS/RECHTS wechselt nur die Fahrspur, gelenkt wird automatisch entlang
   // der Kreisstrasse (gegen den Uhrzeigersinn).
   update(dt, input, colliders, worldHalf, arc = null) {
-    const maxSpeed = 30;
-    const maxReverse = 9;
-    const accel = 15;
-    const brake = 28;
-    const reverseAccel = 9;
+    const { maxSpeed, maxReverse, accel, brake, reverseAccel, drag } = this;
 
     if (arc) this.arc = arc; // Kreisverkehr merken (pushOut braucht cx/cz)
     if (this.obstacleCool > 0) this.obstacleCool -= dt; // Crash-Abklang (s.u.)
@@ -140,7 +149,7 @@ export class Car {
       }
 
       // Luft- und Rollwiderstand
-      this.speed -= this.speed * 0.5 * dt;
+      this.speed -= this.speed * drag * dt;
       if (!input.up && !input.down) {
         const r = 2.5 * dt;
         this.speed = Math.abs(this.speed) <= r ? 0 : this.speed - Math.sign(this.speed) * r;

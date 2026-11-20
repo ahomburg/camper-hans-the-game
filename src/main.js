@@ -3,7 +3,7 @@ import { buildWorld } from './world.js';
 
 import { buildHillsMap } from './hills.js';
 import { buildArc, loadArcMonument } from './arc.js';
-import { Car } from './car.js';
+import { Car, CAR_TUNING } from './car.js';
 import { Gespann } from './gespann.js';
 import { Controls } from './controls.js';
 import { Traffic } from './traffic.js';
@@ -476,7 +476,7 @@ gespann.onObstacleCrash = handleCrash;
 const ROUNDS_TARGET = 5;
 const chapters = new ChapterManager();
 chapters.add(createArcLapChapter(arc, traffic, { target: ROUNDS_TARGET, startTraffic: START_TRAFFIC }));
-chapters.add(createSpeedChapter({ target: 100 }));
+chapters.add(createSpeedChapter({ target: 120 }));
 
 // --- Kapitel-Maps: Registry + aktive Map -------------------------------------
 // Kapitel 1 nutzt die Stadt-Map (cityGroup, oben beim Start gebaut). Kapitel 2
@@ -755,6 +755,9 @@ async function startChapter(q) {
     failTimer = 0;
     await ensureMap(q); // Map des Kapitels laden/aktivieren (Kapitel 2: lazy)
     car.spawn = activeMap.spawn; // Spawn zur Map (Kapitel 2: Start der Landstrasse)
+    // Fahrdynamik der Map: Defaults (Stadt, 108 km/h) bzw. Map-Tuning
+    // (Kapitel 2: bis 136,8 km/h, damit 120 km/h als Ziel erreichbar sind).
+    Object.assign(car, CAR_TUNING, activeMap.tuning || {});
     car.reset();
     // Verkehr pro Kapitel: Stadt = Kreisverkehr, Landstrasse = freie Fahrt.
     // setTarget(0) zuerst, damit die Verteilung von vorne beginnt.
@@ -1230,7 +1233,7 @@ placeCameraBehindCar();
 const clock = new THREE.Clock();
 
 // --- Tacho (SVG-Zaegerinstrument im Hans-Stil): Skala einmalig zeichnen ---
-// Hoechstgeschwindigkeit 30 m/s = 108 km/h, Skala deshalb 0..120 km/h.
+// Skala 0..120 km/h: 120 km/h ist das Kapitel-2-Ziel (Temposuender) = Vollausschlag.
 // Zeiger startet bei -135 Grad (unten links) und laeuft 270 Grad bis unten rechts.
 const MAX_KMH = 120;
 const speedoNeedle = document.getElementById('speedo-needle');

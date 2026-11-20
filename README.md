@@ -191,7 +191,7 @@ Auf Touch-Geräten erscheinen Buttons unten (GAS / BREMS / LINKS / RECHTS).
 `localStorage` gespeichert). Per Klick auf „Aufschlagen“ startet man ein Kapitel.
 - **Kapitel 1 – Arc de Triomphe**: 5 Runden gegen den Uhrzeigersinn um den Kreis.
 Pro Runde +5 Autos. Highscore (schnellste Zeit) wird gespeichert.
-- **Kapitel 2 – Temposünder**: 100 km/h erreichen – ohne von der Straße abzukommen.
+- **Kapitel 2 – Temposünder**: 120 km/h erreichen – ohne von der Straße abzukommen.
 Die eigene Huegelland-Map (sanfte Hügel, schlängelnde Landstraße, Bäume, Zelte, keine Häuser)
 wird erst beim Auswählen des Kapitels geladen (Lazy Load, `src/hills.js`).
 - **Erfolgsbildschirm**: „Glückwunsch, du hast es geschafft!“ mit Zeit und
@@ -216,10 +216,12 @@ lückenloser Gebäudezeile (`building2/3/4.glb`, Fenster nur aus den GLB-Texture
 - Gebäude auch direkt am Kreis, mit Freiraum an den Ausfahrten.
 - **Huegelland-Map (nur Kapitel 2, `src/hills.js`)**: grüne Wiese mit sanften
 Hügeln (bis ~10 m, nahe der Straße abgeflacht), eine schlängelnde asphaltierte
-Landstraße (Spline, ~510 m, min. Kurvenradius ~20 m – in den engen Kurven muss
-Hans bei 100 km/h kurz vom Gas), Birken-Gruppen und einzelne Zelte im Gras,
+Landstraße (Spline, ~510 m, min. Kurvenradius ~20 m – bei 120 km/h muss
+Hans in den engen Kurven vom Gas), Birken-Gruppen und einzelne Zelte im Gras,
 Hecke als Weltgrenze. Wer weiter als Straße + Schotter-Schulter von der
-Mittellinie abkommt, verliert das Kapitel.
+Mittellinie abkommt, verliert das Kapitel. Fahrdynamik pro Map einstellbar
+(`tuning`): Auf der Huegelland-Map darf der Van bis 38 m/s (136,8 km/h)
+rennen (Stadt-Default: 30 m/s = 108 km/h), damit das Ziel 120 km/h erreichbar ist.
 
 ## Technik
 

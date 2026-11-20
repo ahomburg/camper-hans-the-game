@@ -36,8 +36,8 @@ export function buildHillsMap(parent) {
   const rand = mulberry32(90210);
 
   // --- Schlängelnde Strasse als Spline (Nord-Sued mit engen S-Kurven,
-  // min. Kurvenradius ~20 m: bei 100 km/h muss Hans in den Kurven kurz vom
-  // Gas, sonst schiesst er ueber die Schulter hinaus) ---
+  // min. Kurvenradius ~20 m: bei 120 km/h muss Hans in den engen Kurven
+  // deutlich vom Gas, sonst kippt er oder schiesst ueber die Schulter hinaus ---
   const ctrl = [
     [0, -half + 16],
     [0, -half + 62],
@@ -266,6 +266,10 @@ export function buildHillsMap(parent) {
     arc: null, // kein Kreisverkehr auf dieser Map
     roadHalf,
     spawn,
+    // Kapitel-Ziel ist 120 km/h (33,3 m/s) - die Stadt-Defaults kommen nur auf
+    // 108 km/h. Hier darf der Van bis 38 m/s (136,8 km/h) rennen; 120 km/h sind
+    // nach ~2,4 s Vollgas (~65 m) erreicht.
+    tuning: { maxSpeed: 38, accel: 24, drag: 0.5 },
     distanceToRoad: (x, z) => distanceToRoad(x, z, 1),
     dispose() {
       parent.remove(group);
