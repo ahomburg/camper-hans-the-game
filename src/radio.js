@@ -1,21 +1,25 @@
 // ---------------------------------------------------------------------------
-// Hans' Autoradio: Zwei Sender (Camping-Hop & Schlager), per Taste M oder
-// Klick aufs HUD-Sticker umzuschalten. Der Radio-Knopf haelt sich im Zyklus
-//   aus -> Sender 1 -> Sender 2 -> aus
-// Der zuletzt gewaehlte Sender bleibt ueber Sitzungen gespeichert (localStorage)
-// - ob das Radio an ist, bewusst nicht: Nach einem Reload soll es still sein.
+// Hans' Autoradio: Drei Sender (Roi du Camping, Camping-Hop, Schlager), per
+// Taste M oder Klick auf die Radio-Blende im HUD umzuschalten. Der Knopf
+// haelt sich im Zyklus
+//   aus -> Sender 1 -> Sender 2 -> Sender 3 -> aus
+// Kapitel 1 startetRadio mit "Le Roi du Camping" (siehe main.js: tune()),
+// die anderen Sender kommen per Knopfdruck danach. Der zuletzt gewaehlte
+// Sender bleibt ueber Sitzungen gespeichert (localStorage) - ob das Radio
+// an ist, bewusst nicht: Nach einem Reload soll es still sein.
 //
 // Die Musik pausiert ausserhalb des Spiels (Menue, Erfolg, Scheitern) und
-// laeuft beim naechsten Kapitel an derselben Stelle weiter, wenn der
-// Radioknopf noch auf "an" steht (pauseForMetaScreens/resumeForGameplay).
+// laeuft beim naechsten Kapitel an derselben Stelle weiter (siehe
+// pauseForMetaScreens/resumeForGameplay).
 // ---------------------------------------------------------------------------
 
 const SOUND_DIR = 'assets/sound/';
 const STATION_KEY = 'camperHansRadioStation';
 
 export const STATIONS = [
-  { key: 'hiphop', name: 'Camping-Hop 🎧', file: SOUND_DIR + 'Camper_Hans_Hiphop.mp3' },
-  { key: 'schlager', name: 'Schlager-Radio 🪕', file: SOUND_DIR + 'Camper_Hans_Schlager.mp3' },
+  { key: 'roi', name: 'Le Roi du Camping 👑', display: 'FM 101.2 · LE ROI', file: SOUND_DIR + 'Le_Roi_du_Camping.mp3' },
+  { key: 'hiphop', name: 'Camping-Hop 🎧', display: 'FM 93.7 · CAMPING-HOP', file: SOUND_DIR + 'Camper_Hans_Hiphop.mp3' },
+  { key: 'schlager', name: 'Schlager-Radio 🪕', display: 'FM 105.5 · SCHLAGER', file: SOUND_DIR + 'Camper_Hans_Schlager.mp3' },
 ];
 const VOLUME = 0.55;
 
@@ -44,9 +48,9 @@ export class Radio {
 
   get station() { return this.on ? STATIONS[this.index] : null; }
 
-  // Knopfdruck: aus -> Sender 1 -> Sender 2 -> aus. Beim Einschalten laeuft
-  // der gespeicherte (bzw. zuletzt gewaehlte) Sender los. Gibt die neue
-  // Einstellung zurueck (station | null, null = aus).
+  // Knopfdruck: aus -> Sender 1 -> Sender 2 -> Sender 3 -> aus. Beim Einschalten
+  // laeuft der gespeicherte (bzw. per tune() gewaehlte) Sender los. Gibt die
+  // neue Einstellung zurueck (station | null, null = aus).
   cycle() {
     if (!this.on) {
       this.on = true;
@@ -59,6 +63,17 @@ export class Radio {
     this.apply();
     if (this.onChange) this.onChange(this.station);
     return this.station;
+  }
+
+  // Direkt auf einen Sender drehen (ohne an/aus zu schalten): Kapitel 1
+  // startet z.B. mit "Le Roi du Camping" - cycle() laeuft danach normal weiter.
+  tune(key) {
+    const i = STATIONS.findIndex((s) => s.key === key);
+    if (i < 0) return;
+    this.index = i;
+    this.persist();
+    this.apply();
+    if (this.onChange) this.onChange(this.station);
   }
 
   // Nur den laufenden Sender weiterspielen, alle anderen anhalten.

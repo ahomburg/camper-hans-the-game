@@ -665,7 +665,7 @@ controls.onReset = () => {
   timerRunning = state === 'playing';
   failTimer = 0;
 };
-controls.onHonk = () => truckHonk();
+controls.onHonk = () => truckHonk(honkVolume());
 
 // --- Kamera-Ansichten (Taste C): 0 Standard, 1 First Person, 2 hinten links ---
 let viewMode = 0;
@@ -679,7 +679,7 @@ controls.onCycleView = cycleView;
 // Fokus weg vom Button, damit Enter/Space danach nicht versehentlich hupen.
 document.getElementById('btn-horn').addEventListener('pointerdown', (e) => {
   e.preventDefault();
-  truckHonk();
+  truckHonk(honkVolume());
 });
 document.getElementById('btn-view').addEventListener('pointerdown', (e) => {
   e.preventDefault();
@@ -712,24 +712,33 @@ controls.onEscape = () => {
   if (state !== 'menu') toMenu(); // Kapitel abbrechen / Scheitern-Bildschirm -> Startbildschirm
 };
 
-// --- Autoradio (Taste M oder Klick aufs HUD-Sticker) -----------------------
-// Zyklus: aus -> Camping-Hop -> Schlager-Radio -> aus. Der gewaehlte Sender
-// bleibt gespeichert; ob das Radio an ist, nicht (nach Reload erst still).
+// --- Autoradio (Taste M oder Klick auf die Radio-Blende im HUD) ------------
+// Zyklus: aus -> Sender 1 -> Sender 2 -> Sender 3 -> aus. Kapitel 1 startet
+// mit "Le Roi du Camping" (Hans' Pariser Camping-Hit), danach kommen die
+// anderen Sender. Der gewaehlte Sender bleibt gespeichert; ob das Radio an
+// ist, nicht (nach Reload erst still).
 const radio = new Radio();
 const radioEl = document.getElementById('radio');
-const radioLabelEl = document.getElementById('radio-label');
+const radioDisplayEl = document.getElementById('radio-label');
+const radioPresetsEl = document.getElementById('radio-presets');
 function renderRadio() {
   const s = radio.station;
   radioEl.classList.toggle('on', !!s);
   radioEl.setAttribute('aria-pressed', String(!!s));
-  radioLabelEl.textContent = s ? s.name : 'Radio aus';
+  radioDisplayEl.textContent = s ? s.display : 'RADIO AUS';
+  const idx = s ? radio.index : -1;
+  radioPresetsEl.querySelectorAll('i').forEach((p, i) => p.classList.toggle('active', i === idx));
 }
 function toggleRadio() {
   if (state !== 'playing') return; // nur waehrend der Fahrt, wie im echten Auto
+  // Einschalten in Kapitel 1: erstmal Hans' Pariser Hit auflegen
+  if (!radio.on && activeChapter?.id === 'arc-de-triomphe') radio.tune('roi');
   const s = radio.cycle();
   renderRadio();
   showToast(s ? `${s.name} an!` : 'Radio aus.');
 }
+// Hupe leiser, solange das Radio laeuft (Ducking wie im echten Auto)
+function honkVolume() { return radio.station ? 0.35 : 0.9; }
 controls.onRadio = toggleRadio;
 radioEl.addEventListener('click', toggleRadio);
 renderRadio();

@@ -108,10 +108,11 @@ export function carHonk(variant = 0) {
   playFile(HORN_FILES[v], 0.7, () => synthHonk(CAR_HONKS[v]));
 }
 
-// LKW-Hupe des Campers (Taste H) -> campervan_horn.mp3
-export function truckHonk() {
-  playFile(TRUCK_HORN_FILE, 0.9, () =>
-    synthHonk({ freqs: [196, 233], dur: 0.7, gain: 0.22, type: 'sawtooth', attack: 0.02, detune: 4 })
+// LKW-Hupe des Campers (Taste H) -> campervan_horn.mp3.
+// volume < 0.9 = "Ducking": Laeuft das Autoradio, hupt Hans leiser (main.js).
+export function truckHonk(volume = 0.9) {
+  playFile(TRUCK_HORN_FILE, Math.min(1, Math.max(0, volume)), () =>
+    synthHonk({ freqs: [196, 233], dur: 0.7, gain: 0.22 * Math.min(1, Math.max(0.1, volume)), type: 'sawtooth', attack: 0.02, detune: 4 })
   );
 }
 
