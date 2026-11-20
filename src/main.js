@@ -9,7 +9,7 @@ import { Controls } from './controls.js';
 import { Traffic } from './traffic.js';
 import { ChapterManager, createArcLapChapter, createSpeedChapter } from './chapters.js';
 import { Radio } from './radio.js';
-import { truckHonk, crashSound, setRadioDucking, engineSputter } from './audio.js';
+import { truckHonk, crashSound, setRadioDucking, engineSputter, cameraShutter } from './audio.js';
 import { Wallet, crashPenalty } from './coins.js';
 import { Tank, TANK_MAX, FUEL_PRICE, loadFuelLevels, saveFuelLevels } from './fuel.js';
 import { CrashFX } from './crashfx.js';
@@ -324,6 +324,18 @@ const menuCoinsEl = document.getElementById('menu-coins-num');
 const coinPopEl = document.getElementById('coin-pop');
 const crashEl = document.getElementById('crash');
 const crashFlashEl = document.getElementById('crashflash');
+
+const blitzerEl = document.getElementById('blitzer');
+
+// Blitzer: weisser Vollbild-Flash + Shutter-Sound + Toast (Kapitel 2, wenn das
+// Zieltempo erreicht ist - Hans wird geblitzt).
+function blitzerFlash() {
+  blitzerEl.classList.remove('show');
+  void blitzerEl.offsetWidth; // CSS-Animation neu starten
+  blitzerEl.classList.add('show');
+  cameraShutter();
+  showToast('📸 Geblitzt! Zieltempo erreicht!');
+}
 const successCoinsEl = document.getElementById('success-coins');
 const failedCoinsEl = document.getElementById('failed-coins');
 
@@ -753,6 +765,8 @@ async function startChapter(q) {
     activeChapter = q;
     q.reset();
     failTimer = 0;
+    celebrating = null; // Blitzer-Weiterfahr-Phase des vorherigen Laufs verwerfen
+    celebrateT = 0;
     await ensureMap(q); // Map des Kapitels laden/aktivieren (Kapitel 2: lazy)
     car.spawn = activeMap.spawn; // Spawn zur Map (Kapitel 2: Start der Landstrasse)
     // Fahrdynamik der Map: Defaults (Stadt, 108 km/h) bzw. Map-Tuning
@@ -818,6 +832,8 @@ function toMenu() {
   state = 'menu';
   activeChapter = null;
   timerRunning = false;
+  celebrating = null; // falls mitten in der Blitzer-Phase abgebrochen wird
+  celebrateT = 0;
   saveFuel(); // Tankstand mit ins Menue/Speicher nehmen
   refueling = false; // ein offener Tankstopp gehoert zur Fahrt, nicht ins Menue
   stalled = false;
@@ -839,7 +855,9 @@ chapters.on('progress', (q) => {
   renderChapter();
 });
 
-chapters.on('completed', (q) => {
+// Erfolgs-Screen (wird bei Kapitel 1 sofort gezeigt, bei Kapitel 2 erst nach
+// der kleinen Weiterfahr-Phase, siehe chapters.on('completed')).
+function showSuccess(q) {
   timerRunning = false;
   saveDone(q.id);
   saveFuel(); // Restbestand des Fahrzeugs fuer das naechste Kapitel sichern
@@ -864,6 +882,24 @@ chapters.on('completed', (q) => {
   renderHighscore();
   renderChapter();
   successEl.classList.remove('hidden');
+}
+
+// Kapitel 2 (Temposuender): Beim Erreichen des Zieltempos wird Hans geblitzt
+// (Vollbild-Flash + Shutter-Sound) und das Auto faehrt noch ein kleines Stueck
+// weiter (celebrating in der Hauptschleife), erst dann kommt der Erfolgs-Screen.
+let celebrating = null;
+let celebrateT = 0;
+const CELEBRATE_S = 2.5; // Sekunden Weiterfahren nach dem Blitzer
+
+chapters.on('completed', (q) => {
+  if (q.id === 'temposuender') {
+    timerRunning = false;
+    blitzerFlash();
+    celebrating = q;
+    celebrateT = 0;
+  } else {
+    showSuccess(q);
+  }
 });
 
 document.getElementById('btn-to-menu').addEventListener('click', toMenu);
@@ -878,6 +914,7 @@ chapters.on('failed', (q) => {
 
 controls.onReset = () => {
   if (refueling) return; // am Tankstopp entscheidet der Klick, nicht die R-Taste
+  if (celebrating) return; // in der Blitzer-Weiterfahr-Phase nicht neu spawnen
   if (state === 'failed') { retryChapter(); return; } // R im Scheitern-Bildschirm = Neustart
   car.reset();
   if (activeChapter) activeChapter.onCarReset();
@@ -1328,7 +1365,9 @@ function animate() {
 
     // Umgekippt oder Wohnwagen abgerissen? Kurz zeigen, dann ist die
     // Kapitel gescheitert (Scheitern-Bildschirm mit Neustart).
-    if (car.tipped || car.detached) {
+    // Ausnahme: waehrend der Blitzer-Weiterfahr-Phase (Kapitel 2) ist das
+    // Kapitel bereits geschafft - ein Kippen wird dann nicht mehr gewertet.
+    if (!celebrating && (car.tipped || car.detached)) {
       failTimer += dt;
       if (failTimer > 1.2) {
         failChapter(
@@ -1355,6 +1394,17 @@ function animate() {
 
     if (timerRunning) elapsed += dt;
     timeEl.textContent = `Zeit: ${fmtTime(elapsed)}`;
+
+    // Kapitel 2: Hans wurde geblitzt - das Auto faehrt noch ein kleines
+    // Stueck weiter, erst dann erscheint der Erfolgs-Screen.
+    if (celebrating) {
+      celebrateT += dt;
+      if (celebrateT >= CELEBRATE_S) {
+        const q = celebrating;
+        celebrating = null;
+        showSuccess(q);
+      }
+    }
   }
 
   const fx = Math.sin(car.heading);

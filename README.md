@@ -194,6 +194,10 @@ Pro Runde +5 Autos. Highscore (schnellste Zeit) wird gespeichert.
 - **Kapitel 2 – Temposünder**: 120 km/h erreichen – ohne von der Straße abzukommen.
 Die eigene Huegelland-Map (sanfte Hügel, schlängelnde Landstraße, Bäume, Zelte, keine Häuser)
 wird erst beim Auswählen des Kapitels geladen (Lazy Load, `src/hills.js`).
+Spawn ist 10 m vor dem Strassenanfang, damit das Auto komplett auf dem Asphalt steht.
+Beim Erreichen des Zieltempos wird Hans **geblitzt** (Vollbild-Flash + Shutter-Sound,
+`cameraShutter` in `src/audio.js`); das Auto fährt noch ~2,5 s weiter, erst dann
+erscheint der Erfolgs-Screen.
 - **Erfolgsbildschirm**: „Glückwunsch, du hast es geschafft!“ mit Zeit und
 Highscore; bei Kapitel 1 bleibt das Bild stehen und die Kamera fährt nach
 hinten/oben zur Außenseite des Kreises, sodass der Arc im Hintergrund sieht.

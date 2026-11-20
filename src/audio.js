@@ -150,6 +150,32 @@ export function engineSputter() {
   }
 }
 
+// Blitzer-Ausloeser (Kapitel 2: Hans wird beim Erreichen des Zieltempos
+// geblitzt), rein synthetisch: zwei kurze Klicks (Verschluss auf/zu) ueber
+// Hochpass - klingt wie ein Kamera-Ausloeser.
+export function cameraShutter() {
+  const c = ensureCtx();
+  if (!c || c.state !== 'running') return;
+  const t0 = c.currentTime;
+  for (const [dt, dur, freq] of [[0, 0.045, 3200], [0.09, 0.06, 2400]]) {
+    const buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) {
+      const t = i / d.length;
+      d[i] = (Math.random() * 2 - 1) * Math.exp(-t * 6);
+    }
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const flt = c.createBiquadFilter();
+    flt.type = 'highpass';
+    flt.frequency.value = freq;
+    const g = c.createGain();
+    g.gain.value = 0.35;
+    src.connect(flt).connect(g).connect(c.destination);
+    src.start(t0 + dt);
+  }
+}
+
 // Crash-Geraeusch (Blechschaden), rein synthetisch: abklingendes Rauschen
 // (Krachen) ueber Tiefpass + dumpfer Tiefton-Schlag (Aufprall-Masse).
 // intensity: 0..1 nach Crash-Haerte - lauter, laenger und haerter.

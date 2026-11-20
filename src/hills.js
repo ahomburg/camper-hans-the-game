@@ -254,9 +254,24 @@ export function buildHillsMap(parent) {
   mkHedge(1.5, half * 2 + 160, -half, 0);
   mkHedge(1.5, half * 2 + 160, half, 0);
 
-  // --- Spawn: Start der Strasse, Heading entlang der Fahrtrichtung ---
-  const t0 = pts[1].x - pts[0].x, t1 = pts[1].z - pts[0].z;
-  const spawn = { x: pts[0].x, z: pts[0].z, heading: Math.atan2(t0, t1) };
+  // --- Spawn: 10 m weiter vorn auf der Strasse (statt am absoluten Anfang),
+  // damit das ganze Auto (4,4 m) samt Heck komplett auf dem Asphalt steht.
+  // Heading entlang der Fahrtrichtung an dieser Stelle. ---
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) {
+    cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z));
+  }
+  const pointAtLength = (s) => {
+    let i = 0;
+    while (i < cum.length - 2 && cum[i + 1] < s) i++;
+    const t = (s - cum[i]) / ((cum[i + 1] - cum[i]) || 1);
+    const a = pts[i], b = pts[i + 1];
+    return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
+  };
+  const SPAWN_AHEAD = 10; // m ab Strassenanfang
+  const sp = pointAtLength(SPAWN_AHEAD);
+  const spAhead = pointAtLength(SPAWN_AHEAD + 2);
+  const spawn = { x: sp.x, z: sp.z, heading: Math.atan2(spAhead.x - sp.x, spAhead.z - sp.z) };
 
   return {
     id: 'temposuender',
