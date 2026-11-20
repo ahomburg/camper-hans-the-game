@@ -35,16 +35,19 @@ export function buildHillsMap(parent) {
   const roadHalf = 5.5;      // halbe Strassenbreite
   const rand = mulberry32(90210);
 
-  // --- Schlängelnde Strasse als Spline (Nord-Sued mit sanften S-Kurven) ---
+  // --- Schlängelnde Strasse als Spline (Nord-Sued mit engen S-Kurven,
+  // min. Kurvenradius ~20 m: bei 100 km/h muss Hans in den Kurven kurz vom
+  // Gas, sonst schiesst er ueber die Schulter hinaus) ---
   const ctrl = [
     [0, -half + 16],
-    [0, -half + 70],
-    [24, -120],
-    [42, -58],
-    [16, 2],
-    [-20, 58],
-    [-44, 118],
-    [-18, 178],
+    [0, -half + 62],
+    [30, -138],
+    [46, -84],
+    [6, -34],
+    [-28, 16],
+    [-50, 72],
+    [-22, 132],
+    [14, 186],
     [0, half - 16],
   ].map(([x, z]) => new THREE.Vector3(x, 0, z));
   const curve = new THREE.CatmullRomCurve3(ctrl, false, 'catmullrom', 0.5);
@@ -72,9 +75,9 @@ export function buildHillsMap(parent) {
 
   // --- Sanfte Huegel: weiche Sinus-Wellen, nahe der Strasse und am Rand abgeflacht ---
   function hill(x, z) {
-    let h = Math.sin(x * 0.045 + 1.7) * Math.cos(z * 0.038 + 0.6) * 2.6
-      + Math.sin(x * 0.013 - 0.4) * Math.sin(z * 0.017 + 2.1) * 4.0
-      + Math.sin((x + z) * 0.021 + 3.0) * 1.8;
+    let h = Math.sin(x * 0.05 + 1.7) * Math.cos(z * 0.042 + 0.6) * 4.2
+      + Math.sin(x * 0.016 - 0.4) * Math.sin(z * 0.02 + 2.1) * 6.5
+      + Math.sin((x + z) * 0.028 + 3.0) * 2.6;
     h *= smoothstep(roadHalf + 5, roadHalf + 26, distanceToRoad(x, z, 4)); // Strasse bleibt flach
     const edge = Math.max(Math.abs(x), Math.abs(z));
     h *= 1 - smoothstep(half - 16, half - 6, edge); // Rand bleibt flach (Mauer steht sicher)
@@ -195,14 +198,14 @@ export function buildHillsMap(parent) {
   const clearOfRoad = (x, z, margin) => distanceToRoad(x, z) > roadHalf + margin;
   const inBounds = (x, z) => Math.abs(x) < half - 12 && Math.abs(z) < half - 12;
 
-  // ~8 Baumgruppen mit je 2-4 Birken + ein paar einzelne Baeume
+  // ~14 Baumgruppen mit je 3-5 Birken + ein Dutzend einzelne Baeume
   let placed = 0;
-  for (let c = 0; c < 8 && placed < 26; c++) {
+  for (let c = 0; c < 14 && placed < 46; c++) {
     const cx = (rand() * 2 - 1) * (half - 30);
     const cz = (rand() * 2 - 1) * (half - 30);
     if (!clearOfRoad(cx, cz, 9) || !inBounds(cx, cz)) continue;
-    const count = 2 + Math.floor(rand() * 3);
-    for (let k = 0; k < count && placed < 26; k++) {
+    const count = 3 + Math.floor(rand() * 3);
+    for (let k = 0; k < count && placed < 46; k++) {
       const x = cx + (rand() * 2 - 1) * 6;
       const z = cz + (rand() * 2 - 1) * 6;
       if (!clearOfRoad(x, z, 8) || !inBounds(x, z)) continue;
@@ -210,7 +213,7 @@ export function buildHillsMap(parent) {
       placed++;
     }
   }
-  for (let k = 0; k < 8 && placed < 30; k++) {
+  for (let k = 0; k < 14 && placed < 52; k++) {
     const x = (rand() * 2 - 1) * (half - 30);
     const z = (rand() * 2 - 1) * (half - 30);
     if (!clearOfRoad(x, z, 8) || !inBounds(x, z)) continue;

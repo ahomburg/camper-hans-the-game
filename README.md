@@ -215,9 +215,10 @@ zurückgeschleudert (Kapsel-Kollision, damit Nachbarspuren nicht „treffen“).
 lückenloser Gebäudezeile (`building2/3/4.glb`, Fenster nur aus den GLB-Texturen).
 - Gebäude auch direkt am Kreis, mit Freiraum an den Ausfahrten.
 - **Huegelland-Map (nur Kapitel 2, `src/hills.js`)**: grüne Wiese mit sanften
-Hügeln (nahe der Straße abgeflacht), eine schlängelnde asphaltierte Landstraße
-(Spline, ~490 m, min. Kurvenradius ~34 m), Birken-Gruppen und einzelne Zelte im
-Gras, Hecke als Weltgrenze. Wer weiter als Straße + Schotter-Schulter von der
+Hügeln (bis ~10 m, nahe der Straße abgeflacht), eine schlängelnde asphaltierte
+Landstraße (Spline, ~510 m, min. Kurvenradius ~20 m – in den engen Kurven muss
+Hans bei 100 km/h kurz vom Gas), Birken-Gruppen und einzelne Zelte im Gras,
+Hecke als Weltgrenze. Wer weiter als Straße + Schotter-Schulter von der
 Mittellinie abkommt, verliert das Kapitel.
 
 ## Technik
