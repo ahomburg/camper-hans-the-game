@@ -178,7 +178,6 @@
        Klick oeffnet die Werkstatt (Auswahl + Kauf, siehe renderGarage). */
     #menu-vehicle-btn {
       width: min(280px, 92vw);
-      margin-top: var(--ch-space-3xs);
       padding: 8px 12px 10px; cursor: pointer;
       background: var(--ch-paper);
       border: 3px solid var(--ch-night); border-radius: var(--ch-radius-md);
@@ -420,10 +419,28 @@
       .book-leaf.fwd, .book-leaf.bwd, .book-leaf .leaf-shade, .book-pages.swap { animation-duration: 0.01s; }
     }
 
-    #menu-coins {
-      font-family: var(--ch-font-display); font-weight: 700; font-size: 15px;
+    /* Fahrzeugkarte + Reisekasse-Kachel stehen im Startmenue nebeneinander */
+    #menu-garage-row {
+      display: flex; gap: 14px; align-items: stretch; justify-content: center;
+      flex-wrap: wrap;
+      margin-top: var(--ch-space-3xs);
+    }
+    /* Reisekasse als Sticker-Kachel: grosse Zahl, darunter das Label */
+    #menu-coins.coins-tile {
+      min-width: 150px;
+      padding: 10px 22px 12px;
+      background: var(--ch-sun-soft);
+      border: 3px solid var(--ch-night); border-radius: var(--ch-radius-md);
+      box-shadow: var(--ch-shadow-pop);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    }
+    .coins-coin { font-size: 1.7rem; line-height: 1.1; }
+    .coins-num {
+      font-family: var(--ch-font-display); font-weight: 700;
+      font-size: clamp(1.6rem, 4vw, 2.1rem); line-height: 1.1;
       color: var(--ch-sun-dark); font-variant-numeric: tabular-nums;
     }
+    .coins-label { font-family: var(--ch-font-hand); font-size: 1.02rem; color: var(--ch-night-soft); }
     .menu-hint { font-family: var(--ch-font-hand); font-size: 1.25rem; color: var(--ch-campfire-dark); opacity: .9; text-align: center; max-width: min(460px, 92vw); }
 
     /* ---------- Erfolg / Scheitern (Sticker-Karten auf Nacht-Vorhang) ---------- */
@@ -540,13 +557,20 @@
     <img class="menu-emblem" src="images/logos/logo-hans-emblem.png" alt="Camper Hans Logo">
     <span class="menu-brand">Camper Hans</span>
     <h1 class="ch-h1 menu-title">DAS SPIEL</h1>
-    <!-- Fahrzeug im Startmenue: zeigt das aktuell gewaehlte Modell,
-         Klick fuehrt in die Werkstatt (Auswahl und Kauf). -->
-    <button id="menu-vehicle-btn" aria-label="Werkstatt öffnen: Fahrzeug wechseln oder kaufen">
-      <img class="veh-img" alt="Aktuelles Fahrzeug">
-      <span id="menu-vehicle-name"></span>
-      <span class="menu-vehicle-hint">🔧 Werkstatt</span>
-    </button>
+    <!-- Fahrzeugkarte und Reisekasse-Kachel nebeneinander; Klick auf das
+         Fahrzeug fuehrt in die Werkstatt (Auswahl und Kauf). -->
+    <div id="menu-garage-row">
+      <button id="menu-vehicle-btn" aria-label="Werkstatt öffnen: Fahrzeug wechseln oder kaufen">
+        <img class="veh-img" alt="Aktuelles Fahrzeug">
+        <span id="menu-vehicle-name"></span>
+        <span class="menu-vehicle-hint">🔧 Werkstatt</span>
+      </button>
+      <div id="menu-coins" class="coins-tile" aria-label="Reisekasse">
+        <span class="coins-coin" aria-hidden="true">🪙</span>
+        <span id="menu-coins-num" class="coins-num">0</span>
+        <span class="coins-label">Reisekasse</span>
+      </div>
+    </div>
     <!-- Kapitelauswahl: aufgeschlagenes Buch, jedes Kapitel eine Doppelseite -->
     <div id="menu-book">
       <div id="menu-chapters" class="book-pages"></div>
@@ -556,7 +580,6 @@
         <button id="book-next" class="ch-btn ch-btn-ghost ch-btn-sm" aria-label="Nächstes Kapitel">Blättern ▶</button>
       </div>
     </div>
-    <div id="menu-coins">Reisekasse: 0 🪙</div>
     <div class="menu-hint">ESC = Kapitel abbrechen</div>
   </div>
 

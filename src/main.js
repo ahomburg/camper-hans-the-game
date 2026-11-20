@@ -181,7 +181,7 @@ let runRepairs = 0; // Reparaturkosten der laufenden Fahrt (Scheitern-Screen)
 
 const coinsNumEl = document.getElementById('coins-num');
 const coinsEl = document.getElementById('coins');
-const menuCoinsEl = document.getElementById('menu-coins');
+const menuCoinsEl = document.getElementById('menu-coins-num');
 const coinPopEl = document.getElementById('coin-pop');
 const crashEl = document.getElementById('crash');
 const crashFlashEl = document.getElementById('crashflash');
@@ -190,7 +190,7 @@ const failedCoinsEl = document.getElementById('failed-coins');
 
 function renderCoins() {
   coinsNumEl.textContent = wallet.amount;
-  menuCoinsEl.textContent = `Reisekasse: ${wallet.amount} 🪙`;
+  menuCoinsEl.textContent = wallet.amount; // Kachel im Startmenue: nur die Zahl, Label steht darunter
   const gc = document.getElementById('garage-coins');
   if (gc) gc.textContent = `Reisekasse: ${wallet.amount} 🪙`;
 }
