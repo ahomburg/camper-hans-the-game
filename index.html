@@ -113,7 +113,7 @@
 
     /* ---------- Toast (Hans' handgeschriebener Merkzettel) ---------- */
     #toast {
-      position: fixed; top: 32%; left: 50%; transform: translate(-50%,-50%) scale(.92) rotate(-1deg); z-index: 8;
+      position: fixed; top: 32%; left: 50%; transform: translate(-50%,-50%) scale(.92) rotate(-1deg); z-index: 60;
       background: var(--ch-night); color: var(--ch-sun-soft);
       border: 2px solid var(--ch-night); border-radius: var(--ch-radius-md);
       box-shadow: var(--ch-shadow-pop);
@@ -129,7 +129,7 @@
       display: flex; flex-direction: column; align-items: center; gap: var(--ch-space-sm);
       padding: 36px 16px 48px;
     }
-    #menu.hidden, #success.hidden, #failed.hidden { display: none; }
+    #menu.hidden, #success.hidden, #failed.hidden, #garage.hidden { display: none; }
 
     /* Gespann tuckert hinter dem Menueinhalt durch (Gag auf der Creme-Wiese).
        Der Renderer liefert Fensterbreite x 150 px, der Streifen ist genauso
@@ -174,18 +174,48 @@
       -webkit-text-stroke: 0.6px currentColor;
     }
 
-    #menu-vehicles { display: flex; gap: 10px; width: min(460px, 92vw); margin-top: var(--ch-space-3xs); }
-    /* Fahrzeugwahl: nur ein Vorschaubild, keine Erklaertexte (Feedback) */
-    .veh-btn {
-      flex: 1; padding: 6px; cursor: pointer;
+    /* Fahrzeug im Startmenue: nur das aktuell gewaehlte Fahrzeug als Karte,
+       Klick oeffnet die Werkstatt (Auswahl + Kauf, siehe renderGarage). */
+    #menu-vehicle-btn {
+      width: min(280px, 92vw);
+      margin-top: var(--ch-space-3xs);
+      padding: 8px 12px 10px; cursor: pointer;
       background: var(--ch-paper);
-      border: 2px solid var(--ch-night); border-radius: var(--ch-radius-md);
+      border: 3px solid var(--ch-night); border-radius: var(--ch-radius-md);
       box-shadow: var(--ch-shadow-pop);
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
       transition: transform var(--ch-fast) var(--ch-spring), background-color var(--ch-fast) ease;
     }
-    .veh-btn:hover { transform: translateY(2px); box-shadow: 0 4px 0 rgba(34,51,59,0.9); }
-    .veh-btn.active { background: var(--ch-sun-soft); border-color: var(--ch-sun-dark); }
+    #menu-vehicle-btn:hover { transform: translateY(2px); box-shadow: 0 4px 0 rgba(34,51,59,0.9); }
+    #menu-vehicle-btn .veh-img { height: 110px; }
+    #menu-vehicle-name { font-family: var(--ch-font-display); font-weight: 700; font-size: 15px; color: var(--ch-night); }
+    .menu-vehicle-hint { font-family: var(--ch-font-hand); font-size: 1rem; color: var(--ch-campfire-dark); }
     .veh-img { display: block; width: 100%; height: 110px; object-fit: contain; border-radius: calc(var(--ch-radius-md) - 3px); }
+
+    /* ---------- Werkstatt (Garage): Fahrzeuge auswaehlen und kaufen ---------- */
+    #garage {
+      position: fixed; inset: 0; z-index: 40; overflow-y: auto;
+      background: var(--ch-cream);
+      display: flex; flex-direction: column; align-items: center; gap: var(--ch-space-sm);
+      padding: 36px 16px 48px;
+    }
+    .garage-title { margin: 0; font-family: var(--ch-font-hand); font-weight: 700; font-size: clamp(2.2rem, 6vw, 3rem); color: var(--ch-wood-dark); transform: rotate(-1.5deg); }
+    #garage-coins { font-family: var(--ch-font-display); font-weight: 700; font-size: 17px; color: var(--ch-sun-dark); font-variant-numeric: tabular-nums; }
+    .garage-grid { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+    .garage-veh {
+      width: 300px; max-width: 92vw; padding: 12px 14px;
+      background: var(--ch-paper);
+      border: 3px solid var(--ch-night); border-radius: var(--ch-radius-md);
+      box-shadow: var(--ch-shadow-pop);
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .garage-veh.active { background: var(--ch-sun-soft); border-color: var(--ch-sun-dark); }
+    .garage-veh .veh-img { height: 150px; }
+    /* Noch nicht gekauft: Modell grau und verblasst */
+    .garage-veh.locked .veh-img { filter: grayscale(1) opacity(.65); }
+    .garage-name { font-family: var(--ch-font-display); font-weight: 700; font-size: 16px; color: var(--ch-night); text-align: center; }
+    .garage-desc { font-family: var(--ch-font-hand); font-size: 1rem; line-height: 1.2; color: var(--ch-night-soft); text-align: center; flex: 1; }
+    .garage-action { min-width: 150px; }
 
     /* Kapitelauswahl als aufgeschlagenes Buch: nur die beiden Papierseiten
        nebeneinander, Falz-Schatten in der Mitte. Jedes Kapitel ist eine
@@ -510,10 +540,13 @@
     <img class="menu-emblem" src="images/logos/logo-hans-emblem.png" alt="Camper Hans Logo">
     <span class="menu-brand">Camper Hans</span>
     <h1 class="ch-h1 menu-title">DAS SPIEL</h1>
-    <div id="menu-vehicles">
-      <button class="veh-btn" data-veh="campervan" aria-label="Campervan"><img class="veh-img" alt="Campervan"></button>
-      <button class="veh-btn" data-veh="gespann" aria-label="Grünes Auto mit Wohnwagen"><img class="veh-img" alt="Grünes Auto mit Wohnwagen"></button>
-    </div>
+    <!-- Fahrzeug im Startmenue: zeigt das aktuell gewaehlte Modell,
+         Klick fuehrt in die Werkstatt (Auswahl und Kauf). -->
+    <button id="menu-vehicle-btn" aria-label="Werkstatt öffnen: Fahrzeug wechseln oder kaufen">
+      <img class="veh-img" alt="Aktuelles Fahrzeug">
+      <span id="menu-vehicle-name"></span>
+      <span class="menu-vehicle-hint">🔧 Werkstatt</span>
+    </button>
     <!-- Kapitelauswahl: aufgeschlagenes Buch, jedes Kapitel eine Doppelseite -->
     <div id="menu-book">
       <div id="menu-chapters" class="book-pages"></div>
@@ -525,6 +558,29 @@
     </div>
     <div id="menu-coins">Reisekasse: 0 🪙</div>
     <div class="menu-hint">ESC = Kapitel abbrechen</div>
+  </div>
+
+  <!-- Werkstatt: Fahrzeuge auswaehlen (gekauft) bzw. mit Muenzen kaufen.
+       Karten sind statisch, weil die 3D-Drehscheiben-Canvas eingepflanzt
+       werden; Texte und Knoepfe pflegt renderGarage() in main.js. -->
+  <div id="garage" class="hidden">
+    <h2 class="garage-title">Hans' Werkstatt</h2>
+    <div id="garage-coins">Reisekasse: 0 🪙</div>
+    <div id="garage-grid" class="garage-grid">
+      <div class="garage-veh" data-veh="gespann">
+        <img class="veh-img" alt="Grünes Auto mit Wohnwagen">
+        <div class="garage-name">Peugeot mit Wohnwagen</div>
+        <div class="garage-desc">Hans' treues Gespann – wackelt gern, aber es gehört ihm.</div>
+        <button class="ch-btn ch-btn-sm garage-action"></button>
+      </div>
+      <div class="garage-veh" data-veh="campervan">
+        <img class="veh-img" alt="Campervan">
+        <div class="garage-name">Campervan</div>
+        <div class="garage-desc">Ganz ohne Wohnwagen – dafür chipst Liesel beim Fahren.</div>
+        <button class="ch-btn ch-btn-sm garage-action"></button>
+      </div>
+    </div>
+    <button id="btn-garage-back" class="ch-btn ch-btn-ghost">◀ Zurück zur Kapitelauswahl</button>
   </div>
 
   <div id="success" class="hidden">

@@ -105,15 +105,43 @@ const gespann = new Gespann(scene);
 let car = campervan; // aktives Fahrzeug, im Menue umschaltbar
 const controls = new Controls();
 
-// --- Fahrzeugauswahl (bleibt ueber Sitzungen gespeichert) ---
+// --- Fahrzeugauswahl & Werkstatt (bleibt ueber Sitzungen gespeichert) -----
+// Grundidee: Hans startet mit dem Gespann, weitere Fahrzeuge werden in der
+// Werkstatt mit Muenzen aus der Reisekasse gekauft. Das Startmenue zeigt nur
+// das aktuell gewaehlte Fahrzeug (Klick -> Werkstatt).
+const VEHICLES = [
+  { id: 'gespann', name: 'Peugeot mit Wohnwagen', price: 0 },
+  { id: 'campervan', name: 'Campervan', price: 500 },
+];
 const VEHICLE_KEY = 'camperHansVehicle';
+const OWNED_KEY = 'camperHansVehiclesOwned';
+
+function loadOwnedVehicles() {
+  try {
+    const a = JSON.parse(localStorage.getItem(OWNED_KEY));
+    if (Array.isArray(a) && a.length) return a;
+  } catch { /* Private Mode o. ae.: dann gilt der Standardbestand */ }
+  return ['gespann']; // Neustart: nur das Auto mit Wohnwagen
+}
+const ownedVehicles = loadOwnedVehicles();
+function isOwnedVehicle(id) { return ownedVehicles.includes(id); }
+function saveOwnedVehicles() {
+  try { localStorage.setItem(OWNED_KEY, JSON.stringify(ownedVehicles)); } catch { /* s.o. */ }
+}
+
 function storedVehicle() {
   try {
-    return localStorage.getItem(VEHICLE_KEY) === 'gespann' ? 'gespann' : 'campervan';
-  } catch { return 'campervan'; }
+    const id = localStorage.getItem(VEHICLE_KEY);
+    return isOwnedVehicle(id) ? id : 'gespann';
+  } catch { return 'gespann'; }
 }
-let selectedVehicleId = 'campervan';
+let selectedVehicleId = 'gespann';
+function updateMenuVehicleName() {
+  const el = document.getElementById('menu-vehicle-name');
+  if (el) el.textContent = VEHICLES.find((v) => v.id === selectedVehicleId)?.name ?? '';
+}
 function setVehicle(id) {
+  if (!isOwnedVehicle(id)) return; // nicht gekauft: nicht waehlbar
   selectedVehicleId = id;
   car = id === 'gespann' ? gespann : campervan;
   campervan.group.visible = id !== 'gespann';
@@ -121,12 +149,10 @@ function setVehicle(id) {
   gespann.trailerGroup.visible = id === 'gespann';
   car.reset();
   try { localStorage.setItem(VEHICLE_KEY, id); } catch { /* Private Mode o. ae. */ }
-  document.querySelectorAll('.veh-btn').forEach((b) => {
-    b.classList.toggle('active', b.dataset.veh === id);
-  });
+  updateMenuVehicleName();
 }
-document.querySelectorAll('.veh-btn').forEach((b) => {
-  b.addEventListener('click', () => setVehicle(b.dataset.veh));
+document.getElementById('menu-vehicle-btn').addEventListener('click', () => {
+  if (state === 'menu') openGarage();
 });
 setVehicle(storedVehicle());
 
@@ -165,7 +191,80 @@ const failedCoinsEl = document.getElementById('failed-coins');
 function renderCoins() {
   coinsNumEl.textContent = wallet.amount;
   menuCoinsEl.textContent = `Reisekasse: ${wallet.amount} 🪙`;
+  const gc = document.getElementById('garage-coins');
+  if (gc) gc.textContent = `Reisekasse: ${wallet.amount} 🪙`;
 }
+
+// --- Werkstatt (Garage): Fahrzeuge auswaehlen bzw. kaufen -------------------
+const garageEl = document.getElementById('garage');
+
+// Karten aktualisieren: Auswahl-Markierung, Grauschleier fuer Ungekauftes,
+// Knopf-Text und -Zustand (Kaufen nur mit voller Reisekasse).
+function renderGarage() {
+  const coins = document.getElementById('garage-coins');
+  if (coins) coins.textContent = `Reisekasse: ${wallet.amount} 🪙`;
+  document.querySelectorAll('.garage-veh').forEach((card) => {
+    const v = VEHICLES.find((x) => x.id === card.dataset.veh);
+    if (!v) return;
+    const owned = isOwnedVehicle(v.id);
+    card.classList.toggle('active', v.id === selectedVehicleId);
+    card.classList.toggle('locked', !owned);
+    const btn = card.querySelector('.garage-action');
+    if (!owned) {
+      const afford = wallet.amount >= v.price;
+      btn.textContent = `Kaufen · ${v.price} 🪙`;
+      btn.className = 'ch-btn ch-btn-sun ch-btn-sm garage-action';
+      btn.disabled = !afford;
+      btn.title = afford ? '' : 'Nicht genug Münzen in der Reisekasse';
+    } else if (v.id === selectedVehicleId) {
+      btn.textContent = 'Fährt gerade';
+      btn.className = 'ch-btn ch-btn-primary ch-btn-sm garage-action';
+      btn.disabled = true;
+      btn.title = '';
+    } else {
+      btn.textContent = 'Auswählen';
+      btn.className = 'ch-btn ch-btn-primary ch-btn-sm garage-action';
+      btn.disabled = false;
+      btn.title = '';
+    }
+  });
+}
+
+function openGarage() {
+  if (state !== 'menu') return;
+  state = 'garage';
+  menuEl.classList.add('hidden');
+  garageEl.classList.remove('hidden');
+  renderGarage();
+}
+
+function closeGarage() {
+  if (state !== 'garage') return;
+  state = 'menu';
+  garageEl.classList.add('hidden');
+  menuEl.classList.remove('hidden');
+}
+
+// Ein Klick, zwei Bedeutungen: gekauft -> auswaehlen, ungekauft -> kaufen
+document.getElementById('garage-grid').addEventListener('click', (e) => {
+  const btn = e.target.closest('.garage-action');
+  if (!btn || btn.disabled) return;
+  const id = btn.closest('.garage-veh').dataset.veh;
+  const v = VEHICLES.find((x) => x.id === id);
+  if (!isOwnedVehicle(id)) {
+    if (wallet.amount < v.price) return; // Knopf ist eh deaktiviert, hier nur zur Sicherheit
+    wallet.deduct(v.price);
+    ownedVehicles.push(id);
+    saveOwnedVehicles();
+    showToast(`${v.name} gekauft – frisch aus der Werkstatt!`);
+    renderCoins();
+    setVehicle(id); // frisch gekauft: automatisch auswaehlen
+  } else {
+    setVehicle(id);
+  }
+  renderGarage();
+});
+document.getElementById('btn-garage-back').addEventListener('click', closeGarage);
 
 // Buchung schwebt kurz unter der Kasse auf, die Kasse selbst zuckt
 function popCoin(delta, label = '') {
@@ -513,6 +612,7 @@ function toMenu() {
   timerRunning = false;
   successEl.classList.add('hidden');
   failedEl.classList.add('hidden');
+  garageEl.classList.add('hidden'); // falls aus der Werkstatt heraus (ESC) gestartet wurde
   menuEl.classList.remove('hidden');
   renderMenu();
   renderChapter();
@@ -640,6 +740,7 @@ renderMenu();
 const PREVIEW_W = 256, PREVIEW_H = 176;
 let previewRenderer = null;
 const vehiclePreviews = [];
+let menuVehPreview = null; // Canvas im Startmenue-Knopf: zeigt das gewaehlte Fahrzeug
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function setupVehiclePreviews() {
   previewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -666,16 +767,25 @@ function setupVehiclePreviews() {
     const maxDim = Math.max(size.x, size.y, size.z);
     cam.position.set(maxDim * 0.9, maxDim * 0.55, maxDim * 1.5);
     cam.lookAt(0, 0, 0);
-    // <img> im Button durch den Ziel-<canvas> ersetzen (Faellt-Software aus:
-    // ohne Vorschau bleibt der Alt-Text stehen, das Menue bleibt bedienbar).
-    const placeholder = document.querySelector(`.veh-btn[data-veh="${id}"] .veh-img`);
+    // <img> in der Werkstatt-Karte durch den Ziel-<canvas> ersetzen (Faellt-
+    // Software aus: ohne Vorschau bleibt der Alt-Text stehen, die Werkstatt
+    // bleibt bedienbar).
+    const placeholder = document.querySelector(`.garage-veh[data-veh="${id}"] .veh-img`);
     const canvas = document.createElement('canvas');
     canvas.className = 'veh-img';
     placeholder.replaceWith(canvas);
     vehiclePreviews.push({ id, scene, root, cam, canvas, ctx: canvas.getContext('2d') });
   }
-  // ersten Frame aller Buttons zeichnen (Standbild), Drehteller laufen nur
-  // nachher, wenn das Menue offen ist - und nur fuer das gewaehlte Fahrzeug.
+  // Startmenue-Knopf: eigenes Canvas, auf dem immer das aktuell gewaehlte
+  // Fahrzeug dreht (die Werkstatt-Canvas bleibt bei ihrer Karte).
+  const menuPh = document.querySelector('#menu-vehicle-btn .veh-img');
+  const menuCanvas = document.createElement('canvas');
+  menuCanvas.className = 'veh-img';
+  menuPh.replaceWith(menuCanvas);
+  menuVehPreview = { canvas: menuCanvas, ctx: menuCanvas.getContext('2d') };
+  // ersten Frame aller Karten zeichnen (Standbild), Drehteller laufen nur
+  // nachher, wenn Menue/Werkstatt offen sind - und nur fuer das gewaehlte
+  // Fahrzeug.
   updateVehiclePreviews(0, false);
 }
 function updateVehiclePreviews(dt, onlySelected = true) {
@@ -686,16 +796,20 @@ function updateVehiclePreviews(dt, onlySelected = true) {
   // Streifen-Puffer und das Fahrzeug wirkt gequetscht/verzerrt.
   previewRenderer.setSize(PREVIEW_W, PREVIEW_H);
   const src = previewRenderer.domElement;
+  const paint = (c) => {
+    if (c.canvas.width !== src.width || c.canvas.height !== src.height) {
+      c.canvas.width = src.width;
+      c.canvas.height = src.height;
+    }
+    c.ctx.clearRect(0, 0, c.canvas.width, c.canvas.height);
+    c.ctx.drawImage(src, 0, 0);
+  };
   for (const pv of vehiclePreviews) {
     if (onlySelected && pv.id !== selectedVehicleId) continue; // nur die Auswahl dreht sich
     if (!reducedMotion) pv.root.rotation.y += dt * 0.7; // langsamer Drehteller
     previewRenderer.render(pv.scene, pv.cam);
-    if (pv.canvas.width !== src.width || pv.canvas.height !== src.height) {
-      pv.canvas.width = src.width;
-      pv.canvas.height = src.height;
-    }
-    pv.ctx.clearRect(0, 0, pv.canvas.width, pv.canvas.height);
-    pv.ctx.drawImage(src, 0, 0);
+    paint(pv);
+    if (pv.id === selectedVehicleId && menuVehPreview) paint(menuVehPreview);
   }
 }
 
@@ -1004,12 +1118,12 @@ function animate() {
       `Kamera ${camera.position.x.toFixed(1)} / ${camera.position.y.toFixed(2)} / ${camera.position.z.toFixed(1)}  Auto ${car.pos.x.toFixed(1)} / ${car.pos.z.toFixed(1)}`;
   }
 
-  if (state === 'menu' && previewRenderer) {
-    // Das Menue verdeckt die Spielflaeche komplett: statt der Welt die
-    // Fahrzeug-Drehscheiben in den Buttons und die Durchfahrt des Gespanns
-    // aktualisieren (spart GPU gegenueber dem Welt-Render).
-    updateVehiclePreviews(dt);
-    updateMenuRide(dt);
+  if ((state === 'menu' || state === 'garage') && previewRenderer) {
+    // Menue/Werkstatt verdecken die Spielflaeche komplett: statt der Welt die
+    // Fahrzeug-Drehscheiben aktualisieren (in der Werkstatt alle, sonst nur
+    // die Auswahl) - die Gespann-Durchfahrt laeuft nur im Startmenue.
+    updateVehiclePreviews(dt, state !== 'garage');
+    if (state === 'menu') updateMenuRide(dt);
   } else {
     renderer.render(scene, camera);
   }
