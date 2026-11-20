@@ -188,17 +188,21 @@
     .veh-img { display: block; width: 100%; height: 110px; object-fit: contain; border-radius: calc(var(--ch-radius-md) - 3px); }
 
     /* Kapitelauswahl als aufgeschlagenes Buch: nur die beiden Papierseiten
-       nebeneinander, Falz-Schatten in der Mitte.
-       Jedes Kapitel ist eine Seite (class "book-page", siehe renderMenu). */
+       nebeneinander, Falz-Schatten in der Mitte. Jedes Kapitel ist eine
+       Doppelseite (class "book-page side-left/right"); zwischen den Kapiteln
+       wird mit der Blatt-Drehanimation umgeblaettert (siehe flipToChapter). */
     #menu-book {
       position: relative;
       width: min(720px, 94vw);
       margin-top: var(--ch-space-sm);
+      --ch-leaf-duration: .85s; /* Flaetter-Tempo, muss zu FLIP_MS in main.js passen */
     }
-    /* Seitenblock: Papier ohne Einband, nur die Seiten */
+    /* Seitenblock: Papier ohne Einband, nur die Seiten. Die Perspektive gibt
+       dem umgeblaetterten Blatt Tiefe. */
     .book-pages {
       position: relative;
       z-index: 1;
+      perspective: 1400px;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       background: var(--ch-paper);
@@ -229,14 +233,71 @@
       text-align: left;
     }
     /* Papier krümmt sich zum Falz: linke Seite wird nach rechts, rechte nach
-       links hin etwas dunkler - n-th-child statt :first-child wirkt auch,
-       wenn spaeter weitere Kapitel dazu kommen (2er-Raster). */
-    .book-page:nth-child(odd) {
+       links hin etwas dunkler. Explizite side-Klassen statt :nth-child, weil
+       die Umblaetter-Blaetter eigene Seiten mitbringen. */
+    .book-page.side-left {
       background: linear-gradient(90deg, var(--ch-paper) 58%, #F3E7CD 100%);
+      border-radius: 3px 0 0 3px;
     }
-    .book-page:nth-child(even) {
+    .book-page.side-right {
       background: linear-gradient(270deg, var(--ch-paper) 58%, #F3E7CD 100%);
+      border-radius: 0 10px 10px 0;
     }
+    /* Bereitgelegte Seite unter dem umgeblaetterten Blatt: Das
+       Lesebaendchen kommt erst zum Vorschein, wenn das Blatt liegt. */
+    .book-page.under .book-ribbon { display: none; }
+
+    /* Umblaettern: Das Blatt ist halb so breit wie das Buch und schwingt
+       mit rotateY um den Falz. Vorderseite = abgeblaetterte Seite,
+       Rueckseite (vorgedreht um 180 Grad) = neue Seite des Zielkapitels. */
+    .book-leaf {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 50%;
+      z-index: 6;
+      transform-style: preserve-3d;
+    }
+    .book-leaf.fwd { /* vorwaerts: rechtes Blatt klappt nach links */
+      left: 50%;
+      transform-origin: left center;
+      animation: ch-leaf-fwd var(--ch-leaf-duration) cubic-bezier(.4, .05, .25, 1) forwards;
+    }
+    .book-leaf.bwd { /* rueckwaerts: linkes Blatt klappt zurueck nach rechts */
+      right: 50%;
+      transform-origin: right center;
+      animation: ch-leaf-bwd var(--ch-leaf-duration) cubic-bezier(.4, .05, .25, 1) forwards;
+    }
+    @keyframes ch-leaf-fwd { from { transform: rotateY(0deg); } to { transform: rotateY(-180deg); } }
+    @keyframes ch-leaf-bwd { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }
+    .leaf-face {
+      position: absolute; inset: 0;
+      -webkit-backface-visibility: hidden; backface-visibility: hidden;
+    }
+    .leaf-face.back { transform: rotateY(180deg); }
+    .leaf-face > .book-page { position: absolute; inset: 0; min-height: 0; }
+    /* Schlagschatten auf dem Blatt: am staerksten, wenn das Blatt senkrecht
+       im Falz steht (Mitte der Animation). */
+    .leaf-shade {
+      position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background: rgba(34, 51, 59, 0.3);
+      animation: ch-leaf-shade var(--ch-leaf-duration) ease-in-out;
+    }
+    @keyframes ch-leaf-shade { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+
+    /* Blaetter-Navigation unter dem Buch: Vor/Zurueck und Kapitel-Punkte */
+    .book-nav {
+      display: flex; align-items: center; justify-content: center; gap: 14px;
+      margin-top: 14px; flex-wrap: wrap;
+    }
+    .book-dots { display: flex; gap: 7px; }
+    .book-dots button {
+      width: 13px; height: 13px; padding: 0; cursor: pointer;
+      border: 2px solid var(--ch-wood-dark); border-radius: 50%;
+      background: transparent;
+      transition: background-color var(--ch-fast) ease, transform var(--ch-fast) ease;
+    }
+    .book-dots button:hover { transform: scale(1.25); }
+    .book-dots button.active { background: var(--ch-wood-dark); }
     /* Lesebändchen: Zustand des Kapitels als Textmarke uber der Seite */
     .book-ribbon {
       position: absolute;
@@ -298,6 +359,16 @@
       color: var(--ch-night-soft);
     }
     .bp-start { margin-top: 14px; align-self: flex-start; }
+    /* Missionszettel (rechte Buchseite): Liesels Ansagen in Handschrift */
+    .bp-story {
+      flex: 1;
+      font-family: var(--ch-font-hand);
+      font-weight: 500;
+      font-size: 1.02rem;
+      line-height: 1.45;
+      color: var(--ch-night);
+    }
+    .bp-story p { margin: 0 0 9px; }
     /* Schmale Bildschirme: Buch wird hoch geklappt, Falz-Schatten weg, dafuer
        Blatt-Trennlinie zwischen den uebereinander liegenden Seiten */
     @media (max-width: 720px) {
@@ -305,6 +376,14 @@
       .book-pages::before { display: none; }
       .book-page + .book-page { border-top: 2px solid rgba(34, 51, 59, 0.14); }
       .book-page { min-height: 0; padding: 20px 20px 16px; }
+      /* Gestapelte Doppelseite: kein Blatt-Drehen moeglich, die neue
+         Doppelseite wird per Klasse "swap" kurz neu eingeblendet. */
+      .book-pages.swap { animation: ch-swap .45s ease; }
+      @keyframes ch-swap { from { opacity: 0; } }
+    }
+    /* Ohne Bewegung: Blatt legen statt schwingen */
+    @media (prefers-reduced-motion: reduce) {
+      .book-leaf.fwd, .book-leaf.bwd, .book-leaf .leaf-shade, .book-pages.swap { animation-duration: 0.01s; }
     }
 
     #menu-highscore {
@@ -435,9 +514,14 @@
       <button class="veh-btn" data-veh="campervan" aria-label="Campervan"><img class="veh-img" alt="Campervan"></button>
       <button class="veh-btn" data-veh="gespann" aria-label="Grünes Auto mit Wohnwagen"><img class="veh-img" alt="Grünes Auto mit Wohnwagen"></button>
     </div>
-    <!-- Kapitelauswahl: aufgeschlagenes Buch (zwei Seiten) -->
+    <!-- Kapitelauswahl: aufgeschlagenes Buch, jedes Kapitel eine Doppelseite -->
     <div id="menu-book">
       <div id="menu-chapters" class="book-pages"></div>
+      <div class="book-nav">
+        <button id="book-prev" class="ch-btn ch-btn-ghost ch-btn-sm" aria-label="Vorheriges Kapitel">◀ Blättern</button>
+        <div id="book-dots" class="book-dots" aria-label="Kapitelübersicht"></div>
+        <button id="book-next" class="ch-btn ch-btn-ghost ch-btn-sm" aria-label="Nächstes Kapitel">Blättern ▶</button>
+      </div>
     </div>
     <div id="menu-highscore">Highscore: –</div>
     <div id="menu-coins">Reisekasse: 0 🪙</div>

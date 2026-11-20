@@ -3,10 +3,11 @@
 // Arc de Triomphe. Der Name lehnt sich ans Buch: Jede Aufgabe ist ein Kapitel.
 
 export class Chapter {
-  constructor({ id, title, desc, target, extra = null, update, onCarReset = null, onReset = null }) {
+  constructor({ id, title, desc, story = '', target, extra = null, update, onCarReset = null, onReset = null }) {
     this.id = id;
     this.title = title;
     this.desc = desc;
+    this.story = story; // liebevoll-lustige Missionstexte fuer die rechte Buchseite (Missionszettel)
     this.target = target;
     this.extra = extra; // optionale Zusatzzeile im HUD, z.B. () => `Verkehr: ${n}`
     this.progress = 0;
@@ -74,6 +75,8 @@ export function createArcLapChapter(arc, traffic, { target = 10, startTraffic = 
     id: 'arc-de-triomphe',
     title: 'Kapitel 1: Arc de Triomphe',
     desc: `Fahre ${target} Runden um den Arc de Triomphe`,
+    story: `<p>„Haaach Hans”, seufzt Liesel zum dreihundertsten Mal, „ich wollte schon immer mal nach Paris! Aber nicht im Ausflugsbus mit Pauschalbrot – wir umrunden den Arc de Triomphe wie die echten Pariser!”</p>
+      <p>Hans schiebt die Sonnenbrille hoch und tätschelt das Armaturenbrett: „Zehn Runden im Kreisverkehr, Schatz. Croissants auf den Rücksitz, der Blinker geht gratis dazu.”</p>`,
     target,
     extra: () => `Verkehr: ${traffic.count} Autos (Start ${startTraffic}, +5 pro Runde)`,
     update(dt, ctx, mgr, c) {
@@ -137,6 +140,8 @@ export function createSpeedChapter({ target = 100 } = {}) {
     id: 'temposuender',
     title: 'Kapitel 2: Temposünder',
     desc: `Erreiche ${target} km/h.`,
+    story: `<p>„Heute”, verkündet Liesel und klammert sich ans Armaturenbrett, „will ich Autobahn-Wind in den Haaren! Mindestens ${target} km/h, Hans – sonst ist das kein Rums, sondern Gemüsefahren!”</p>
+      <p>Hans grinst und knipst die Zündung an: „Anschnallen, mein Schatz. Wir hängen die Wohnwagen-Rallye einfach ab.”</p>`,
     target,
     extra: () => `Top: ${Math.floor(state.max * 3.6)} km/h`,
     update(dt, ctx, mgr, c) {

@@ -248,6 +248,9 @@ const chapterEl = document.getElementById('chapter');
 const toastEl = document.getElementById('toast');
 const menuEl = document.getElementById('menu');
 const menuChaptersEl = document.getElementById('menu-chapters');
+const bookPrevBtn = document.getElementById('book-prev');
+const bookNextBtn = document.getElementById('book-next');
+const bookDotsEl = document.getElementById('book-dots');
 const menuHighscoreEl = document.getElementById('menu-highscore');
 const successEl = document.getElementById('success');
 const successTimeEl = document.getElementById('success-time');
@@ -302,27 +305,122 @@ function isDone(id) {
 }
 
 // --- Hauptmenue: Kapitelauswahl als aufgeschlagenes Buch -------------------
-// Ein Kapitel = eine Seite. Titel haben die Form "Kapitel 1: Arc de Triomphe";
-// fuer das Buchdesign wird der Doppelpunkt getrennt: Kicker ueber dem Titel.
-function renderMenu() {
-  menuChaptersEl.innerHTML = chapters.chapters.map((q) => {
-    const done = isDone(q.id);
-    const [kicker, bookTitle] = q.title.split(': ');
-    return `<div class="book-page${done ? ' done' : ''}">
+// Jedes Kapitel ist eine Doppelseite: links "Kapitel N" mit Titel und Auftrag,
+// rechts der Missionszettel (q.story - Liesels Ansagen in Handschrift, siehe
+// chapters.js). Zwischen den Kapiteln wird per Blatt-Drehanimation
+// umgeblaettert (flipToChapter), vorwaerts wie rueckwaerts.
+let bookIndex = 0; // aktuell aufgeschlagenes Kapitel
+let bookFlipping = false; // waehrend der Blatt-Drehung: keine Klicks/Rebuilds
+const FLIP_MS = 850; // muss zur CSS-Variable --ch-leaf-duration (.85s) passen
+
+// Eine einzelne Buchseite als HTML. side: 'left' (Kapitelkopf) oder 'right'
+// (Missionszettel + Aufschlagen-Knopf).
+function chapterPageHTML(q, side) {
+  const done = isDone(q.id);
+  const m = q.title.match(/^(.+?):\s*(.+)$/);
+  const kicker = m ? m[1] : 'Kapitel';
+  const bookTitle = m ? m[2] : q.title;
+  if (side === 'left') {
+    return `<div class="book-page side-left">
       <span class="book-ribbon${done ? ' done' : ''}">${done ? 'Gelesen' : 'Zu lesen'}</span>
-      <div class="bp-kicker">${kicker || 'Kapitel'}</div>
-      <h3 class="bp-title">${bookTitle ?? q.title}</h3>
+      <div class="bp-kicker">${kicker}</div>
+      <h3 class="bp-title">${bookTitle}</h3>
       <div class="bp-rule" aria-hidden="true">✦</div>
       <p class="bp-desc">${q.desc}</p>
+    </div>`;
+  }
+  return `<div class="book-page side-right">
+      <div class="bp-story">${q.story}</div>
       <button class="ch-btn ch-btn-primary ch-btn-sm bp-start" data-id="${q.id}">${done ? 'Erneut lesen' : 'Aufschlagen'}</button>
     </div>`;
-  }).join('');
+}
+
+function bindStartButtons() {
   menuChaptersEl.querySelectorAll('button[data-id]').forEach((b) => {
     b.addEventListener('click', () => startChapter(chapters.chapters.find((q) => q.id === b.dataset.id)));
   });
+}
+
+// Doppelseite des aktuell aufgeschlagenen Kapitels ins Buch legen
+function renderSpread() {
+  const q = chapters.chapters[bookIndex];
+  menuChaptersEl.innerHTML = chapterPageHTML(q, 'left') + chapterPageHTML(q, 'right');
+  bindStartButtons();
+}
+
+function renderMenu() {
+  if (bookFlipping) return; // das Blatt liegt noch, ein Rebuild wuerde es abtrennen
+  renderSpread();
+  bookDotsEl.innerHTML = chapters.chapters.map((_, i) =>
+    `<button data-page="${i}" aria-label="Kapitel ${i + 1}"${i === bookIndex ? ' class="active"' : ''}></button>`
+  ).join('');
+  bookDotsEl.querySelectorAll('button[data-page]').forEach((d) => {
+    d.addEventListener('click', () => flipToChapter(Number(d.dataset.page)));
+  });
+  bookPrevBtn.disabled = bookIndex === 0;
+  bookNextBtn.disabled = bookIndex === chapters.chapters.length - 1;
   renderHighscore();
   renderCoins();
 }
+
+// Umblaetter-Animation: Das Blatt schwingt von einer Buchhaelfte auf die
+// andere (Falz als Drehachse). Die Vorderseite zeigt die abgeblaetterte
+// Seite, die Rueckseite die neue Seite des Zielkapitels; die Ziel-
+// Gegenseite liegt schon unter dem Blatt bereit (Klasse "under" haelt ihr
+// Lesebaendchen zurueck, bis das Blatt aufgelegt ist). direction = Zielindex.
+function flipToChapter(target) {
+  if (bookFlipping) return;
+  const last = chapters.chapters.length - 1;
+  if (target < 0 || target > last || target === bookIndex) return;
+  const fwd = target > bookIndex;
+  const from = chapters.chapters[bookIndex];
+  const to = chapters.chapters[target];
+  bookFlipping = true;
+  bookPrevBtn.disabled = true;
+  bookNextBtn.disabled = true;
+
+  // Schmale Bildschirme: Die Doppelseite liegt gestapelt, ein Drehen am Falz
+  // ergibt kein Bild - die neue Doppelseite wird kurz neu eingeblendet.
+  if (window.matchMedia('(max-width: 720px)').matches) {
+    bookIndex = target;
+    renderSpread();
+    menuChaptersEl.classList.remove('swap');
+    void menuChaptersEl.offsetWidth; // Reflow: Animation neu starten
+    menuChaptersEl.classList.add('swap');
+    bookFlipping = false;
+    renderMenu();
+    return;
+  }
+
+  // Ziel-Gegenseite unter das Blatt legen: Sie bleibt vom Blatt verdeckt,
+  // solange das Blatt diese Haelfte noch frei gibt.
+  const staticPages = menuChaptersEl.querySelectorAll(':scope > .book-page');
+  const underSide = fwd ? 'right' : 'left';
+  staticPages[fwd ? 1 : 0].outerHTML =
+    chapterPageHTML(to, underSide).replace('book-page side', 'book-page under side');
+  const fromSide = fwd ? 'right' : 'left'; // Seite, die mit dem Blatt abblaettert
+  const toSide = fwd ? 'left' : 'right'; // Seite, die mit dem Blatt ankommt
+
+  const leaf = document.createElement('div');
+  leaf.className = `book-leaf ${fwd ? 'fwd' : 'bwd'}`;
+  leaf.innerHTML = `
+    <div class="leaf-face front">${chapterPageHTML(from, fromSide)}<div class="leaf-shade"></div></div>
+    <div class="leaf-face back">${chapterPageHTML(to, toSide)}<div class="leaf-shade"></div></div>`;
+  menuChaptersEl.appendChild(leaf);
+
+  const finish = () => {
+    if (!leaf.parentNode) return; // schon aufgeraeumt (animationend oder Notnetz)
+    leaf.remove();
+    bookIndex = target;
+    bookFlipping = false;
+    renderMenu();
+  };
+  leaf.addEventListener('animationend', finish);
+  setTimeout(finish, FLIP_MS + 150); // Notnetz, falls animationend nicht feuert
+}
+
+bookPrevBtn.addEventListener('click', () => flipToChapter(bookIndex - 1));
+bookNextBtn.addEventListener('click', () => flipToChapter(bookIndex + 1));
 
 function renderChapter() {
   if (!activeChapter) { chapterEl.innerHTML = ''; return; }
