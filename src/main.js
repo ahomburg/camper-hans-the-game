@@ -349,6 +349,7 @@ function renderSpread() {
 function renderMenu() {
   if (bookFlipping) return; // das Blatt liegt noch, ein Rebuild wuerde es abtrennen
   renderSpread();
+  layoutBookHeight();
   bookDotsEl.innerHTML = chapters.chapters.map((_, i) =>
     `<button data-page="${i}" aria-label="Kapitel ${i + 1}"${i === bookIndex ? ' class="active"' : ''}></button>`
   ).join('');
@@ -359,6 +360,28 @@ function renderMenu() {
   bookNextBtn.disabled = bookIndex === chapters.chapters.length - 1;
   renderHighscore();
   renderCoins();
+}
+
+// Buchhoehe an den laengsten Text anpassen: Alle Doppelseiten werden in einem
+// unsichtbaren Mess-Container (halb so breit wie das Buch, wie eine Seite)
+// vermessen; die Hoehe des Buches entspricht der hoechsten gemessenen Seite.
+// So passt der laengste Missionszettel rein, ohne dass die Kapitel verschieden
+// hohe Buecher ergeben (das Blatt braucht beim Umblaettern ein stabiles
+// Format). Auf schmalen Bildschirmen bleibt die Hoehe automatisch (CSS).
+function layoutBookHeight() {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute; visibility:hidden; pointer-events:none; width:50%;';
+  menuChaptersEl.appendChild(probe);
+  let max = 0;
+  chapters.chapters.forEach((q) => {
+    ['left', 'right'].forEach((side) => {
+      probe.innerHTML = chapterPageHTML(q, side);
+      max = Math.max(max, probe.firstElementChild.offsetHeight);
+    });
+  });
+  probe.remove();
+  const narrow = window.matchMedia('(max-width: 720px)').matches;
+  menuChaptersEl.style.height = narrow ? '' : `${Math.ceil(max)}px`;
 }
 
 // Umblaetter-Animation: Das Blatt schwingt von einer Buchhaelfte auf die
@@ -419,6 +442,10 @@ function flipToChapter(target) {
 
 bookPrevBtn.addEventListener('click', () => flipToChapter(bookIndex - 1));
 bookNextBtn.addEventListener('click', () => flipToChapter(bookIndex + 1));
+// Fensterbreite aendert den Zeilenumbruch - Buchhoehe neu vermessen
+window.addEventListener('resize', () => {
+  if (state === 'menu' && !bookFlipping) layoutBookHeight();
+});
 
 function renderChapter() {
   if (!activeChapter) { chapterEl.innerHTML = ''; return; }

@@ -205,8 +205,9 @@
       perspective: 1400px;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      height: 300px; /* fixe Hoehe: alle Kapitel-Doppelseiten gleich gross, das
-                        Blatt hat beim Umblaettern immer dasselbe Format */
+      /* Hoehe setzt main.js (layoutBookHeight): so hoch wie die
+         textlaengste Doppelseite aller Kapitel - alle spreads gleich gross,
+         das Blatt hat beim Umblaettern immer dasselbe Format */
       background: var(--ch-paper);
       border: 3px solid var(--ch-night);
       border-radius: 3px 10px 10px 3px;
