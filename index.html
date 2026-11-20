@@ -187,55 +187,24 @@
     .veh-btn.active { background: var(--ch-sun-soft); border-color: var(--ch-sun-dark); }
     .veh-img { display: block; width: 100%; height: 110px; object-fit: contain; border-radius: calc(var(--ch-radius-md) - 3px); }
 
-    /* Kapitelauswahl als aufgeschlagenes Buch: Holzeinband (Buchdeckel) mit
-       Papierspitzen, zwei Seiten nebeneinander, Falz-Schatten in der Mitte.
+    /* Kapitelauswahl als aufgeschlagenes Buch: nur die beiden Papierseiten
+       nebeneinander, Falz-Schatten in der Mitte.
        Jedes Kapitel ist eine Seite (class "book-page", siehe renderMenu). */
     #menu-book {
       position: relative;
       width: min(720px, 94vw);
       margin-top: var(--ch-space-sm);
-      padding: 14px 14px 18px;
-      background: linear-gradient(150deg, var(--ch-wood) 0%, var(--ch-wood-dark) 100%);
-      border: 3px solid var(--ch-night);
-      border-radius: 8px 14px 14px 8px;
-      box-shadow: var(--ch-shadow-pop), inset 0 2px 0 rgba(255, 253, 245, 0.25);
     }
-    /* Buchtitel-Prägung auf dem Einband */
-    .book-heading {
-      font-family: var(--ch-font-display);
-      font-weight: 600;
-      font-size: 14px;
-      letter-spacing: .28em;
-      text-transform: uppercase;
-      text-align: center;
-      color: var(--ch-sun);
-      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
-      margin: 0 0 10px;
-    }
-    /* Seitenblock: Papier, an den Außenkanten schauen unten/rechts die
-       Blattkanten aus dem Einband (pseudo-Elemente am #menu-book). */
+    /* Seitenblock: Papier ohne Einband, nur die Seiten */
     .book-pages {
       position: relative;
       z-index: 1;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       background: var(--ch-paper);
+      border: 3px solid var(--ch-night);
       border-radius: 3px 10px 10px 3px;
-      box-shadow: inset 0 -10px 22px -14px rgba(110, 67, 31, 0.4);
-    }
-    #menu-book::after { /* gestapelte Blattkanten unten im Einband */
-      content: '';
-      position: absolute;
-      left: 17px; right: 20px; bottom: 5px; height: 11px;
-      background: repeating-linear-gradient(180deg, #FFFDF5 0 1.5px, #E9D9B6 1.5px 3px);
-      border-radius: 0 0 6px 2px;
-    }
-    #menu-book::before { /* Blattkanten an der rechten Einband-Kante */
-      content: '';
-      position: absolute;
-      top: 17px; bottom: 20px; right: 4px; width: 6px;
-      background: repeating-linear-gradient(90deg, #FFFDF5 0 1.5px, #E9D9B6 1.5px 3px);
-      border-radius: 0 3px 3px 0;
+      box-shadow: var(--ch-shadow-pop), inset 0 -10px 22px -14px rgba(110, 67, 31, 0.4);
     }
     /* Falz: weicher Buchrücken-Schatten zwischen den beiden Seiten */
     .book-pages::before {
@@ -466,9 +435,8 @@
       <button class="veh-btn" data-veh="campervan" aria-label="Campervan"><img class="veh-img" alt="Campervan"></button>
       <button class="veh-btn" data-veh="gespann" aria-label="Grünes Auto mit Wohnwagen"><img class="veh-img" alt="Grünes Auto mit Wohnwagen"></button>
     </div>
-    <!-- Kapitelauswahl: aufgeschlagenes Buch (Holzeinband, zwei Seiten) -->
+    <!-- Kapitelauswahl: aufgeschlagenes Buch (zwei Seiten) -->
     <div id="menu-book">
-      <div class="book-heading">Inhaltsverzeichnis</div>
       <div id="menu-chapters" class="book-pages"></div>
     </div>
     <div id="menu-highscore">Highscore: –</div>
