@@ -251,7 +251,6 @@ const menuChaptersEl = document.getElementById('menu-chapters');
 const bookPrevBtn = document.getElementById('book-prev');
 const bookNextBtn = document.getElementById('book-next');
 const bookDotsEl = document.getElementById('book-dots');
-const menuHighscoreEl = document.getElementById('menu-highscore');
 const successEl = document.getElementById('success');
 const successTimeEl = document.getElementById('success-time');
 const successHsEl = document.getElementById('success-highscore');
@@ -279,7 +278,6 @@ function renderHighscore() {
   const hs = loadHighscore();
   const txt = hs === null ? 'Highscore: –' : `Highscore: ${fmtTime(hs)}`;
   highscoreEl.textContent = txt;
-  menuHighscoreEl.textContent = txt;
 }
 
 function loadDone() {
