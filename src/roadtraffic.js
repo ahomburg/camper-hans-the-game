@@ -67,14 +67,21 @@ export class RoadTraffic {
   }
 
   // Autos fuer einen neuen Kapitel-Start neu verteilen: gleichmaessig ueber
-  // die Strecke - aber erst ab ~50 m vor dem Start, damit Hans am Strassen-
-  // anfang erst einmal alleine losfaehrt.
+  // die Strecke - aber das ERSTE steht bewusst nah am Start (s ~34, der
+  // Campervan spawnt bei s ~10): Schon in der Kamerafahrt guckt Hans auf ein
+  // Blechdach, und wer das Zieltempo erreichen will, muss gleich zu Beginn
+  // ueberholen. Der Rest reiht sich dahinter mit ~43 m Luft auf.
   reset() {
     const L = this.road.length;
     const n = Math.max(1, this.cars.length);
+    const FIRST_CAR_S = 34; // ~24 m vor dem spawnenden Campervan
+    const span = Math.max(0, L - 30 - FIRST_CAR_S);
+    const step = n > 1 ? span / (n - 1) : 0; // Luft zwischen den Startplaetzen
     let lastS = -Infinity;
     this.cars.forEach((car, i) => {
-      car.s = Math.min(50 + (L - 70) * ((i + 0.3 + this.rand() * 0.4) / n), L - 6);
+      const jitter = step > 0 ? (this.rand() - 0.5) * Math.min(8, step * 0.3) : 0;
+      car.s = FIRST_CAR_S + step * i + jitter;
+      car.s = Math.min(car.s, L - 6);
       car.s = Math.max(car.s, lastS + MIN_GAP); // nie ineinander starten
       lastS = car.s;
       car.baseSpeed = 10 + this.rand() * 6; // ~36-59 km/h: gemuetliches Landtempo
