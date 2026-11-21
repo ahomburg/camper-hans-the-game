@@ -10,6 +10,7 @@
 // tuckern geduldig dahinter (siehe Ruecksicht-Block in update). Kapitel 1
 // bleibt unveraendert: dort wird weiterhin geblasen wie in Paris.
 
+import * as THREE from 'three';
 import { capsuleHit, TRAILER_R, TRAILER_MID, TRAILER_HALF } from './traffic.js';
 
 // Deterministischer Zufall (wie in traffic.js): Der Landstrassen-Verkehr
@@ -30,12 +31,97 @@ const MIN_GAP = 6;
 const LOOK = 22;
 const SAFE = 8.5;
 
+// --- Nachtlichter (Kapitel 3, "Nachts nach Rom") ------------------------------
+// Auf der Nacht-Map haben die Landstrassen-Autos Scheinwerfer und
+// Ruecklichter, damit Hans ihre Positionen im Dunkeln sieht: leuchtende
+// Punkte (MeshBasicMaterial) plus additive Streukegel, die wie ein
+// Scheinwerferkegel nach vorn leuchten. Alles rein visuell - es gibt keine
+// echten THREE-Lichter pro Auto (die waeren bei mehreren Autos zu teuer).
+// Aeusserst wichtig: Die ENTE faehrt mit einem KAPUTTEN Scheinwerfer -
+// links bleibt dunkel, nur rechts leuchtet (Vorsicht beim Ueberholen!).
+
+let beamTexture = null;
+// Vertikaler Gradient (weich auslaufend): hell an der Kegelspitze (am Auto),
+// transparent am weiten Ende. Canvas oben = UV v=1 = Spitze nach dem Bau unten.
+function getBeamTexture() {
+  if (beamTexture) return beamTexture;
+  const cnv = document.createElement('canvas');
+  cnv.width = 16;
+  cnv.height = 64;
+  const g = cnv.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 64);
+  grad.addColorStop(0, 'rgba(255,244,210,0.55)'); // nahe am Auto
+  grad.addColorStop(0.45, 'rgba(255,244,210,0.20)');
+  grad.addColorStop(1, 'rgba(255,244,210,0)');    // vorne weich ausgeblendet
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 16, 64);
+  beamTexture = new THREE.CanvasTexture(cnv);
+  beamTexture.colorSpace = THREE.SRGBColorSpace;
+  return beamTexture;
+}
+
+let nightAssets = null;
+// Scheinwerfer-Kegel: Spitze am Auto, weite Oeffnung ~12 m davor (+Z = vorne).
+// ConeGeometry hat die Spitze auf +Y; rotateX(-90 Grad) legt sie auf -Z und
+// der translate schiebt die Spitze in den Ursprung - der Kegel ragt dann nach
+// +Z (Fahrtrichtung), sobald er am Scheinwerfer des Autos sitzt.
+function getNightAssets() {
+  if (nightAssets) return nightAssets;
+  const H = 12, R = 2.2;
+  const beamGeo = new THREE.ConeGeometry(R, H, 12, 1, true);
+  beamGeo.rotateX(-Math.PI / 2);
+  beamGeo.translate(0, 0, H / 2); // Spitze bei z=0, Basis bei z=+H
+  nightAssets = {
+    beamGeo,
+    beamMat: new THREE.MeshBasicMaterial({
+      map: getBeamTexture(), transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    }),
+    headMat: new THREE.MeshBasicMaterial({ color: 0xfff3c4 }), // Scheinwerfer
+    tailMat: new THREE.MeshBasicMaterial({ color: 0xff2418 }), // Ruecklicht
+    bulbGeo: new THREE.SphereGeometry(0.09, 8, 6),
+    tailGeo: new THREE.SphereGeometry(0.07, 8, 6),
+  };
+  return nightAssets;
+}
+
+// Scheinwerfer/Ruecklichter an ein geklontes GLB-Auto setzen. modelIdx: 0 =
+// Mercedes, 1 = Kaefer, 2 = Ente (Vorlagenreihenfolge, siehe traffic.js).
+// Die Ente hat EINEN kaputten Scheinwerfer (links dunkel).
+function attachNightLights(mesh, modelIdx) {
+  const A = getNightAssets();
+  mesh.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(mesh);
+  const size = box.getSize(new THREE.Vector3());
+  const hy = THREE.MathUtils.clamp(size.y * 0.55, 0.5, 0.78); // Scheinwerfer-Hoehe
+  const fz = size.z / 2 - 0.12;                             // Front
+  const rz = -size.z / 2 + 0.12;                             // Heck
+  const hx = Math.min(0.62, size.x * 0.28);                  // seitlicher Abstand
+  const entBrokenLeft = modelIdx === 2; // Ente: linker Scheinwerfer kaputt
+  for (const side of [-1, 1]) {
+    if (side < 0 && entBrokenLeft) continue; // kaputte Seite bleibt dunkel
+    const beam = new THREE.Mesh(A.beamGeo, A.beamMat);
+    beam.position.set(hx * side, hy, fz);
+    beam.rotation.x = -0.03; // minimal nach unten geneigt, wie echtes Abblendlicht
+    mesh.add(beam);
+    const bulb = new THREE.Mesh(A.bulbGeo, A.headMat);
+    bulb.position.set(hx * side, hy, fz);
+    mesh.add(bulb);
+  }
+  for (const side of [-1, 1]) {
+    const tail = new THREE.Mesh(A.tailGeo, A.tailMat);
+    tail.position.set(hx * side, hy * 0.85, rz);
+    mesh.add(tail);
+  }
+}
+
 export class RoadTraffic {
-  constructor(parent, road, { templates = [], count = 10, laneOffset = 2.1, seed = 20240602 } = {}) {
+  constructor(parent, road, { templates = [], count = 10, laneOffset = 2.1, seed = 20240602, night = false } = {}) {
     this.parent = parent;
     this.road = road; // hills.js roadPath: { length, pointAt(s), headingAt(s) }
     this.templates = Array.isArray(templates) ? templates : [];
     this.laneOffset = laneOffset; // Abstand rechts der Mittellinie (Rechtsverkehr)
+    this.night = !!night; // Kapitel 3: Autos mit Scheinwerfern (Ente: 1 kaputt)
     this.rand = mulberry32(seed);
     this.cars = [];
     this.onCrash = null; // (info) -> Muenz-System in main.js (handleCrash)
@@ -51,6 +137,9 @@ export class RoadTraffic {
     // GLB-Modell im Wechsel (Mercedes/Kaefer/Ente), wie im Kreisverkehr.
     const modelIdx = i % this.templates.length;
     const mesh = this.templates[modelIdx].clone(true);
+    // Kapitel 3 (Nacht): Scheinwerfer + Ruecklichter ans Auto bauen - bei der
+    // Ente bleibt der linke Scheinwerfer dunkel (siehe attachNightLights).
+    if (this.night) attachNightLights(mesh, modelIdx);
     this.parent.add(mesh);
     const car = {
       mesh, model: modelIdx,
