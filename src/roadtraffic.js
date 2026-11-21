@@ -31,7 +31,7 @@ const LOOK = 22;
 const SAFE = 8.5;
 
 export class RoadTraffic {
-  constructor(parent, road, { templates = [], count = 5, laneOffset = 2.1, seed = 20240602 } = {}) {
+  constructor(parent, road, { templates = [], count = 10, laneOffset = 2.1, seed = 20240602 } = {}) {
     this.parent = parent;
     this.road = road; // hills.js roadPath: { length, pointAt(s), headingAt(s) }
     this.templates = Array.isArray(templates) ? templates : [];
@@ -164,9 +164,12 @@ export class RoadTraffic {
       }
 
       // --- Bewegung: alle Autos fahren in Hans' Fahrtrichtung (steigender
-      // Bogen); am Nordende setzen sie am Suedende wieder auf. Das passiert
-      // tief im Nebel und weit weg vom Spieler, niemand sieht es. Nach einem
-      // Anstoss (shoveT) eilt das Auto kurz mit Schub vorwaerts.
+      // Bogen). Erreicht ein Auto das ENDE DER STRASSE, verschwindet es
+      // dort und erscheint am ANFANG wieder (Bogenposition springt zurueck
+      // auf 0): Beide Stellen liegen an gegenueberliegenden Weltkanten tief
+      // im Nebel, der Wechsel ist fuer den Spieler nur ein Auto weniger am
+      // einen und eines mehr am anderen Ende. Nach einem Anstoss (shoveT)
+      // eilt das Auto kurz mit Schub vorwaerts.
       const shove = car.shoveT > 0 ? 6 * Math.max(0, car.shoveT / 0.55) : 0;
       car.s += (car.speed + shove) * dt;
       if (car.s >= L) car.s -= L;
