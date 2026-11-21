@@ -7,6 +7,7 @@ import { Car, CAR_TUNING } from './car.js';
 import { Gespann } from './gespann.js';
 import { Controls } from './controls.js';
 import { Traffic } from './traffic.js';
+import { RoadTraffic } from './roadtraffic.js';
 import { ChapterManager, createArcLapChapter, createSpeedChapter } from './chapters.js';
 import { Radio } from './radio.js';
 import { truckHonk, crashSound, setRadioDucking, engineSputter, cameraShutter } from './audio.js';
@@ -521,6 +522,11 @@ async function ensureMap(q) {
     if (q.id === 'temposuender') {
       const m = buildHillsMap(scene);
       m.id = q.id;
+      // Landstrassen-Verkehr: wenige Autos (Mercedes/Kaefer/Ente) in Hans'
+      // Fahrtrichtung auf der rechten Spur - KEIN Hupen hier draussen (siehe
+      // roadtraffic.js). Die GLB-Vorlagen teilt er sich mit dem Stadtverkehr.
+      m.roadTraffic = new RoadTraffic(m.group, m.roadPath, { templates: traffic.templates });
+      m.roadTraffic.onCrash = handleCrash;
       chapterMaps.set(q.id, m);
     }
     loading.classList.add('done');
@@ -773,10 +779,13 @@ async function startChapter(q) {
     // (Kapitel 2: bis 136,8 km/h, damit 120 km/h als Ziel erreichbar sind).
     Object.assign(car, CAR_TUNING, activeMap.tuning || {});
     car.reset();
-    // Verkehr pro Kapitel: Stadt = Kreisverkehr, Landstrasse = freie Fahrt.
+    // Verkehr pro Kapitel: Stadt = Kreisverkehr (30 Autos, mit Hupen),
+    // Landstrasse = der Kreisverkehr bleibt leer, dafuer tuckern dort
+    // ein paar gemuetliche Autos ohne jedes Hupen (roadTraffic) uebers Land.
     // setTarget(0) zuerst, damit die Verteilung von vorne beginnt.
     traffic.setTarget(0);
     traffic.setTarget(q.id === 'temposuender' ? 0 : START_TRAFFIC);
+    if (activeMap.roadTraffic) activeMap.roadTraffic.reset(); // Kapitel-2-Autos neu verteilen
   elapsed = 0;
   timerRunning = true;
   state = 'playing';
@@ -1351,6 +1360,10 @@ function animate() {
     // colliders/worldHalf: dafuer die Kollision des abgerissenen Wohnwagens
     // mit Hindernissen und Welt-Grenze (siehe traffic.update).
     traffic.update(dt, car, mapColliders, activeMap.half);
+    // Kapitel 2 (Landstrasse): die wenigen Strassen-Autos bewegen und gegen
+    // Hans' Fahrzeug samt Wohnwagen pruefen (im Stadtverkehr ist dieses
+    // roadTraffic null bzw. unsichtbar).
+    if (activeMap.roadTraffic) activeMap.roadTraffic.update(dt, car);
     if (activeChapter) activeChapter.update(dt, { car, arc, map: activeMap }, chapters);
 
     // Tank leert sich mit der Zeit (Standgas + Tempo-Anteil, siehe fuel.js).

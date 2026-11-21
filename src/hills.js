@@ -269,6 +269,16 @@ export function buildHillsMap(parent) {
     return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
   };
   const SPAWN_AHEAD = 10; // m ab Strassenanfang
+  // Bogencoordinate entlang der Strassen-Mittellinie fuer den Landstrassen-
+  // Verkehr (siehe roadtraffic.js): pointAt(s) = Position an der Stelle s
+  // (0 <= s <= roadLength), headingAt(s) = Fahrtrichtung dort.
+  const roadLength = cum[cum.length - 1];
+  const headingAtLength = (s) => {
+    const s0 = THREE.MathUtils.clamp(s - 2, 0, roadLength);
+    const s1 = THREE.MathUtils.clamp(s + 2, 0, roadLength);
+    const a = pointAtLength(s0), b = pointAtLength(s1);
+    return Math.atan2(b.x - a.x, b.z - a.z);
+  };
   const sp = pointAtLength(SPAWN_AHEAD);
   const spAhead = pointAtLength(SPAWN_AHEAD + 2);
   const spawn = { x: sp.x, z: sp.z, heading: Math.atan2(spAhead.x - sp.x, spAhead.z - sp.z) };
@@ -287,6 +297,11 @@ export function buildHillsMap(parent) {
     // (~122 m) - die laengste Gerade der Strecke ist ~165 m lang.
     tuning: { maxSpeed: 38, accel: 18, drag: 0.5 },
     distanceToRoad: (x, z) => distanceToRoad(x, z, 1),
+    roadPath: {
+      length: roadLength,
+      pointAt: pointAtLength,
+      headingAt: headingAtLength,
+    },
     dispose() {
       parent.remove(group);
       group.traverse((o) => {

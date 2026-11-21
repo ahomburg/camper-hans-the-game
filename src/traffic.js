@@ -27,13 +27,13 @@ function mulberry32(seed) {
 
 // Kapselradius des Wohnwagens im Gespann (~1.8 breit: 10 % schmaler als die
 // alte Annahme 2.0, passend zum um 10 % schmaler skalierten Modell).
-const TRAILER_R = 0.9;
+export const TRAILER_R = 0.9;
 // Geometrie des Wohnwagens: trailerPos/trailerGroup-Ursprung ist die KUPPLUNG,
 // der Aufbau (5.0 lang, 0.4 ueberlappen ins Zugheck) erstreckt sich dahinter:
 // Mitte = 2.1 hinter der Kupplung, Kapselkreise bei ±1.6 um die Mitte decken
 // damit den Aufbau von +0.4 bis -4.6 ab.
-const TRAILER_MID = 2.1;
-const TRAILER_HALF = 1.6;
+export const TRAILER_MID = 2.1;
+export const TRAILER_HALF = 1.6;
 
 function makeCarMesh(color) {
   const g = new THREE.Group();
