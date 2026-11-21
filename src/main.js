@@ -2,13 +2,14 @@ import * as THREE from 'three';
 import { buildWorld } from './world.js';
 
 import { buildHillsMap } from './hills.js';
+import { buildNightRomeMap } from './nightrome.js';
 import { buildArc, loadArcMonument } from './arc.js';
 import { Car, CAR_TUNING } from './car.js';
 import { Gespann } from './gespann.js';
 import { Controls } from './controls.js';
 import { Traffic } from './traffic.js';
 import { RoadTraffic } from './roadtraffic.js';
-import { ChapterManager, createArcLapChapter, createSpeedChapter } from './chapters.js';
+import { ChapterManager, createArcLapChapter, createSpeedChapter, createRomeNightChapter } from './chapters.js';
 import { Radio } from './radio.js';
 import { truckHonk, crashSound, setRadioDucking, engineSputter, cameraShutter } from './audio.js';
 import { Wallet, crashPenalty } from './coins.js';
@@ -88,7 +89,10 @@ scene.fog = new THREE.Fog(0x8ec3e8, 70, 260);
 const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 600);
 
 // --- Licht ---
-scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x51604a, 0.9));
+// hemi wird fuer die Kapitel-Atmosphaere gebraucht (Kapitel 3: Nacht, siehe
+// applyMapAtmosphere weiter unten): Intensitaet/Farben wandern pro Map.
+const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x51604a, 0.9);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
 sun.castShadow = true;
 sun.shadow.mapSize.set(isMobile ? 512 : 2048, isMobile ? 512 : 2048);
@@ -101,6 +105,34 @@ sun.shadow.camera.top = sc;
 sun.shadow.camera.bottom = -sc;
 sun.shadow.bias = -0.0005;
 scene.add(sun, sun.target);
+
+// --- Kapitel-Atmosphaere: Tag (Stadt/Huegelland) gegen Nacht (Kapitel 3) ---
+// Kapitel 3 spielt tief in der Nacht: Das Fahrlicht des Autos ist kaputt,
+// also bleibt als einzige Beleuchtung ein hauchduenner Mond/Sternenschein -
+// und (falls gekauft) die Taschenlampe (Spotlight, siehe unten). Die Umschal-
+// tung haengt an der AKTIVEN Map (map.night, siehe setActiveMap/ensureMap).
+const DAY_ATMO = {
+  bg: 0x8ec3e8, fog: 0x8ec3e8, fogNear: 70, fogFar: 260,
+  hemiSky: 0xbfd9ff, hemiGround: 0x51604a, hemiInt: 0.9,
+  sunColor: 0xfff2dd, sunInt: 2.2,
+};
+const NIGHT_ATMO = {
+  bg: 0x070b14, fog: 0x0a1122, fogNear: 14, fogFar: 150,
+  hemiSky: 0x22304a, hemiGround: 0x0d120c, hemiInt: 0.16,
+  sunColor: 0xa9bde8, sunInt: 0.22, // schwacher Mond-Schein
+};
+function applyMapAtmosphere(m) {
+  const a = m && m.night ? NIGHT_ATMO : DAY_ATMO;
+  scene.background.set(a.bg);
+  scene.fog.color.set(a.fog);
+  scene.fog.near = a.fogNear;
+  scene.fog.far = a.fogFar;
+  hemi.color.set(a.hemiSky);
+  hemi.groundColor.set(a.hemiGround);
+  hemi.intensity = a.hemiInt;
+  sun.color.set(a.sunColor);
+  sun.intensity = a.sunInt;
+}
 
 // --- Welt, Auto, Steuerung ---
 // Kapitel-Maps: Jede Map ist eine eigene Gruppe in der Szene; nur die aktive
@@ -358,7 +390,7 @@ function renderGarage() {
   renderVehicleFuelBadges(); // Tank-Balken auf jeder Karte auf den gespeicherten Stand bringen
   document.querySelectorAll('.garage-veh').forEach((card) => {
     const v = VEHICLES.find((x) => x.id === card.dataset.veh);
-    if (!v) return;
+    if (!v) return; // Taschenlampe ist kein Fahrzeug, eigene Karte (siehe unten)
     const owned = isOwnedVehicle(v.id);
     card.classList.toggle('active', v.id === selectedVehicleId);
     card.classList.toggle('locked', !owned);
@@ -381,6 +413,25 @@ function renderGarage() {
       btn.title = '';
     }
   });
+  // Werkstatt-Artikel: Taschenlampe (Kapitel 3 - Fahrlicht kaputt, das
+  // Stueckchen Licht leuchtet den Weg nur sehr begrenzt aus).
+  const flCard = document.querySelector('.garage-veh[data-veh="taschenlampe"]');
+  if (flCard) {
+    const btn = flCard.querySelector('.garage-action');
+    flCard.classList.toggle('locked', !flashlightOwned);
+    if (flashlightOwned) {
+      btn.textContent = '✔ Im Handschuhfach';
+      btn.className = 'ch-btn ch-btn-primary ch-btn-sm garage-action';
+      btn.disabled = true;
+      btn.title = 'Im Nacht-Kapitel automatisch dabei';
+    } else {
+      const afford = wallet.amount >= FLASHLIGHT_PRICE;
+      btn.textContent = `Kaufen · ${FLASHLIGHT_PRICE} 🪙`;
+      btn.className = 'ch-btn ch-btn-sun ch-btn-sm garage-action';
+      btn.disabled = !afford;
+      btn.title = afford ? '' : 'Nicht genug Münzen in der Reisekasse';
+    }
+  }
 }
 
 function openGarage() {
@@ -403,6 +454,17 @@ document.getElementById('garage-grid').addEventListener('click', (e) => {
   const btn = e.target.closest('.garage-action');
   if (!btn || btn.disabled) return;
   const id = btn.closest('.garage-veh').dataset.veh;
+  // Werkstatt-Artikel: Taschenlampe (kein Fahrzeug, bleibt dauerhaft gekauft)
+  if (id === 'taschenlampe') {
+    if (flashlightOwned || wallet.amount < FLASHLIGHT_PRICE) return;
+    wallet.deduct(FLASHLIGHT_PRICE);
+    flashlightOwned = true;
+    saveFlashlightOwned();
+    showToast('🔦 Taschenlampe gekauft! Sie leuchtet im Nachtkapitel nur ein Stueckchen voraus …');
+    renderCoins();
+    renderGarage();
+    return;
+  }
   const v = VEHICLES.find((x) => x.id === id);
   if (!isOwnedVehicle(id)) {
     if (wallet.amount < v.price) return; // Knopf ist eh deaktiviert, hier nur zur Sicherheit
@@ -490,6 +552,28 @@ const ROUNDS_TARGET = 5;
 const chapters = new ChapterManager();
 chapters.add(createArcLapChapter(arc, traffic, { target: ROUNDS_TARGET, startTraffic: START_TRAFFIC }));
 chapters.add(createSpeedChapter({ target: 120 }));
+chapters.add(createRomeNightChapter());
+
+// --- Taschenlampe (Werkstatt-Artikel, Kapitel 3: Nachts nach Rom) -----------
+// Das Fahrlicht des Autos ist kaputt; in der Werkstatt kann Hans fuer
+// FLASHLIGHT_PRICE Muenzen eine Taschenlampe kaufen (bleibt ueber Sitzungen
+// gespeichert). Sie leuchtet den Weg aber nur SEHR BEGRENZT: ein enger,
+// kurzer Spot vor dem Auto. Ohne sie ist Kapitel 3 reiner Blindflug.
+const FLASHLIGHT_KEY = 'camperHansFlashlight';
+const FLASHLIGHT_PRICE = 60;
+let flashlightOwned = (() => {
+  try { return localStorage.getItem(FLASHLIGHT_KEY) === '1'; } catch { return false; } // Private Mode: ohne Kauf
+})();
+function saveFlashlightOwned() {
+  try { localStorage.setItem(FLASHLIGHT_KEY, flashlightOwned ? '1' : '0'); } catch { /* Private Mode: nur keine Persistenz */ }
+}
+// Der Spot haengt nicht am Auto, sondern wird jeden Frame vor das aktive
+// Fahrzeug gesetzt (geht fuer Auto UND Gespann, ohne Modelle zu aendern).
+// Bewusst schwach: kleiner Oeffnungswinkel, kurze Reichweite, force decay -
+// nur ein Stueckchen Strasse vor dem Van wird sichtbar.
+const flashlight = new THREE.SpotLight(0xffe0a3, 45, 40, 0.38, 0.45, 1.8);
+flashlight.visible = false;
+scene.add(flashlight, flashlight.target);
 
 // --- Kapitel-Maps: Registry + aktive Map -------------------------------------
 // Kapitel 1 nutzt die Stadt-Map (cityGroup, oben beim Start gebaut). Kapitel 2
@@ -509,6 +593,7 @@ let activeMap = cityMap;
 function setActiveMap(m) {
   activeMap = m;
   for (const [, mm] of chapterMaps) mm.group.visible = mm === m; // nur aktive Map sichtbar
+  applyMapAtmosphere(m); // Tag/Nacht folgt der aktiven Map (Kapitel 3: Nacht)
 }
 
 // Lazy Load: Eine noch nicht gebaute Kapitel-Map wird hier zum ersten Mal
@@ -527,6 +612,15 @@ async function ensureMap(q) {
       // roadtraffic.js). Die GLB-Vorlagen teilt er sich mit dem Stadtverkehr.
       m.roadTraffic = new RoadTraffic(m.group, m.roadPath, { templates: traffic.templates });
       m.roadTraffic.onCrash = handleCrash;
+      chapterMaps.set(q.id, m);
+    }
+    if (q.id === 'romnacht') {
+      // Kapitel 3: stockdunkles Italien mit verzwicktem Wegenetz. Die Map
+      // bringt ihre eigene Atmosphaere mit (night: true -> Sterne, Mond,
+      // dichter Nebel, siehe applyMapAtmosphere). Kein Verkehr: Nachts sind
+      // alle vernuenftigen Menschen im Bett - nur Hans nicht.
+      const m = buildNightRomeMap(scene);
+      m.id = q.id;
       chapterMaps.set(q.id, m);
     }
     loading.classList.add('done');
@@ -782,9 +876,10 @@ async function startChapter(q) {
     // Verkehr pro Kapitel: Stadt = Kreisverkehr (30 Autos, mit Hupen),
     // Landstrasse = der Kreisverkehr bleibt leer, dafuer tuckern dort
     // ein paar gemuetliche Autos ohne jedes Hupen (roadTraffic) uebers Land.
+    // Nachts (Kapitel 3) sind die Strassen leer - ausser Hans traegt alles auf.
     // setTarget(0) zuerst, damit die Verteilung von vorne beginnt.
     traffic.setTarget(0);
-    traffic.setTarget(q.id === 'temposuender' ? 0 : START_TRAFFIC);
+    traffic.setTarget(q.id === 'arc-de-triomphe' ? START_TRAFFIC : 0);
     if (activeMap.roadTraffic) activeMap.roadTraffic.reset(); // Kapitel-2-Autos neu verteilen
   elapsed = 0;
   timerRunning = true;
@@ -807,6 +902,13 @@ async function startChapter(q) {
   failedEl.classList.add('hidden');
   radio.resumeForGameplay(); // Radio laeuft weiter, wenn es angelassen wurde
   renderChapter();
+  // Kapitel 3: Hans' Fahrlicht ist kaputt. Zeige an, ob die Taschenlampe
+  // dabei ist (falls gekauft) - oder schubse sanft Richtung Werkstatt.
+    if (q.id === 'romnacht') {
+      showToast(flashlightOwned
+        ? '🔦 Taschenlampe griffbereit – mehr als ein Stueckchen Licht gibt sie aber nicht her …'
+        : '💡 Das Fahrlicht ist kaputt! Ohne eine Taschenlampe aus der Werkstatt sieht Hans fast nichts …');
+    }
   } finally {
     startingChapter = false;
   }
@@ -861,7 +963,20 @@ chapters.on('progress', (q) => {
     traffic.setTarget(START_TRAFFIC + q.progress * 5); // pro Runde +5 Autos
     earn(EARN.lap, 'Runde'); // Rundenpraemie in die Reisekasse
   }
+  // Kapitel 3: jede richtig genommene Abzweigung verdient sich einen Toast
+  // mit dem Label des Wegpunkts (setzt das Kapitel in chapters.js).
+  if (q.id === 'romnacht' && activeChapter === q && q._wpLabel) {
+    showToast(`✅ Richtig abgebogen! ${q._wpLabel}`);
+  }
   renderChapter();
+});
+
+// Kapitel 3: Hans ist in einer Sackgasse gelandet (Barriere "SACKGASSE"),
+// freundlicher Hinweis zum Wenden - kostet kein Kapitel, nur Nerven.
+chapters.on('deadend', (q) => {
+  if (activeChapter === q && state === 'playing') {
+    showToast('🚧 Sackgasse! Hier wird Hans nicht nach Rom kommen – wenden!');
+  }
 });
 
 // Erfolgs-Screen (wird bei Kapitel 1 sofort gezeigt, bei Kapitel 2 erst nach
@@ -1364,7 +1479,7 @@ function animate() {
     // Hans' Fahrzeug samt Wohnwagen pruefen (im Stadtverkehr ist dieses
     // roadTraffic null bzw. unsichtbar).
     if (activeMap.roadTraffic) activeMap.roadTraffic.update(dt, car);
-    if (activeChapter) activeChapter.update(dt, { car, arc, map: activeMap }, chapters);
+    if (activeChapter) activeChapter.update(dt, { car, arc, map: activeMap, flashlight: flashlightOwned }, chapters);
 
     // Tank leert sich mit der Zeit (Standgas + Tempo-Anteil, siehe fuel.js).
     // Faehrt der Tank auf Reserve, warnt der Toast einmalig pro Leerfahrt;
@@ -1436,6 +1551,27 @@ function animate() {
 
   const fx = Math.sin(car.heading);
   const fz = Math.cos(car.heading);
+  // --- Taschenlampe (Kapitel 3): gehoert Hans in die Hand, nicht ans Auto -
+  // deshalb sitzt der Spot leicht versetzt am Fahrerfenster und wackelt ein
+  // wenig. Nur auf der Nacht-Map aktiv (und nur, wenn gekauft); ausserhalb
+  // der Fahrt bleibt sie aus.
+  {
+    const on = flashlightOwned && activeMap && activeMap.night && state === 'playing';
+    flashlight.visible = on;
+    if (on) {
+      const t = clock.elapsedTime;
+      const wx = -fz * 0.45; // links vom Fahrzeug (Fahrerfenster)
+      const wz = fx * 0.45;
+      flashlight.position.set(
+        car.pos.x + fx * 0.6 + wx + Math.sin(t * 2.3) * 0.12,
+        1.6,
+        car.pos.z + fz * 0.6 + wz + Math.cos(t * 1.9) * 0.12
+      );
+      // Blickziel: der Strahl wandert mit der Fahrzeugfront mit und liegt
+      // bewusst flach und nah - nur ein Stueck Strasse wird sichtbar.
+      flashlight.target.position.set(car.pos.x + fx * 14, 0.35, car.pos.z + fz * 14);
+    }
+  }
   // Ansicht 1/2 (Taste C): views.js setzt die Kamera; nur die Standard-
   // Ansicht durchlaeuft die folgenden Zwoege (Erfolg/Schwenk/Verfolgung).
   if (viewMode !== 0 && state !== 'menu') {

@@ -133,6 +133,67 @@ export function createArcLapChapter(arc, traffic, { target = 10, startTraffic = 
   return chapter;
 }
 
+// Kapitel 3: Nachts nach Rom – auf der Nacht-Map (siehe nightrome.js) muss
+// Hans im Blindflug (Fahrlicht kaputt, Taschenlampe nur aus der Werkstatt) den
+// richtigen Weg durch ein Wegenetz voller Abzweigungen finden. Fortschritt:
+// Wegpunkte auf der korrekten Route (Hälfte jeder richtigen Abzweigung);
+// wer falsch abbiegt, landet in einer Sackgasse (Toast, siehe 'deadend').
+// Geschafft ist das Kapitel, sobald Hans den erleuchteten Platz von Rom
+// erreicht. Die Map liegt in ctx.map, und ctx.flashlight verrät, ob die
+// Taschenlampe gekauft ist (main.js reicht es im update-ctx durch).
+
+export function createRomeNightChapter({ target = 8, wpRadius = 14, romeRadius = 15, deadendRadius = 12 } = {}) {
+  const state = { wpIdx: 0, deadSeen: new Set() };
+  return new Chapter({
+    id: 'romnacht',
+    title: 'Kapitel 3: Nachts nach Rom',
+    desc: 'Finde bei stockfinsterer Nacht den Weg nach Rom – das Fahrlicht ist kaputt!',
+    story: `<p>„Hans!” flüstert Liesel um drei Uhr nachts, „wacht endlich auf! Der Espresso in Rom wartet nicht – aber mach zuerst das Licht an!”</p>
+      <p>Hans klickt. Klickt nochmal. Nichts. „Ähem … das Licht ist kaputt, Schatz.” – Stille. Dann, mit zusammengekniffenen Augen: „Dann kauf eine <strong>Taschenlampe</strong> in der Werkstatt – die leuchtet zwar nur ein Stueckchen, aber besser als Blindflug! Und nun: gib GAS, aber lies die Wegweiser!”</p>`,
+    target,
+    update(dt, ctx, mgr, c) {
+      const m = ctx.map;
+      const { car } = ctx;
+      if (!m || !m.waypoints) return;
+
+      // Wegpunkte: monoton weiterzaehlen (auch Ueberspringen erlaubt, wer
+      // querfeldein abkuerzt, verpasst dafuer die Zwischenpunkte nicht doppelt).
+      const wps = m.waypoints;
+      for (let i = state.wpIdx; i < wps.length; i++) {
+        if (Math.hypot(car.pos.x - wps[i].x, car.pos.z - wps[i].z) < wpRadius) {
+          c.progress += i + 1 - state.wpIdx;
+          state.wpIdx = i + 1;
+          c._wpLabel = wps[i].label || '';
+          mgr.emit('progress', c);
+        }
+      }
+
+      // Sackgasse: Toast, einmal pro Sackgasse (Hans soll umkehren)
+      if (m.deadEnds && car.speed !== 0) {
+        for (const d of m.deadEnds) {
+          if (!state.deadSeen.has(d.name) &&
+              Math.hypot(car.pos.x - d.x, car.pos.z - d.z) < deadendRadius) {
+            state.deadSeen.add(d.name);
+            mgr.emit('deadend', c);
+          }
+        }
+      }
+
+      // Ziel: Rom erreicht -> Kapitel abgeschlossen
+      if (m.rome && Math.hypot(car.pos.x - m.rome.x, car.pos.z - m.rome.z) < romeRadius) {
+        c.progress = c.target;
+        mgr.emit('progress', c);
+        c.completed = true;
+        mgr.emit('completed', c);
+      }
+    },
+    onReset() {
+      state.wpIdx = 0;
+      state.deadSeen = new Set();
+    },
+  });
+}
+
 // Kapitel 2: Temposuender – Ziel ist Tempo 120, aber auf der eigenen
 // Huegelland-Map (siehe hills.js): eine schlaengelnde Landstrasse durch Gruen.
 // Neu: Wer von der Strasse abkommt (ueber Schotter-Schulter hinaus ins Gras),

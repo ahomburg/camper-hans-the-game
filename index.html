@@ -386,6 +386,15 @@
     .garage-name { font-family: var(--ch-font-display); font-weight: 700; font-size: 16px; color: var(--ch-night); text-align: center; }
     .garage-desc { font-family: var(--ch-font-hand); font-size: 1rem; line-height: 1.2; color: var(--ch-night-soft); text-align: center; flex: 1; }
     .garage-action { min-width: 150px; }
+    /* Werkstatt-Artikel (Taschenlampe): statt 3D-Drehscheibe ein leuchtendes
+       Icon auf Nachthimmel-Hintergrund - passend zum Nachtkapitel. */
+    .garage-veh .gadget-img {
+      display: flex; align-items: center; justify-content: center;
+      height: 150px; font-size: 84px; line-height: 1;
+      background: radial-gradient(circle at 50% 120%, #2a3b63 0%, #131a2c 70%);
+      border-radius: calc(var(--ch-radius-md) - 3px);
+    }
+    .garage-veh.locked .gadget-img { filter: grayscale(.6) opacity(.7); }
 
     /* Kapitelauswahl als aufgeschlagenes Buch: nur die beiden Papierseiten
        nebeneinander, Falz-Schatten in der Mitte. Jedes Kapitel ist eine
@@ -858,6 +867,15 @@
           <div class="veh-fuel-bar"><div class="veh-fuel-fill"></div></div>
           <span class="veh-fuel-label"></span>
         </div>
+        <button class="ch-btn ch-btn-sm garage-action"></button>
+      </div>
+      <!-- Werkstatt-Artikel: Taschenlampe fuer Kapitel 3 (das Fahrlicht ist
+           kaputt) - einmal gekauft, fuer immer im Handschuhfach. Kauf-Logik
+           und Preis pflegt renderGarage() in main.js. -->
+      <div class="garage-veh" data-veh="taschenlampe">
+        <div class="veh-img gadget-img" aria-hidden="true">🔦</div>
+        <div class="garage-name">Taschenlampe „Römische Nacht“</div>
+        <div class="garage-desc">Fahrlicht kaputt? Diese kleine Wunderkerze leuchtet den Weg nur wenige Meter aus – aber besser als Blindflug nach Rom!</div>
         <button class="ch-btn ch-btn-sm garage-action"></button>
       </div>
     </div>
