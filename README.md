@@ -212,13 +212,17 @@ Spotlight-Strahl am Fahrerfenster, der nur wenige Meter vorausleuchtet.
 Der Fortschrittsbalken (8 Punkte) füllt sich pro richtiger Abzweigung, Toasts
 melden Sackgassen und Wegpunkte, geschafft ist das Kapitel auf dem erleuchteten
 Platz von Rom (Kolosseum-Silhouette hinter dem „ROMA“-Stadttor).
-**Nächtlicher Verkehr**: Mercedes, Käfer und Ente (die GLB-Vorlagen aus
-`src/traffic.js`) tuckern mit leuchtenden Scheinwerfern, Rücklichtern und
-additiven Lichtkegeln über die korrekte Route Richtung Rom (`roadtraffic.js`,
-`night: true`) – wessen Lichtern Hans folgt, biegt automatisch richtig ab.
+**Nächtlicher Verkehr**: 14× Mercedes, Käfer und Ente (die GLB-Vorlagen aus
+`src/traffic.js`) fahren kreuz und quer über das **gesamte Wegenetz** – beide
+Richtungen (Rechtsverkehr über den Spurversatz), an jeder Gabel zufällig
+(`NetworkTraffic` in `src/roadtraffic.js`, `night: true`). Sie bremsen
+rücksichtig hinter Hans, hupen nachts selbstverständlich nicht – und
+**verschwinden an jedem Ende ohne Ausfahrt** (Sackgassen, Straßenanfang,
+ROMA-Tor) kurz vor der Barriere, um irgendwo anders im Netz neu zu erscheinen.
 Die **Ente** fährt übrigens mit einem **kaputten Scheinwerfer**: links bleibt
-dunkel, nur rechts leuchtet. Wie auf der Landstraße wird nachts nicht gehuptt,
-und die Enten fahren gemütlich (~36–59 km/h).
+dunkel, nur rechts leuchtet. Sichtbar sind die Autos nachts vor allem an den
+leuchtenden Scheinwerferpunkten, Lichtkegeln (~12 m, additiv) und roten
+Rücklichtern.
 - **Erfolgsbildschirm**: „Glückwunsch, du hast es geschafft!“ mit Zeit und
 Highscore; bei Kapitel 1 bleibt das Bild stehen und die Kamera fährt nach
 hinten/oben zur Außenseite des Kreises, sodass der Arc im Hintergrund sieht.

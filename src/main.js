@@ -8,7 +8,7 @@ import { Car, CAR_TUNING } from './car.js';
 import { Gespann } from './gespann.js';
 import { Controls } from './controls.js';
 import { Traffic } from './traffic.js';
-import { RoadTraffic } from './roadtraffic.js';
+import { RoadTraffic, NetworkTraffic } from './roadtraffic.js';
 import { ChapterManager, createArcLapChapter, createSpeedChapter, createRomeNightChapter } from './chapters.js';
 import { Radio } from './radio.js';
 import { truckHonk, crashSound, setRadioDucking, engineSputter, cameraShutter } from './audio.js';
@@ -618,14 +618,15 @@ async function ensureMap(q) {
       // Kapitel 3: stockdunkles Italien mit verzwicktem Wegenetz. Die Map
       // bringt ihre eigene Atmosphaere mit (night: true -> Sterne, Mond,
       // dichter Nebel, siehe applyMapAtmosphere). Nachts Verkehr? Aber hallo:
-      // Mercedes/Kaefer/Ente tuckern mit SCHEINWERFERN ueber die korrekte
-      // Route Richtung Rom (roadtraffic.js, night: true) - wessen Lichtern
-      // Hans folgt, biegt richtig ab. Die Ente hat natuerlich EINEN
-      // Scheinwerfer kaputt; hupen tut hier drinnen niemand (Nachtruhe).
+      // 14x Mercedes/Kaefer/Ente tuckern kreuz und quer MIT SCHEINWERFERN
+      // ueber das GESAMTE Wegenetz (NetworkTraffic, beide Richtungen,
+      // zufaellige Abbieger) - an den Sackgassen verschwinden sie und
+      // erscheinen woanders neu. Die Ente hat EINEN Scheinwerfer kaputt;
+      // gehupt wird nachts selbstverstaendlich nicht (Nachtruhe).
       const m = buildNightRomeMap(scene);
       m.id = q.id;
-      m.roadTraffic = new RoadTraffic(m.group, m.roadPath, {
-        templates: traffic.templates, count: 7, laneOffset: 2.3, night: true, seed: 33071,
+      m.roadTraffic = new NetworkTraffic(m.group, m.roadNetwork, {
+        templates: traffic.templates, count: 14, laneOffset: 2.3, night: true, seed: 33071,
       });
       m.roadTraffic.onCrash = handleCrash;
       chapterMaps.set(q.id, m);
@@ -887,7 +888,7 @@ async function startChapter(q) {
     // setTarget(0) zuerst, damit die Verteilung von vorne beginnt.
     traffic.setTarget(0);
     traffic.setTarget(q.id === 'arc-de-triomphe' ? START_TRAFFIC : 0);
-    if (activeMap.roadTraffic) activeMap.roadTraffic.reset(); // Landstrassen-/Nacht-Autos neu verteilen
+    if (activeMap.roadTraffic) activeMap.roadTraffic.reset(car); // Landstrassen-/Nacht-Autos neu verteilen (Nacht: nicht auf Hans' Haube)
   elapsed = 0;
   timerRunning = true;
   state = 'playing';

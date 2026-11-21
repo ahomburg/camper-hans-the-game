@@ -581,35 +581,15 @@ export function buildNightRomeMap(parent) {
   // --- Spawn: auf der Startstrasse, Blick nach Norden (zum ersten Abzweig).
   const spawn = { x: P.start[0], z: P.start[1] - 10, heading: headingBetween('start', 'A') };
 
-  // --- Route fuer den Nachtweg-Verkehr (roadtraffic.js, night: true):
-  // Die korrekte Strecke bis vors ROMA-Stadttor als Polylinie mit Bogenlaenge.
-  // Die Verkehrautos (Mercedes, Kaefer, Ente - die GLB-Vorlagen aus traffic.js)
-  // tuckern mit Scheinwerfern ueber die richtige Route Richtung Rom; wer ihren
-  // Lichtern folgt, biegt automatisch richtig ab. Am Tor tappen sie im Dunkeln
-  // zurueck zum Start (Wrap der Bogenposition) - unsichtbar im Nachtfleck.
-  const ROUTE = ['start', 'A', 'L1', 'LR', 'LRR', 'C1', 'D1', 'gate'];
-  const routePts = ROUTE.map((k) => ({ x: P[k][0], z: P[k][1] }));
-  const routeCum = [0];
-  for (let i = 1; i < routePts.length; i++) {
-    routeCum.push(routeCum[i - 1] + Math.hypot(
-      routePts[i].x - routePts[i - 1].x,
-      routePts[i].z - routePts[i - 1].z
-    ));
-  }
-  const routeLength = routeCum[routeCum.length - 1];
-  const pointOnRoute = (s) => {
-    let i = 0;
-    while (i < routeCum.length - 2 && routeCum[i + 1] < s) i++;
-    const t = (s - routeCum[i]) / ((routeCum[i + 1] - routeCum[i]) || 1);
-    const a = routePts[i], b = routePts[i + 1];
-    return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
-  };
-  const headingOnRoute = (s) => {
-    const s0 = THREE.MathUtils.clamp(s - 2, 0, routeLength);
-    const s1 = THREE.MathUtils.clamp(s + 2, 0, routeLength);
-    const a = pointOnRoute(s0), b = pointOnRoute(s1);
-    return Math.atan2(b.x - a.x, b.z - a.z);
-  };
+  // --- Wegenetz fuer den naechtlichen Verkehr (NetworkTraffic in
+  // roadtraffic.js): ALLE Strassen, BEIDE Richtungen, zufaellige Abbieger.
+  // Die Kante gate->rome bleibt dem Verkehr erspart - der Platz vor dem
+  // Kolosseum ist Hans' grosse Buehne, die Autos verschwinden am Stadttor.
+  // An Enden ohne Ausfahrt (Sackgassen, Strassenanfang, Tor) verschwinden
+  // die Autos und erscheinen woanders auf dem Netz neu.
+  const networkEdges = ROADS
+    .filter(([a, b]) => !(a === 'gate' && b === 'rome'))
+    .map(([from, to]) => ({ from, to }));
 
   return {
     id: 'romnacht',
@@ -623,7 +603,7 @@ export function buildNightRomeMap(parent) {
     waypoints,
     deadEnds,
     rome: { x: P.rome[0], z: P.rome[1] },
-    roadPath: { length: routeLength, pointAt: pointOnRoute, headingAt: headingOnRoute },
+    roadNetwork: { nodes: P, edges: networkEdges },
     // Nachtfahrt: gemuetliches Tempo reicht - wer rast, faehrt gegen Zypressen.
     tuning: { maxSpeed: 24, accel: 12, drag: 0.55 },
     dispose() {
