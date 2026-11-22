@@ -1149,7 +1149,10 @@ function renderRadio() {
 }
 function toggleRadioPower() {
   if (state !== 'playing') return; // Radio nur waehrend der Fahrt, wie im echten Auto
+  // Passender Sender je Kapitel beim ersten Einschalten: Paris hoert Le Roi
+  // du Camping, die Nachtfahrt nach Rom natuerlich Radio Italia (Sender 4).
   if (!radio.on && activeChapter?.id === 'arc-de-triomphe') radio.tune('roi');
+  if (!radio.on && activeChapter?.id === 'romnacht') radio.tune('italiano');
   const s = radio.powerToggle();
   renderRadio();
   showToast(s ? `${s.name} an!` : 'Radio aus.');

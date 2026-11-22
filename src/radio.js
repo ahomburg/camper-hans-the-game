@@ -1,12 +1,14 @@
 // ---------------------------------------------------------------------------
-// Hans' Autoradio: Drei Sender (Roi du Camping, Camping-Hop, Schlager). Die
-// Blende im HUD (siehe index.html) hat getrennte Schalter:
+// Hans' Autoradio: Vier Sender (Roi du Camping, Camping-Hop, Schlager und
+// seit der Italien-Reise auch Radio Italia). Die Blende im HUD (siehe
+// index.html) hat getrennte Schalter:
 //   "⏻"  = ein/aus (auch Taste M), wechselt nie den Sender
-//   1..3 = Senderspeichertasten, waehlen den Sender (und schalten ein)
-// Kapitel 1 startet das Radio mit "Le Roi du Camping" (siehe main.js: tune()),
-// die anderen Sender kommen per Sendertaste. Der zuletzt gewaehlte Sender
-// bleibt ueber Sitzungen gespeichert (localStorage) - ob das Radio an ist,
-// bewusst nicht: Nach einem Reload soll es still sein.
+//   1..4 = Senderspeichertasten, waehlen den Sender (und schalten ein)
+// Kapitel 1 startet das Radio mit "Le Roi du Camping", Kapitel 3 (Nachts
+// nach Rom) mit "Radio Italia" (siehe main.js: tune()), die anderen Sender
+// kommen per Sendertaste. Der zuletzt gewaehlte Sender bleibt ueber
+// Sitzungen gespeichert (localStorage) - ob das Radio an ist, bewusst
+// nicht: Nach einem Reload soll es still sein.
 //
 // Die Musik pausiert ausserhalb des Spiels (Menue, Erfolg, Scheitern) und
 // laeuft beim naechsten Kapitel an derselben Stelle weiter (siehe
@@ -20,6 +22,7 @@ export const STATIONS = [
   { key: 'roi', name: 'Le Roi du Camping 👑', display: 'FM 101.2 · LE ROI', file: SOUND_DIR + 'Le_Roi_du_Camping.mp3' },
   { key: 'hiphop', name: 'Camping-Hop 🎧', display: 'FM 93.7 · CAMPING-HOP', file: SOUND_DIR + 'Camper_Hans_Hiphop.mp3' },
   { key: 'schlager', name: 'Schlager-Radio 🪕', display: 'FM 105.5 · SCHLAGER', file: SOUND_DIR + 'Camper_Hans_Schlager.mp3' },
+  { key: 'italiano', name: 'Radio Italia 🍝', display: 'FM 107.7 · RADIO ITALIA', file: SOUND_DIR + 'Song_camper_hans_italiano.mp3' },
 ];
 const VOLUME = 0.55;
 
