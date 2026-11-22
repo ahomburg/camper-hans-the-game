@@ -217,6 +217,44 @@ export class Car {
 
       // Kollision mit Hindernissen (Kreis gegen Kreis)
       for (const c of colliders) {
+        // Leitplanken/Waende: Kapsel-Collider (x1,z1 -> x2,z2 + Radius) statt
+        // Kreis. Hans gleitet an der Schiene entlang statt steckenzubleiben:
+        // Nur die Komponente IN die Wand prallt ab (-75%), die Tangential-
+        // Fahrt bleibt erhalten - genau wie eine echte Leitplanke.
+        if (c.x1 !== undefined) {
+          const ex = c.x2 - c.x1, ez = c.z2 - c.z1;
+          const l2 = ex * ex + ez * ez || 1e-9;
+          const t = THREE.MathUtils.clamp(
+            ((this.pos.x - c.x1) * ex + (this.pos.z - c.z1) * ez) / l2, 0, 1
+          );
+          const px = c.x1 + ex * t, pz = c.z1 + ez * t;
+          const dx = this.pos.x - px, dz = this.pos.z - pz;
+          const d = Math.hypot(dx, dz);
+          const min = c.r + this.radius;
+          if (d < min) {
+            const nx = d > 1e-4 ? dx / d : 0;
+            const nz = d > 1e-4 ? dz / d : 1;
+            this.pos.x = px + nx * min;
+            this.pos.z = pz + nz * min;
+            const vx = Math.sin(this.heading) * this.speed;
+            const vz = Math.cos(this.heading) * this.speed;
+            const vn = vx * nx + vz * nz; // < 0 = fährt in die Wand
+            if (vn < 0) {
+              const closing = -vn;
+              const nvx = vx - 1.25 * vn * nx; // Reflexion mit 25% Restitution
+              const nvz = vz - 1.25 * vn * nz;
+              this.heading = Math.atan2(nvx, nvz);
+              this.speed = Math.hypot(nvx, nvz);
+              if (this.onObstacleCrash && closing > 1.2 && this.obstacleCool <= 0) {
+                this.obstacleCool = 1.0; // Entlang-Rutschen nicht mehrfach abrechnen
+                this.onObstacleCrash({
+                  kind: 'obstacle', closing, nx, nz, x: px, z: pz,
+                });
+              }
+            }
+          }
+          continue;
+        }
         const dx = this.pos.x - c.x;
         const dz = this.pos.z - c.z;
         const d = Math.hypot(dx, dz);

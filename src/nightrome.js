@@ -16,6 +16,9 @@
 // erfundene Nonsense-Orte (AL DENTE, MOZZARELLA, MAMMA MIA ...) mit
 // willkuerlichen Kilometern. KEIN Schild sagt "ROMA" - den Weg muss Hans
 // wirklich suchen (lesbar uebrigens nur mit Taschenlampe).
+// Alle Strassen haben BEIDSEITS LEITPLANKEN, rund um die Gabelplaetze
+// schliessen Boegen die Zwickel - die Strasse kann zur Seite nicht mehr
+// verlassen werden (Wand-Kollision: Kapsel-Collider in car.js).
 //
 // Die Physik des Vans ist 2D (y = 0), deshalb liegen alle Strassen flach auf
 // y ~ 0; die Huegel heben nur das GRUEN an (nahe der Strassen abgeflacht).
@@ -154,10 +157,12 @@ export function buildNightRomeMap(parent) {
     arezzo: [-84, -80],
     ferrara: [2, -150],
   };
-  // Die 17 Sackgassen-Enden: Dort steht KEINE Absperrung - die Strasse
-  // schmaelt sich einfach und verschwindet sanft im Gras (siehe
-  // addRoadFade), dahinter wartet nur noch dunkler Wald. Auch der
-  // Nachtweg-Verkehr faehrt hinaus und verschwindet dort.
+  // Die 17 Sackgassen-Enden: Die Strasse schmaelt sich einfach und
+  // verschwindet sanft im Gras (siehe addRoadFade) - dahinter wartet nur
+  // noch dunkler Wald. Seit es ueberall LEITPLANKEN gibt, enden die Taschen
+  // mit einem Querriegel 7 m hinter dem Ende. Auch der Nachtweg-Verkehr
+  // faehrt hinaus und verschwindet dort (2 m vor dem Knoten, siehe
+  // roadtraffic.js).
   const DEADEND_KEYS = [
     'napoli', 'venezia', 'genova', 'torino', 'ravenna', 'ancona',
     'siena', 'pisa', 'firenze', 'pienza', 'lucca',
@@ -439,6 +444,152 @@ export function buildNightRomeMap(parent) {
   ];
   for (const k of PLAZAS) addPlaza(P[k][0], P[k][1], 7.5);
 
+  // --- LEITPLANKEN: Hans kann die Strassen nicht mehr zur Seite verlassen.
+  // Jedes Strassenstueck bekommt BEIDSEITS eine Stahl-Schiene, die an den
+  // Gabel-Plaetzen sauber am Asphalt-Kreis endet (Oeffnung genau auf der
+  // Strasse). Rund um jeden Platz schliessen Boegen die Zwickel zwischen den
+  // Abzweigen - Decken sich zwei Strassen (flacher Winkel), gibt es keinen
+  // Zwickel und keinen Bogen. An den 17 Sackgassen und am Strassenanfang
+  // laufen die Schienen hinter das Ende mit und ein Querriegel verschliesst
+  // die Tasche. Nur der erleuchtete Platz von Rom bleibt offen - Hans ist
+  // ja angekommen. Kollision: Wand-Collider (Kapsel, siehe car.js), die
+  // Reflektoren und der Taschenlampen-Glanz am Stahl machen die Schienen
+  // auch nachts lesbar.
+  {
+    const PLAZA_R = 7.5;     // Radius der Gabelplaetze (siehe addPlaza)
+    const EXT = 7;           // Ueberstand hinter endende Strassen bis zum Riegel
+    const RAIL_OFF = 0.4;    // Abstand Schiene <-> Asphaltkante
+    const OPEN_R = 18;       // offen gelassener Erleuchteter Platz von Rom
+    const CLOSE_NODES = new Set([...DEADEND_KEYS, 'start']);
+    const plazaSet = new Set(PLAZAS);
+    const railLat = (w) => w / 2 + RAIL_OFF;
+    const runs = [];   // [x1, z1, x2, z2] Schienen-Abschnitte (geradlinig)
+    const railAt = (key, w) => { // wie weit laeuft die Schiene ab dem Knoten?
+      const lat = railLat(w);
+      if (plazaSet.has(key)) return Math.sqrt(PLAZA_R * PLAZA_R - lat * lat);
+      if (key === 'rome') return Math.sqrt(OPEN_R * OPEN_R - lat * lat);
+      return -EXT;    // endende Strasse: hinter den Knoten bis zum Riegel
+    };
+
+    for (const s of segs) {
+      const ddx = s.b[0] - s.a[0], ddz = s.b[1] - s.a[1];
+      const len = Math.hypot(ddx, ddz);
+      const ux = ddx / len, uz = ddz / len;
+      const h = Math.atan2(ddx, ddz);
+      const nlx = Math.cos(h), nlz = -Math.sin(h); // Normale links
+      const lat = railLat(s.w);
+      const dA = railAt(s.ka, s.w); // > 0: vor dem Knoten kappen, < 0: Ueberstand
+      const dB = railAt(s.kb, s.w);
+      for (const side of [-1, 1]) {
+        const off = lat * side;
+        runs.push([
+          s.a[0] + ux * dA + nlx * off, s.a[1] + uz * dA + nlz * off,
+          s.b[0] - ux * dB + nlx * off, s.b[1] - uz * dB + nlz * off,
+        ]);
+      }
+      // Querriegel an endenden Strassen (Sackgassen + Start): schliesst die
+      // Tasche hinter dem Knoten ab - dahinter nur noch der dunkle Wald.
+      if (CLOSE_NODES.has(s.ka)) {
+        const qx = s.a[0] - ux * EXT, qz = s.a[1] - uz * EXT;
+        runs.push([qx + nlx * lat, qz + nlz * lat, qx - nlx * lat, qz - nlz * lat]);
+      }
+      if (CLOSE_NODES.has(s.kb)) {
+        const qx = s.b[0] + ux * EXT, qz = s.b[1] + uz * EXT;
+        runs.push([qx + nlx * lat, qz + nlz * lat, qx - nlx * lat, qz - nlz * lat]);
+      }
+    }
+
+    // Boegen um die Plaetze: Fuer jeden Platz die abgehenden Strassen nach
+    // Winkel sortieren; klappt der Winkel zwischen zwei Nachbarn nicht mit
+    // ihren Winkel-Breiten (2 * asin(lat/R)) ueber, bleibt ein Zwickel ->
+    // der Bogen am Platz-Kreis schliesst ihn. Die Bogen-Endpunkte fallen
+    // exakt auf die Schienen-Stummel (die Stahlstuecke stossen spaltfrei
+    // aneinander).
+    const incident = {};
+    for (const s of segs) {
+      for (const [k, o] of [[s.ka, s.b], [s.kb, s.a]]) {
+        if (!plazaSet.has(k)) continue;
+        const phi = Math.atan2(o[0] - P[k][0], o[1] - P[k][1]);
+        const half = Math.asin(railLat(s.w) / PLAZA_R);
+        (incident[k] ??= []).push({ phi, half });
+      }
+    }
+    for (const k in incident) {
+      const [cxk, czk] = P[k];
+      const list = incident[k].sort((a, b) => a.phi - b.phi);
+      for (let i = 0; i < list.length; i++) {
+        const cur = list[i];
+        const nxt = list[(i + 1) % list.length];
+        let gap = nxt.phi - cur.phi;
+        if (i === list.length - 1) gap += Math.PI * 2;
+        const span = gap - cur.half - nxt.half; // echter Zwickel-Winkel
+        if (span <= 0.02) continue;            // Strassen ueberlappen sich
+        const n = Math.max(2, Math.ceil((span * PLAZA_R) / 3.5));
+        let px = cxk + Math.sin(cur.phi + cur.half) * PLAZA_R;
+        let pz = czk + Math.cos(cur.phi + cur.half) * PLAZA_R;
+        for (let j = 1; j <= n; j++) {
+          const a = cur.phi + cur.half + span * (j / n);
+          const qx = cxk + Math.sin(a) * PLAZA_R;
+          const qz = czk + Math.cos(a) * PLAZA_R;
+          runs.push([px, pz, qx, qz]);
+          px = qx; pz = qz;
+        }
+      }
+    }
+
+    // Visuals: EIN InstancedMesh fuer die Stahl-Balken (Skalierung in Laengs-
+    // richtung - Box-Normalen vertragen nichtuniforme Skalierung problemlos),
+    // EIN InstancedMesh fuer alle Pfosten. Dazu je Abschnitt ein Kapsel-
+    // Collider (Wand, siehe car.js).
+    const postPts = [];
+    for (let i = 0; i < runs.length; i++) {
+      const [x1, z1, x2, z2] = runs[i];
+      const dx = x2 - x1, dz = z2 - z1;
+      const L = Math.hypot(dx, dz);
+      if (L < 0.05) { runs[i] = null; continue; }
+      for (let t = 1.2; t < L; t += 4) {
+        postPts.push([x1 + dx / L * t, z1 + dz / L * t]);
+      }
+      colliders.push({ x1, z1, x2, z2, r: 0.18 });
+    }
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x88919b, roughness: 0.5, metalness: 0.45 });
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x5b626b, roughness: 0.85, metalness: 0.2 });
+    const beams = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 0.3, 0.1), steelMat, runs.length
+    );
+    const posts = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.16, 0.78, 0.16), postMat, Math.max(1, postPts.length)
+    );
+    const M = new THREE.Matrix4();
+    const Q = new THREE.Quaternion();
+    const E = new THREE.Euler();
+    const S = new THREE.Vector3();
+    const V = new THREE.Vector3();
+    let bi = 0;
+    for (const r of runs) {
+      if (!r) continue;
+      const [x1, z1, x2, z2] = r;
+      const dx = x2 - x1, dz = z2 - z1;
+      const L = Math.hypot(dx, dz);
+      E.set(0, Math.atan2(dx, dz), 0);
+      Q.setFromEuler(E);
+      V.set((x1 + x2) / 2, 0.5, (z1 + z2) / 2);
+      S.set(L, 1, 1);
+      M.compose(V, Q, S);
+      beams.setMatrixAt(bi++, M);
+    }
+    beams.count = bi;
+    postPts.forEach(([x, z], i) => {
+      E.set(0, 0, 0);
+      Q.setFromEuler(E);
+      V.set(x, 0.39, z);
+      S.set(1, 1, 1);
+      M.compose(V, Q, S);
+      posts.setMatrixAt(i, M);
+    });
+    group.add(beams, posts);
+  }
+
   // --- Wegweiser an den Gabeln: Holzschild mit einer Zeile je Ausfahrt. Die
   // Pfeil-Richtung wird aus der Geometrie berechnet ("links" der Anfahrt =
   // Kreuzprodukt-Anzeichen). Auf den Schildern steht NUR UNSINN (siehe
@@ -530,10 +681,11 @@ export function buildNightRomeMap(parent) {
     addSignpost(P[sd.at][0], P[sd.at][1], headingBetween(sd.from, sd.at), lines);
   }
 
-  // --- Sackgassen: KEINE Absperrung - die Strasse laeuft einfach aus und
-  // verschwindet im Gras (siehe addRoadFade oben). Dahinter wartet nur
-  // dunkler Wald; auch der Nachtweg-Verkehr faehrt hinaus und verschwindet.
-  // Fuer Toasts/Kapitel-Logik bleiben die Enden als Punkte registriert.
+  // --- Sackgassen: Die Strasse laeuft einfach aus und verschwindet im
+  // Gras (siehe addRoadFade oben), dahinter wartet nur dunkler Wald.
+  // Querriegel-LEITPLANKEN verschliessen die Taschen 7 m hinter dem Ende
+  // (siehe Leitplanken-Block oben) - verlassen kann Hans die Strasse nirgends
+  // mehr zur Seite. Fuer Toasts/Kapitel-Logik bleiben die Enden registriert.
   const deadEnds = DEADEND_KEYS.map((n) => {
     const [x, z] = P[n];
     return { name: n, x, z };
