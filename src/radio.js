@@ -1,14 +1,19 @@
 // ---------------------------------------------------------------------------
-// Hans' Autoradio: Vier Sender (Roi du Camping, Camping-Hop, Schlager und
-// seit der Italien-Reise auch Radio Italia). Die Blende im HUD (siehe
-// index.html) hat getrennte Schalter:
-//   "⏻"  = ein/aus (auch Taste M), wechselt nie den Sender
-//   1..4 = Senderspeichertasten, waehlen den Sender (und schalten ein)
-// Kapitel 1 startet das Radio mit "Le Roi du Camping", Kapitel 3 (Nachts
-// nach Rom) mit "Radio Italia" (siehe main.js: tune()), die anderen Sender
-// kommen per Sendertaste. Der zuletzt gewaehlte Sender bleibt ueber
-// Sitzungen gespeichert (localStorage) - ob das Radio an ist, bewusst
-// nicht: Nach einem Reload soll es still sein.
+// Hans' Autoradio: Drei Senderspeicher, und zwar:
+//   1 = REGIONALSENDER - er bringt die Landesmusik des Kapitels:
+//       Paris/Standard: "Le Roi du Camping" (song_camper_hans_francais),
+//       Nachtfahrt nach Rom: "Radio Italia" (song_camper_hans_italiano).
+//       main.js stellt beim Kapitel-Start per setRegion() um.
+//   2 = Camping-Hop
+//   3 = Schlager-Radio
+// Die Blende im HUD (siehe index.html) hat getrennte Schalter:
+//   "⏻" = ein/aus (auch Taste M) - das EINSCHALTEN dreht IMMER auf
+//         Sender 1, den Regionalsender (wie im echten Auto der
+//         Lieblingssender-Taste)
+//   1..3 = Senderspeichertasten, waehlen den Sender (und schalten ein)
+// Der zuletzt gewaehlte Sender bleibt ueber Sitzungen gespeichert
+// (localStorage) - ob das Radio an ist, bewusst nicht: Nach einem Reload
+// soll es still sein.
 //
 // Die Musik pausiert ausserhalb des Spiels (Menue, Erfolg, Scheitern) und
 // laeuft beim naechsten Kapitel an derselben Stelle weiter (siehe
@@ -18,11 +23,25 @@
 const SOUND_DIR = 'assets/sound/';
 const STATION_KEY = 'camperHansRadioStation';
 
+// Die regionalen Ausgaben von Sender 1: Datei, Name und Sendernetikett
+// wechseln mit der Region, der Sendeplatz bleibt Taste 1 (key 'regional').
+const REGIONAL_VARIANTS = {
+  francais: {
+    name: 'Le Roi du Camping 👑', display: 'FM 101.2 · LE ROI',
+    file: SOUND_DIR + 'song_camper_hans_francais.mp3',
+  },
+  italiano: {
+    name: 'Radio Italia 🍝', display: 'FM 105.0 · RADIO ITALIA',
+    file: SOUND_DIR + 'song_camper_hans_italiano.mp3',
+  },
+};
+
 export const STATIONS = [
-  { key: 'roi', name: 'Le Roi du Camping 👑', display: 'FM 101.2 · LE ROI', file: SOUND_DIR + 'Le_Roi_du_Camping.mp3' },
+  // Sender 1: REGIONALSENDER - Startausgabe ist Frankreich, kapitelweise per
+  // Radio.setRegion() umgestellt (Kapitel 3 "Nachts nach Rom" -> italiano).
+  { key: 'regional', ...REGIONAL_VARIANTS.francais },
   { key: 'hiphop', name: 'Camping-Hop 🎧', display: 'FM 93.7 · CAMPING-HOP', file: SOUND_DIR + 'Camper_Hans_Hiphop.mp3' },
   { key: 'schlager', name: 'Schlager-Radio 🪕', display: 'FM 105.5 · SCHLAGER', file: SOUND_DIR + 'Camper_Hans_Schlager.mp3' },
-  { key: 'italiano', name: 'Radio Italia 🍝', display: 'FM 107.7 · RADIO ITALIA', file: SOUND_DIR + 'Song_camper_hans_italiano.mp3' },
 ];
 const VOLUME = 0.55;
 
@@ -51,6 +70,25 @@ export class Radio {
 
   get station() { return this.on ? STATIONS[this.index] : null; }
 
+  // Regionalsender (Taste 1) auf die Landesmusik des Kapitels drehen:
+  // 'italiano' in Kapitel 3 (Nachts nach Rom), 'francais' sonst. Tauscht
+  // nur Name/Etikett/Datei von STATIONS[0] - der Sendeplatz bleibt Taste 1.
+  setRegion(key) {
+    if (!REGIONAL_VARIANTS[key]) key = 'francais';
+    const s = STATIONS[0];
+    const v = REGIONAL_VARIANTS[key];
+    s.name = v.name;
+    s.display = v.display;
+    if (s.file !== v.file) {
+      s.file = v.file;
+      // Bereits erzeugtes Audio-Element auf die neue Datei zeigen; geladen
+      // wird sie beim naechsten play() (das Radio laeuft beim Kapitelstart
+      // eh noch still).
+      if (s.el) s.el.src = v.file;
+    }
+    if (this.onChange) this.onChange(this.station);
+  }
+
   // Ein-/Ausschalten ohne den Sender zu wechseln (Schalter "⏻" oder Taste M).
   // Beim Einschalten laeuft der gespeicherte bzw. per tune() gewaehlte Sender.
   powerToggle() {
@@ -73,8 +111,9 @@ export class Radio {
     return this.station;
   }
 
-  // Direkt auf einen Sender drehen (ohne an/aus zu schalten): Kapitel 1
-  // startet z.B. mit "Le Roi du Camping" (main.js ruft tune vor powerToggle).
+  // Direkt auf einen Sender drehen (ohne an/aus zu schalten): main.js ruft
+  // tune('regional'), bevor das Radio eingeschaltet wird - das Einschalten
+  // startet damit IMMER mit Sender 1, der Landesmusik der Region.
   tune(key) {
     const i = STATIONS.findIndex((s) => s.key === key);
     if (i < 0) return;

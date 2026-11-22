@@ -923,6 +923,9 @@ async function startChapter(q) {
   menuEl.classList.add('hidden');
   successEl.classList.add('hidden');
   failedEl.classList.add('hidden');
+  // Sender 1 (Regionalsender) auf die Landesmusik des Kapitels drehen:
+  // Nachtfahrt nach Rom -> Radio Italia, sonst Le Roi du Camping.
+  radio.setRegion(q.id === 'romnacht' ? 'italiano' : 'francais');
   radio.resumeForGameplay(); // Radio laeuft weiter, wenn es angelassen wurde
   renderChapter();
   // Kapitel 3: Hans' Fahrlicht ist kaputt. Zeige an, ob die Taschenlampe
@@ -1128,10 +1131,14 @@ controls.onEscape = () => {
 };
 
 // --- Autoradio (Ein/Aus-Schalter + Sendertasten, Taste M = Ein/Aus) --------
-// Getrennte Schalter: "⏻" schaltet nur ein/aus (Sender bleibt), die Tasten
-// 1-3 waehlen den Sender (und schalten ein). Kapitel 1 startet mit "Le Roi
-// du Camping" - Hans' Pariser Camping-Hit. Der gewaehlte Sender bleibt
-// gespeichert; ob das Radio an ist, nicht (nach Reload erst still).
+// Getrennte Schalter: "⏻" schaltet nur ein/aus, die Tasten 1-3 waehlen den
+// Sender (und schalten ein). Das EINSCHALTEN dreht IMMER auf Sender 1, den
+// REGIONALSENDER mit der Landesmusik des Kapitels: In Paris (und sonstwo)
+// laeuft "Le Roi du Camping" (song_camper_hans_francais), auf der
+// Nachtfahrt nach Rom "Radio Italia" (song_camper_hans_italiano) - die
+// Region stellt startChapter per radio.setRegion() ein. Der gewaehlte
+// Sender bleibt gespeichert; ob das Radio an ist, nicht (nach Reload erst
+// still).
 const radio = new Radio();
 const radioEl = document.getElementById('radio');
 const radioDisplayEl = document.getElementById('radio-label');
@@ -1149,10 +1156,10 @@ function renderRadio() {
 }
 function toggleRadioPower() {
   if (state !== 'playing') return; // Radio nur waehrend der Fahrt, wie im echten Auto
-  // Passender Sender je Kapitel beim ersten Einschalten: Paris hoert Le Roi
-  // du Camping, die Nachtfahrt nach Rom natuerlich Radio Italia (Sender 4).
-  if (!radio.on && activeChapter?.id === 'arc-de-triomphe') radio.tune('roi');
-  if (!radio.on && activeChapter?.id === 'romnacht') radio.tune('italiano');
+  // Einschalten bedeutet: IMMER Sender 1 - der Regionalsender mit der
+  // Landesmusik des Kapitels (in Paris Le Roi du Camping, in Rom Radio
+  // Italia). Wer beim Umschalten woanders hoeren will, drueckt 2 oder 3.
+  if (!radio.on) radio.tune('regional');
   const s = radio.powerToggle();
   renderRadio();
   showToast(s ? `${s.name} an!` : 'Radio aus.');

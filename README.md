@@ -291,10 +291,12 @@ Texturen sind als WebP in die GLBs eingebettet (offline konvertiert mit
 Die grossen `car1/2/3.glb` werden nicht verwendet und sind per `.dockerignore`
 aus dem Docker-Image ausgeschlossen.
 - Sounds: `car1/2/3_horn.mp3`, `campervan_horn.mp3` (WebAudio-Synthese nur als
-  Fallback, falls eine Datei fehlt). Autoradio mit vier Sendern: Le Roi du
-  Camping, Camping-Hop, Schlager und **Radio Italia** (Taste 4,
-  `Song_camper_hans_italiano.mp3` – Kapitel 3 startet beim Einschalten
-  automatisch damit).
+  Fallback, falls eine Datei fehlt). Autoradio mit drei Senderspeichern:
+  **Sender 1 ist der Regionalsender** mit der Landesmusik des Kapitels —
+  Paris/Standard spielt „Le Roi du Camping“ (`song_camper_hans_francais.mp3`),
+  die Nachtfahrt nach Rom spielt „Radio Italia“
+  (`song_camper_hans_italiano.mp3`). **Einschalten** (Taste M) startet immer
+  Sender 1; zusätzlich Camping-Hop (2) und Schlager-Radio (3).
 Fallback, falls eine Datei fehlt).
 - Persistenz: Highscore und gelesene Kapitel in `localStorage`.
 
