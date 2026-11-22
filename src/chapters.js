@@ -215,8 +215,8 @@ export function createSpeedChapter({ target = 120, offroadMargin = 2.5 } = {}) {
     id: 'temposuender',
     title: 'Kapitel 2: Temposünder',
     desc: `Erreiche ${target} km/h – ohne von der Straße abzukommen!`,
-    story: `<p>„Draußen auf dem Land”, ruft Liesel und kurbelt das Fenster herunter, „da kann Hans mal zeigen, was der Wagen kann! Mindestens ${target} km/h – aber bitte auf dem Asphalt bleiben, ja?”</p>
-      <p>Hans nickt grimmig und lässt den Motor aufheulen: „Keine Sorge, Schatz. Die Wiese ist zum Zelten da, nicht zum Fahren. Anschnallen!”</p>`,
+    story: `<p>„Draußen in den bayerischen Hügeln”, ruft Liesel und kurbelt das Fenster herunter, „da kann Hans mal zeigen, was der Wagen kann! Mindestens ${target} km/h – aber bitte auf dem Asphalt bleiben, ja? Die Kühe wollen hier echt nicht gestört werden …”</p>
+      <p>Hans nickt grimmig und lässt den Motor aufheulen: „Keine Sorge, Schatz. In Bayern ist die Wiese zum Zelten da, nicht zum Fahren. Anschnallen – und griaß Gott!”</p>`,
     target,
     extra: () => `Top: ${Math.floor(state.max * 3.6)} km/h`,
     update(dt, ctx, mgr, c) {

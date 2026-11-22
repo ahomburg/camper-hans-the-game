@@ -199,8 +199,12 @@ Auf Touch-Geräten erscheinen Buttons unten (GAS / BREMS / LINKS / RECHTS).
 - **Kapitel 1 – Arc de Triomphe**: 5 Runden gegen den Uhrzeigersinn um den Kreis.
 Pro Runde +5 Autos. Highscore (schnellste Zeit) wird gespeichert.
 - **Kapitel 2 – Temposünder**: 120 km/h erreichen – ohne von der Straße abzukommen.
-Die eigene Huegelland-Map (sanfte Hügel, schlängelnde Landstraße, Bäume, Zelte, keine Häuser)
-wird erst beim Auswählen des Kapitels geladen (Lazy Load, `src/hills.js`).
+Die eigene Karte (`src/hills.js`, Lazy Load) spielt im **bayerischen Voralpenland**:
+Blumenwiesen, Mischwald aus Birken und Tannen, ein blau-weißer **Maibaum** am
+Straßenanfang, drei **Marterln** am Straßenrand, zwei **Almhütten** mit
+Fundament im Hang, eine **Kuhherde** auf der Weide — und hinter der Weltgrenze
+ragt die **Alpen-Silhouette** mit Schneekappen auf. Im Radio läuft mit Sender 1
+„**Alpenwelle**“ (`song_camper_hans_bayrisch.mp3`).
 Spawn ist 10 m vor dem Strassenanfang, damit das Auto komplett auf dem Asphalt steht.
 Beim Erreichen des Zieltempos wird Hans **geblitzt** (Vollbild-Flash + Shutter-Sound,
 `cameraShutter` in `src/audio.js`); das Auto fährt noch ~2,5 s weiter, erst dann
@@ -263,11 +267,20 @@ zurückgeschleudert (Kapsel-Kollision, damit Nachbarspuren nicht „treffen“).
 - Champs-Élysée (Startstraße, 21 m breit) mit Birken-Allee und anschließender,
 lückenloser Gebäudezeile (`building2/3/4.glb`, Fenster nur aus den GLB-Texturen).
 - Gebäude auch direkt am Kreis, mit Freiraum an den Ausfahrten.
-- **Huegelland-Map (nur Kapitel 2, `src/hills.js`)**: grüne Wiese mit sanften
+- **Huegelland-Map (nur Kapitel 2, `src/hills.js`)**: bayerisches Voralpenland —
+grüne Wiese mit Blumentupfern (Gamsblümli, Enzian, Mohn) und sanften
 Hügeln (bis ~10 m, nahe der Straße abgeflacht), eine schlängelnde asphaltierte
 Landstraße (Spline, ~510 m, min. Kurvenradius ~20 m – bei 120 km/h muss
-Hans in den engen Kurven vom Gas), Birken-Gruppen und einzelne Zelte im Gras,
-Hecke als Weltgrenze. Wer weiter als Straße + Schotter-Schulter von der
+Hans in den engen Kurven vom Gas), Birken- und dunkle Tannen-Gruppen,
+einzelne Zelte im Gras, ein blau-weißer **Maibaum** (~55 m nach dem Start),
+drei **Marterln** (Wegekapellen mit Bildchen zum Straßenrand), zwei
+**Almhütten** (Planken-Textur, Steinfundament im Hang-Tiefpunkt, rotes
+Pyramidendach, warm leuchtendes Fenster) und eine kleine **Kuhherde**
+(Boxen-Kühe mit Flecken und Hörnern, Kollisionskreise) auf der Weide;
+hinter der Hecke ragt die ringförmige **Alpen-Silhouette** (9 Graukegel mit
+Schneekappen, außerhalb der Spielgrenze, ohne Kollision) auf. Alles bayerische
+Deko zieht aus einem eigenen Zufallsstrom (`brand`), damit Birken, Zelte und
+Terrain ihre gewohnten Plätze behalten. Wer weiter als Straße + Schotter-Schulter von der
 Mittellinie abkommt, verliert das Kapitel. Fahrdynamik pro Map einstellbar
 (`tuning`): Auf der Huegelland-Map darf der Van bis ~36 m/s (129,6 km/h)
 rennen (Stadt-Default: 30 m/s = 108 km/h), damit das Ziel 120 km/h erreichbar ist
@@ -298,6 +311,7 @@ aus dem Docker-Image ausgeschlossen.
   Fallback, falls eine Datei fehlt). Autoradio mit drei Senderspeichern:
   **Sender 1 ist der Regionalsender** mit der Landesmusik des Kapitels —
   Paris/Standard spielt „Le Roi du Camping“ (`song_camper_hans_francais.mp3`),
+  das Bayern-Kapitel (2) spielt „Alpenwelle“ (`song_camper_hans_bayrisch.mp3`),
   die Nachtfahrt nach Rom spielt „Radio Italia“
   (`song_camper_hans_italiano.mp3`). **Einschalten** (Taste M) startet immer
   Sender 1; zusätzlich Camping-Hop (2) und Schlager-Radio (3).

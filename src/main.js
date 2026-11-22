@@ -924,8 +924,12 @@ async function startChapter(q) {
   successEl.classList.add('hidden');
   failedEl.classList.add('hidden');
   // Sender 1 (Regionalsender) auf die Landesmusik des Kapitels drehen:
-  // Nachtfahrt nach Rom -> Radio Italia, sonst Le Roi du Camping.
-  radio.setRegion(q.id === 'romnacht' ? 'italiano' : 'francais');
+  // Bayern-Temposuender -> Alpenwelle, Nachtfahrt nach Rom -> Radio
+  // Italia, sonst Le Roi du Camping.
+  radio.setRegion(
+    q.id === 'romnacht' ? 'italiano'
+      : q.id === 'temposuender' ? 'bayrisch' : 'francais'
+  );
   radio.resumeForGameplay(); // Radio laeuft weiter, wenn es angelassen wurde
   renderChapter();
   // Kapitel 3: Hans' Fahrlicht ist kaputt. Zeige an, ob die Taschenlampe
@@ -1134,8 +1138,9 @@ controls.onEscape = () => {
 // Getrennte Schalter: "⏻" schaltet nur ein/aus, die Tasten 1-3 waehlen den
 // Sender (und schalten ein). Das EINSCHALTEN dreht IMMER auf Sender 1, den
 // REGIONALSENDER mit der Landesmusik des Kapitels: In Paris (und sonstwo)
-// laeuft "Le Roi du Camping" (song_camper_hans_francais), auf der
-// Nachtfahrt nach Rom "Radio Italia" (song_camper_hans_italiano) - die
+// laeuft "Le Roi du Camping" (song_camper_hans_francais), im Bayern-Kapitel
+// "Alpenwelle" (song_camper_hans_bayrisch), auf der Nachtfahrt nach Rom
+// "Radio Italia" (song_camper_hans_italiano) - die
 // Region stellt startChapter per radio.setRegion() ein. Der gewaehlte
 // Sender bleibt gespeichert; ob das Radio an ist, nicht (nach Reload erst
 // still).

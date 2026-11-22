@@ -2,6 +2,7 @@
 // Hans' Autoradio: Drei Senderspeicher, und zwar:
 //   1 = REGIONALSENDER - er bringt die Landesmusik des Kapitels:
 //       Paris/Standard: "Le Roi du Camping" (song_camper_hans_francais),
+//       Bayern-Temposuender: "Alpenwelle" (song_camper_hans_bayrisch),
 //       Nachtfahrt nach Rom: "Radio Italia" (song_camper_hans_italiano).
 //       main.js stellt beim Kapitel-Start per setRegion() um.
 //   2 = Camping-Hop
@@ -30,6 +31,10 @@ const REGIONAL_VARIANTS = {
     name: 'Le Roi du Camping 👑', display: 'FM 101.2 · LE ROI',
     file: SOUND_DIR + 'song_camper_hans_francais.mp3',
   },
+  bayrisch: {
+    name: 'Alpenwelle 🥨', display: 'FM 98.5 · ALPENWELLE',
+    file: SOUND_DIR + 'song_camper_hans_bayrisch.mp3',
+  },
   italiano: {
     name: 'Radio Italia 🍝', display: 'FM 105.0 · RADIO ITALIA',
     file: SOUND_DIR + 'song_camper_hans_italiano.mp3',
@@ -38,7 +43,8 @@ const REGIONAL_VARIANTS = {
 
 export const STATIONS = [
   // Sender 1: REGIONALSENDER - Startausgabe ist Frankreich, kapitelweise per
-  // Radio.setRegion() umgestellt (Kapitel 3 "Nachts nach Rom" -> italiano).
+  // Radio.setRegion() umgestellt (Kapitel 2 "Temposuender" -> bayrisch,
+  // Kapitel 3 "Nachts nach Rom" -> italiano).
   { key: 'regional', ...REGIONAL_VARIANTS.francais },
   { key: 'hiphop', name: 'Camping-Hop 🎧', display: 'FM 93.7 · CAMPING-HOP', file: SOUND_DIR + 'Camper_Hans_Hiphop.mp3' },
   { key: 'schlager', name: 'Schlager-Radio 🪕', display: 'FM 105.5 · SCHLAGER', file: SOUND_DIR + 'Camper_Hans_Schlager.mp3' },
@@ -71,7 +77,8 @@ export class Radio {
   get station() { return this.on ? STATIONS[this.index] : null; }
 
   // Regionalsender (Taste 1) auf die Landesmusik des Kapitels drehen:
-  // 'italiano' in Kapitel 3 (Nachts nach Rom), 'francais' sonst. Tauscht
+  // 'bayrisch' in Kapitel 2 (Bayern-Temposuender), 'italiano' in Kapitel 3
+  // (Nachts nach Rom), 'francais' sonst. Tauscht
   // nur Name/Etikett/Datei von STATIONS[0] - der Sendeplatz bleibt Taste 1.
   setRegion(key) {
     if (!REGIONAL_VARIANTS[key]) key = 'francais';
