@@ -219,16 +219,7 @@ Fortschrittsbalken und Sackgassen-Toasts. Alle
 falschen Abzweigungen enden in **17 benannten Sackgassen** (Siena, Pisa,
 Modena, Neapel, Venedig …). Die Sackgassen haben **keine Absperrung**: Die
 Straße schmälert sich dort einfach, wird zum sandigen Pfad und verschwindet
-sanft im Gras – nur dunkler Wald dahinter; ein Leitplanken-Querriegel 7 m
-hinter dem Ende verschließt die Tasche trotzdem. Denn **alle Straßen sind
-beidseitig mit Stahl-Leitplanken gesichert**: Die Schienen enden an den
-Gabelplätzen genau auf dem Asphalt-Kreis, Bögen schließen die Zwickel
-zwischen den Abzweigen – Hans kann die Straße **zur Seite nicht mehr
-verlassen** (Wand-Kollision als Kapsel-Collider in `src/car.js`: nur die
-Normalkomponente prallt ab, der Van gleitet an der Schiene entlang wie an
-einer echten Leitplanke; wie Baum-Crashes mit Sound/Strafe verbucht).
-Offen bleibt nur der erleuchtete Platz von Rom – Hans ist ja angekommen.
-Dazu zwei Irrwege-Bäume
+sanft im Gras – nur dunkler Wald dahinter. Dazu zwei Irrwege-Bäume
 (Ost und West) mit weiteren acht Gabeln für echte Navigationskunst. Die Karte
 schaltet die gesamte Szene auf Nacht (Sterne, Mond, dichter Nebel,
 `applyMapAtmosphere` in `src/main.js`); ein dichter Zypressenwald verhindert
@@ -287,12 +278,7 @@ wird es teuer) auf weichen Sinus-Hügeln (nahe Straßen, um den Rom-Platz und am
 Rand abgeflacht), Wegenetz aus 36 begehbaren Segmenten mit 17 Gabeln und
 17 Sackgassen, Wegweisern mit ←/↑/→-Pfeilen (Richtung automatisch aus der
 Geometrie berechnet) und erfundenen Orts-Namen samt willkürlichen Kilometern
-– KEIN Schild nennt „ROMA“ –, Reflektoren am Straßenrand, **durchgehenden
-Stahl-Leitplanken auf beiden Seiten jeder Straße** (Bögen um die Gabelplätze,
-Querriegel hinter Sackgassen und Straßenanfang, Wand-Kapsel-Collider in
-`src/car.js` – die Straße kann zur Seite nicht verlassen werden; sichtbar
-als zwei InstancedMeshes für Balken und Pfosten, 191 Schienensegmente),
-Weltgrenze aus dunkler
+– KEIN Schild nennt „ROMA“ – Reflektoren am Straßenrand, Weltgrenze aus dunkler
 Baumreihe. Am Ende der Serpentinen-Route: „ROMA“-Stadttor, erleuchteter Platz
 mit Laternen (PointLights) und stilisiertem Kolosseum. Die Map trägt
 `night: true`; `applyMapAtmosphere` in `src/main.js` verdunkelt dafür Himmel,
