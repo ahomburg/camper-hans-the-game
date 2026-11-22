@@ -5,15 +5,18 @@
 // (Spotlight, siehe main.js) - und die leuchtet nur einige Meter.
 //
 // Aufbau (alle Koordinaten [x, z], Hans startet im Sueden, Rom liegt im
-// Norden): Das Wegenetz ist ein Baum aus Y-Gabeln. Auf der korrekten Route
-// (start -> A -> L1 -> LR -> LRR -> C1 -> D1 -> gate -> Rom) zeigt an JEDEM
-// Abzweig ein Holzschild "ROMA xx km" die richtige Fahrtrichtung an - aber
-// im Dunkeln sind die Schilder nur mit der Taschenlampe lesbar. Alle falschen
-// Abzweigungen enden in zehn benannten Sackgassen (Siena, Pisa, Neapel ...),
-// jeweils mit rot-weisser Barriere. Eine dichte Zypressen-Reihe am Wegesrand
-// und Reflektoren ("Katzenaugen") markieren die Strassen auch ohne Licht.
+// Norden): HUEGELIGES Gelaende (Sinus-Wellen, nahe den Strassen und am Rand
+// abgeflacht, siehe hill()), darauf ein Wegenetz aus einer SERPENTINEN-
+// Route: Von der Autobahnauffahrt bis zum ROMA-Stadttor muss Hans an NEUN
+// Gabeln WIRKLICH abbiegen (links/rechts im Wechsel - die "geradeaus"-
+// Ausfahrten sind alle Fallen in Sackgassen). Rund um die Route lugen zwei
+// Irrwege-Baeume (Ost und West) mit nochmal drei bzw. fuenf Gabeln und
+// insgesamt 17 benannten Sackgassen (Siena, Pisa, Neapel, Venedig ...).
+// An jeder Gabel steht ein Holzschild; nur der richtige zeigt "ROMA" mit
+// abnehmenden Kilometern - lesbar freilich nur mit Taschenlampe.
 //
-// Die Physik des Vans ist 2D (y = 0), deshalb liegt die ganze Karte flach.
+// Die Physik des Vans ist 2D (y = 0), deshalb liegen alle Strassen flach auf
+// y ~ 0; die Huegel heben nur das GRUEN an (nahe der Strassen abgeflacht).
 
 import * as THREE from 'three';
 
@@ -28,6 +31,11 @@ function mulberry32(seed) {
   };
 }
 
+function smoothstep(a, b, x) {
+  const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
 function makeTexture(cnv) {
   const t = new THREE.CanvasTexture(cnv);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -36,7 +44,7 @@ function makeTexture(cnv) {
 
 // Textur fuer ein Holz-Wegeschild mit einer Zeile je Abzweigung. Jede Zeile:
 // "← ROMA 96 km" bzw. "NAPOLI 205 km →" - der Pfeil zeigt die Richtung
-// relativ zum kommenden Hans (links/rechts der Anfahrt).
+// relativ zum kommenden Hans (links / geradeaus / rechts).
 function signTexture(lines) {
   const W = 512;
   const LH = 72;
@@ -63,8 +71,8 @@ function signTexture(lines) {
   return makeTexture(cnv);
 }
 
-// Rot-weiss gestreifte Barriere mit "SACKGASSE"-Schriftzug (fuers Ende jeder
-// falschen Abzweigung).
+// Rot-weiss gestreifte Barriere mit "SACKGASSE"-Schriftzug (fuer das Ende
+// jeder Sackgasse).
 function barrierTexture() {
   const W = 512, H = 96;
   const cnv = document.createElement('canvas');
@@ -73,13 +81,11 @@ function barrierTexture() {
   g.fillStyle = '#cfd2d6';
   g.fillRect(0, 0, W, H);
   g.fillStyle = '#c23b2e';
-  g.save();
   for (let x = -H; x < W + H; x += 64) {
     g.beginPath();
     g.moveTo(x, 0); g.lineTo(x + 32, 0); g.lineTo(x + 32 + H, H); g.lineTo(x + H, H);
     g.closePath(); g.fill();
   }
-  g.restore();
   g.fillStyle = '#10131a';
   g.font = 'bold 44px "Trebuchet MS", Verdana, sans-serif';
   g.textAlign = 'center';
@@ -116,57 +122,90 @@ export function buildNightRomeMap(parent) {
   const roadHalf = 5;    // halbe Strassenbreite der Landwege (10 m Gesamt)
   const rand = mulberry32(33071); // deterministisch: die Nacht sieht immer gleich aus
 
-  // --- Wegenetz: Knoten (x, z) und gerade Strassenabschnitte [von, nach, Breite]
+  // --- Wegpunkte-Knoten (x, z) -------------------------------------------------
+  // SERPENTINEN-ROUTE (korrekt, man muss an jeder Gabel abbiegen):
+  //   start -> f1 -> w1 -> w2 -> w3 -> w4 -> w5 -> w6 -> w7 -> w8 -> gate -> rome
+  // Jede w-Gabel hat zwei Ausfahrten: die ROMA-Kurve (links/rechts im
+  // Wechsel) und eine "bequeme Geradeaus"-Falle in eine Sackgasse.
+  // Falsch-Umwege: Ostbaum (e1..e5, NAPOLI/VENEZIA/... ), Westbaum
+  // (m1..m3, SIENA/PISA/... ) und Links-Fallen wie LUCCA direkt neben der
+  // Route.
   const P = {
     start: [0, 262],
-    A: [0, 208],        // Gabel 1 (links ROMA, rechts NAPOLI)
-    L1: [-64, 176],     // richtig
-    siena: [-124, 138],
-    LR: [-52, 132],     // richtig
-    pisa: [-108, 96],
-    LRR: [-44, 84],     // richtig
-    firenze: [-116, 44],
-    C1: [-30, 22],      // richtig
-    bologna: [-98, -18],
-    D1: [-24, -40],     // richtig
-    ancona: [-94, -44],
-    gate: [-12, -70],   // Stadttor von Rom
-    rome: [-12, -108],  // Platz (Kolosseum dahinter)
-    R1: [58, 186],      // falsch
-    napoli: [16, 146],
-    RR: [116, 148],     // falsch (tief im Osten)
-    venezia: [152, 102],
-    RRR: [100, 82],
-    genova: [130, 26],
-    C2: [84, 8],
-    torino: [130, -36],
-    ravenna: [58, -44],
+    f1: [0, 218],        // Gabel 1: links ROMA, rechts ab in den Ostbaum
+    w1: [-42, 192],      // Gabel 2: rechts ROMA (scharf), "geradeaus" SIENA-Baum
+    w2: [-50, 144],      // Gabel 3: rechts ROMA, links taeuschend nach LUCCA
+    w3: [-12, 112],      // Gabel 4: links ROMA, "geradeaus" MODENA-Sackgasse
+    w4: [-4, 62],        // Gabel 5: links ROMA, "geradeaus" VOLTERRA-Sackgasse
+    w5: [-32, 30],       // Gabel 6: rechts ROMA, "geradeaus" GROSSETO-Sackgasse
+    w6: [-12, -18],      // Gabel 7: links ROMA, "geradeaus" ORVIETO-Sackgasse
+    w7: [-44, -56],      // Gabel 8: rechts ROMA, "geradeaus" AREZZO-Sackgasse
+    w8: [-24, -104],     // Gabel 9: links zum ROMA-Tor, "geradeaus" FERRARA
+    gate: [-36, -152],   // ROMA-Stadttor (Verkehr verschwindet hier)
+    rome: [-36, -192],   // Erleuchteter Platz, Kolosseum dahinter
+    // Ostbaum (alles Sackgassen bzw. weitere Gabeln)
+    e1: [42, 194],
+    napoli: [82, 210],
+    e2: [86, 166],
+    venezia: [134, 160],
+    e3: [108, 128],
+    genova: [148, 104],
+    e4: [116, 76],
+    torino: [154, 40],
+    e5: [92, 28],
+    ravenna: [118, -22],
+    ancona: [44, -20],
+    // Westbaum
+    m1: [-92, 170],
+    siena: [-134, 192],
+    m2: [-108, 118],
+    pisa: [-148, 100],
+    m3: [-92, 60],
+    firenze: [-132, 40],
+    pienza: [-62, 26],
+    // Sackgassen-Falle "LUCCA" direkt hinter der w2-Gabel (taeuschend links)
+    lucca: [-82, 96],
+    // Sackgassen direkt an der Route ("Geradeaus"-Fallen)
+    modena: [34, 84],
+    volterra: [10, 12],
+    grosseto: [-64, -6],
+    orvieto: [24, -64],
+    arezzo: [-84, -80],
+    ferrara: [2, -150],
   };
   const ROADS = [
-    ['start', 'A', 11],
-    ['A', 'L1', 10], ['A', 'R1', 10],
-    ['L1', 'siena', 10], ['L1', 'LR', 10],
-    ['LR', 'pisa', 10], ['LR', 'LRR', 10],
-    ['LRR', 'firenze', 10], ['LRR', 'C1', 10],
-    ['C1', 'bologna', 10], ['C1', 'D1', 10],
-    ['D1', 'ancona', 10], ['D1', 'gate', 11],
+    ['start', 'f1', 11],
+    ['f1', 'w1', 10], ['f1', 'e1', 10],
+    ['w1', 'w2', 10], ['w1', 'm1', 10],
+    ['w2', 'w3', 10], ['w2', 'lucca', 10],
+    ['w3', 'w4', 10], ['w3', 'modena', 10],
+    ['w4', 'w5', 10], ['w4', 'volterra', 10],
+    ['w5', 'w6', 10], ['w5', 'grosseto', 10],
+    ['w6', 'w7', 10], ['w6', 'orvieto', 10],
+    ['w7', 'w8', 10], ['w7', 'arezzo', 10],
+    ['w8', 'gate', 11], ['w8', 'ferrara', 10],
     ['gate', 'rome', 11],
-    ['R1', 'napoli', 10], ['R1', 'RR', 10],
-    ['RR', 'venezia', 10], ['RR', 'RRR', 10],
-    ['RRR', 'genova', 10], ['RRR', 'C2', 10],
-    ['C2', 'torino', 10], ['C2', 'ravenna', 10],
+    ['e1', 'napoli', 10], ['e1', 'e2', 10],
+    ['e2', 'venezia', 10], ['e2', 'e3', 10],
+    ['e3', 'genova', 10], ['e3', 'e4', 10],
+    ['e4', 'torino', 10], ['e4', 'e5', 10],
+    ['e5', 'ravenna', 10], ['e5', 'ancona', 10],
+    ['m1', 'siena', 10], ['m1', 'm2', 10],
+    ['m2', 'pisa', 10], ['m2', 'm3', 10],
+    ['m3', 'firenze', 10], ['m3', 'pienza', 10],
   ];
 
   const segs = ROADS.map(([a, b, w]) => {
     const A = P[a], B = P[b];
-    return { a: A, b: B, w, name: [a, b] };
+    return { a: A, b: B, w };
   });
 
-  // Abstand Punkt -> Strassenabschnitt (fuer Baeume, die nicht auf der
-  // Strasse stehen duerfen).
-  function distToRoads(x, z) {
+  // Abstand Punkt -> Strassenabschnitt (fuer Huegel-Abflachung, Baeume und
+  // Zufalls-Platzierungen; alle Segmente, inkl. gate->rome).
+  function distToRoads(x, z, step = 1) {
     let best = Infinity;
-    for (const s of segs) {
+    for (let i = 0; i < segs.length; i += step) {
+      const s = segs[i];
       const dx = s.b[0] - s.a[0], dz = s.b[1] - s.a[1];
       const len2 = dx * dx + dz * dz || 1e-9;
       const t = THREE.MathUtils.clamp(((x - s.a[0]) * dx + (z - s.a[1]) * dz) / len2, 0, 1);
@@ -177,6 +216,21 @@ export function buildNightRomeMap(parent) {
     return Math.sqrt(best);
   }
 
+  // --- Huegel: weiche Sinus-Wellen (etwas © · 1.3 × staerker als das
+  // Huegelland in Kapitel 2), nahe den Strassen, um den erleuchteten Platz
+  // von Rom und an der Weltgrenze abgeflacht. Auto und Strassen liegen
+  // sauber auf y ~ 0.
+  function hill(x, z) {
+    let h = Math.sin(x * 0.05 + 1.7) * Math.cos(z * 0.042 + 0.6) * 5.4
+      + Math.sin(x * 0.016 - 0.4) * Math.sin(z * 0.02 + 2.1) * 8.2
+      + Math.sin((x + z) * 0.028 + 3.0) * 3.4;
+    h *= smoothstep(roadHalf + 5, roadHalf + 26, distToRoads(x, z, 2)); // Strassen bleiben flach
+    h *= 1 - smoothstep(36, 54, Math.hypot(x - P.rome[0], z - P.rome[1])); // Platz + Kolosseum flach
+    const edge = Math.max(Math.abs(x), Math.abs(z));
+    h *= 1 - smoothstep(half - 16, half - 6, edge); // Weltgrenze bleibt flach
+    return h;
+  }
+
   // --- Nachthimmel: Sterne (ueberstehen dem Nebel, material.fog = false),
   // Mond-Scheibe und ein sehr dunkler Boden mit dunklen Grasfarben.
   {
@@ -184,9 +238,8 @@ export function buildNightRomeMap(parent) {
     const n = 700;
     const arr = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      // gleichmaessig auf der Himmelskuppel, immer ueberm Horizont
       const a = rand() * Math.PI * 2;
-      const y = 0.15 + rand() * 0.85; // 0..1 -> Hoehe
+      const y = 0.15 + rand() * 0.85;
       const r = Math.sqrt(1 - y * y) * 470;
       arr[i * 3] = Math.cos(a) * r;
       arr[i * 3 + 1] = y * 470;
@@ -209,52 +262,59 @@ export function buildNightRomeMap(parent) {
     group.add(moon);
   }
 
-  // --- Boden: dunkle Wiese
+  // --- Boden: dunkle Wiese, zu Huegeln verformt ---
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = 256;
+  const g = cnv.getContext('2d');
+  g.fillStyle = '#232d1c';
+  g.fillRect(0, 0, 256, 256);
+  const shades = ['#1d2717', '#28331f', '#202b1a', '#2b3622'];
+  for (let i = 0; i < 300; i++) {
+    g.fillStyle = shades[Math.floor(rand() * shades.length)];
+    const r = 2 + rand() * 8;
+    g.beginPath();
+    g.arc(rand() * 256, rand() * 256, r, 0, Math.PI * 2);
+    g.fill();
+  }
+  const groundTex = makeTexture(cnv);
+  groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+  groundTex.repeat.set(half / 5, half / 5);
+
   {
-    const cnv = document.createElement('canvas');
-    cnv.width = cnv.height = 256;
-    const g = cnv.getContext('2d');
-    g.fillStyle = '#232d1c';
-    g.fillRect(0, 0, 256, 256);
-    const shades = ['#1d2717', '#28331f', '#202b1a', '#2b3622'];
-    for (let i = 0; i < 300; i++) {
-      g.fillStyle = shades[Math.floor(rand() * shades.length)];
-      const r = 2 + rand() * 8;
-      g.beginPath();
-      g.arc(rand() * 256, rand() * 256, r, 0, Math.PI * 2);
-      g.fill();
+    const SEG = 168;
+    const groundGeo = new THREE.PlaneGeometry(half * 2 + 160, half * 2 + 160, SEG, SEG);
+    groundGeo.rotateX(-Math.PI / 2);
+    const pos = groundGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      pos.setY(i, hill(pos.getX(i), pos.getZ(i)));
     }
-    const groundTex = makeTexture(cnv);
-    groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
-    groundTex.repeat.set(half / 5, half / 5);
+    groundGeo.computeVertexNormals();
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(half * 2 + 120, half * 2 + 120),
+      groundGeo,
       new THREE.MeshStandardMaterial({ map: groundTex, roughness: 1 })
     );
-    ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     group.add(ground);
   }
 
   // --- Strassen: dunkler Asphalt als flache Quads entlang der Segmente,
-  // inkl. weisser Kantenlinien, gelber Mittelstriche ("Bordstein-Mitte") und
-  // Reflektoren am Rand, die auch ohne Scheinwerfer schwach leuchten.
+  // inkl. weisser Kantenlinien, gelber Mittelstriche und Reflektoren am
+  // Rand, die auch ohne Scheinwerfer schwach leuchten.
   const asphaltTex = (() => {
-    const cnv = document.createElement('canvas');
-    cnv.width = cnv.height = 128;
-    const ag = cnv.getContext('2d');
+    const ac = document.createElement('canvas');
+    ac.width = ac.height = 128;
+    const ag = ac.getContext('2d');
     ag.fillStyle = '#2b2e33';
     ag.fillRect(0, 0, 128, 128);
     ag.fillStyle = 'rgba(255,255,255,0.05)';
     for (let i = 0; i < 60; i++) ag.fillRect(rand() * 128, rand() * 128, 2, 2);
-    const t = makeTexture(cnv);
+    const t = makeTexture(ac);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     return t;
   })();
 
-  // Flaches, unten zentriertes Rechteck entlang a->b (Laenge = |b-a|), in der
-  // Mitte des Rechtecks. off: seitlicher Versatz entlang der Normale (links
-  // der Fahrtrichtung ist positiv).
+  // Flaches Rechteck entlang a->b, seitlich versetzbar (off entlang der
+  // Normale links der Fahrtrichtung, positiv = links).
   function addQuad(a, b, w, y, mat, off = 0, scaleUV = true) {
     const dx = b[0] - a[0], dz = b[1] - a[1];
     const len = Math.hypot(dx, dz);
@@ -290,8 +350,7 @@ export function buildNightRomeMap(parent) {
     const ux = dx / len, uz = dz / len;
     const h = Math.atan2(dx, dz);
     const nlx = Math.cos(h), nlz = -Math.sin(h);
-    // gelbe Mittelstriche alle 7 m
-    for (let t = 4; t < len - 4; t += 7) {
+    for (let t = 4; t < len - 4; t += 7) { // gelbe Mittelstriche
       const m = addQuad(
         [s.a[0] + ux * t, s.a[1] + uz * t],
         [s.a[0] + ux * (t + 1.6), s.a[1] + uz * (t + 1.6)],
@@ -299,9 +358,7 @@ export function buildNightRomeMap(parent) {
       );
       m.receiveShadow = false;
     }
-    // Reflektoren ("Katzenaugen") an beiden Raendern: die kleinen Punkte
-    // leuchten selbst und zeigen Hans die Strassen auch im Blindflug.
-    for (let t = 5; t < len - 2; t += 12) {
+    for (let t = 5; t < len - 2; t += 12) { // Reflektoren ("Katzenaugen")
       for (const side of [-1, 1]) {
         reflectorPts.push(
           s.a[0] + ux * t + nlx * side * (s.w / 2 - 0.35),
@@ -318,8 +375,8 @@ export function buildNightRomeMap(parent) {
     group.add(new THREE.Points(geo, mat));
   }
 
-  // --- Gabel-Platz (kleiner Asphalt-Kreis) an jedem Knoten mit Verzweigung,
-  // damit sich kreuzende Segmente nicht haesslich ueberlappen.
+  // --- Gabel-Platz (kleiner Asphalt-Kreis) an jedem Knoten mit Verzweigung
+  // oder Biegung, damit sich kreuzende Segmente sauber ueberlappen.
   const plazaMat = new THREE.MeshStandardMaterial({ color: 0x2f3238, roughness: 0.95 });
   const addPlaza = (x, z, r) => {
     const m = new THREE.Mesh(new THREE.CircleGeometry(r, 10), plazaMat);
@@ -328,9 +385,11 @@ export function buildNightRomeMap(parent) {
     m.receiveShadow = true;
     group.add(m);
   };
-  for (const k of ['A', 'L1', 'LR', 'LRR', 'C1', 'D1', 'R1', 'RR', 'RRR', 'C2', 'gate']) {
-    addPlaza(P[k][0], P[k][1], 7.5);
-  }
+  const PLAZAS = [
+    'f1', 'w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8',
+    'e1', 'e2', 'e3', 'e4', 'e5', 'm1', 'm2', 'm3', 'gate',
+  ];
+  for (const k of PLAZAS) addPlaza(P[k][0], P[k][1], 7.5);
 
   // --- Wegweiser an den Gabeln: Holzschild mit einer Zeile je Ausfahrt. Die
   // Pfeil-Richtung wird aus der Geometrie berechnet ("links" der Anfahrt =
@@ -343,8 +402,9 @@ export function buildNightRomeMap(parent) {
     const rx = -Math.cos(headingIn), rz = Math.sin(headingIn); // rechts der Anfahrt
     const px = x - fx * 6 + rx * 6.8;
     const pz = z - fz * 6 + rz * 6.8;
+    const gy = hill(px, pz); // nahe der Strasse flach (~0), sicherheitshalber
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 2.6, 8), poleMat);
-    pole.position.set(px, 1.3, pz);
+    pole.position.set(px, gy + 1.3, pz);
     pole.castShadow = true;
     group.add(pole);
     const boardH = 0.56 * lines.length;
@@ -352,45 +412,50 @@ export function buildNightRomeMap(parent) {
       new THREE.PlaneGeometry(2.9, boardH),
       new THREE.MeshStandardMaterial({ map: signTexture(lines), roughness: 0.9, side: THREE.DoubleSide })
     );
-    board.position.set(px, 2.9 - boardH / 2, pz);
+    board.position.set(px, gy + 2.9 - boardH / 2, pz);
     board.rotation.y = headingIn + Math.PI; // Front zeigt zum ankommenden Hans
     group.add(board);
     colliders.push({ x: px, z: pz, r: 0.4 });
   };
 
-  // Seiten-Relativierung fuer die Schild-Pfeile: vergleicht Anfahrt und
-  // Ausfahrt; nahezu geradeaus (sin < ~0.35, d.h. ~20 Grad) bekommt einen
-  // "↑"-Pfeil, scharfe Winkel links "←" bzw. rechts "→".
+  // Pfeil-Seite fuer die Schilder: vergleicht Anfahrt und Ausfahrt;
+  // nahezu geradeaus (sin < ~0.35, d.h. ~20 Grad) bekommt einen "↑"-Pfeil,
+  // scharfe Winkel links "←" bzw. rechts "→".
   const STRAIGHT_SIN = 0.35;
   const sideFor = (from, atKey, toKey) => {
     const f = [P[atKey][0] - P[from][0], P[atKey][1] - P[from][1]];
     const d = [P[toKey][0] - P[atKey][0], P[toKey][1] - P[atKey][1]];
     const cross = f[0] * d[1] - f[1] * d[0];
-    const dot = f[0] * d[0] + f[1] * d[1];
-    // sin des Zwischenwinkels = cross / (|f| * |d|)
     const sinA = Math.abs(cross) / ((Math.hypot(f[0], f[1]) * Math.hypot(d[0], d[1])) || 1e-9);
     if (sinA < STRAIGHT_SIN) return 0;
-    // Vorzeichen: zeigt die Ausfahrt von der Anfahrt aus "nach links gedreht"
-    // (negatives Kreuzprodukt) oder nach rechts?
     return cross < 0 ? -1 : 1;
   };
 
   const headingBetween = (from, to) =>
     Math.atan2(P[to][0] - P[from][0], P[to][1] - P[from][1]);
 
-  // Schild-Definitionen: at = Gabel-Knoten, from = Anfahrt, exits = je Ausfahrt
-  // { name, km } (km = die auf dem Schild behauptete Restentfernung).
+  // Schild-Definitionen: at = Gabel-Knoten, from = Anfahrt, exits = je
+  // Ausfahrt { name, km } (km = die auf dem Schild behauptete Restentfernung
+  // - auf der ROMA-Route wird es spuerbar weniger mit jeder Gabel).
+  const ROMA_KM = { f1: 140, w1: 108, w2: 92, w3: 74, w4: 58, w5: 44, w6: 30, w7: 18, w8: 6 };
   const SIGN_DEFS = [
-    { at: 'A', from: 'start', exits: [{ to: 'L1', n: 'ROMA', km: 96 }, { to: 'R1', n: 'NAPOLI', km: 205 }] },
-    { at: 'L1', from: 'A', exits: [{ to: 'LR', n: 'ROMA', km: 72 }, { to: 'siena', n: 'SIENA', km: 34 }] },
-    { at: 'LR', from: 'L1', exits: [{ to: 'LRR', n: 'ROMA', km: 52 }, { to: 'pisa', n: 'PISA', km: 12 }] },
-    { at: 'LRR', from: 'LR', exits: [{ to: 'C1', n: 'ROMA', km: 36 }, { to: 'firenze', n: 'FIRENZE', km: 19 }] },
-    { at: 'C1', from: 'LRR', exits: [{ to: 'D1', n: 'ROMA', km: 21 }, { to: 'bologna', n: 'BOLOGNA', km: 26 }] },
-    { at: 'D1', from: 'C1', exits: [{ to: 'gate', n: 'ROMA', km: 9 }, { to: 'ancona', n: 'ANCONA', km: 44 }] },
-    { at: 'R1', from: 'A', exits: [{ to: 'napoli', n: 'NAPOLI', km: 205 }, { to: 'RR', n: 'VENEZIA', km: 38 }] },
-    { at: 'RR', from: 'R1', exits: [{ to: 'venezia', n: 'VENEZIA', km: 38 }, { to: 'RRR', n: 'GENOVA', km: 87 }] },
-    { at: 'RRR', from: 'RR', exits: [{ to: 'genova', n: 'GENOVA', km: 87 }, { to: 'C2', n: 'TORINO', km: 66 }] },
-    { at: 'C2', from: 'RRR', exits: [{ to: 'torino', n: 'TORINO', km: 66 }, { to: 'ravenna', n: 'RAVENNA', km: 39 }] },
+    { at: 'f1', from: 'start', exits: [{ to: 'w1', n: 'ROMA', km: ROMA_KM.f1 }, { to: 'e1', n: 'NAPOLI', km: 205 }] },
+    { at: 'w1', from: 'f1', exits: [{ to: 'w2', n: 'ROMA', km: ROMA_KM.w1 }, { to: 'm1', n: 'SIENA', km: 34 }] },
+    { at: 'w2', from: 'w1', exits: [{ to: 'w3', n: 'ROMA', km: ROMA_KM.w2 }, { to: 'lucca', n: 'LUCCA', km: 27 }] },
+    { at: 'w3', from: 'w2', exits: [{ to: 'w4', n: 'ROMA', km: ROMA_KM.w3 }, { to: 'modena', n: 'MODENA', km: 61 }] },
+    { at: 'w4', from: 'w3', exits: [{ to: 'w5', n: 'ROMA', km: ROMA_KM.w4 }, { to: 'volterra', n: 'VOLTERRA', km: 18 }] },
+    { at: 'w5', from: 'w4', exits: [{ to: 'w6', n: 'ROMA', km: ROMA_KM.w5 }, { to: 'grosseto', n: 'GROSSETO', km: 24 }] },
+    { at: 'w6', from: 'w5', exits: [{ to: 'w7', n: 'ROMA', km: ROMA_KM.w6 }, { to: 'orvieto', n: 'ORVIETO', km: 41 }] },
+    { at: 'w7', from: 'w6', exits: [{ to: 'w8', n: 'ROMA', km: ROMA_KM.w7 }, { to: 'arezzo', n: 'AREZZO', km: 52 }] },
+    { at: 'w8', from: 'w7', exits: [{ to: 'gate', n: 'ROMA', km: ROMA_KM.w8 }, { to: 'ferrara', n: 'FERRARA', km: 33 }] },
+    { at: 'e1', from: 'f1', exits: [{ to: 'napoli', n: 'NAPOLI', km: 205 }, { to: 'e2', n: 'VENEZIA', km: 38 }] },
+    { at: 'e2', from: 'e1', exits: [{ to: 'venezia', n: 'VENEZIA', km: 38 }, { to: 'e3', n: 'GENOVA', km: 87 }] },
+    { at: 'e3', from: 'e2', exits: [{ to: 'genova', n: 'GENOVA', km: 87 }, { to: 'e4', n: 'TORINO', km: 66 }] },
+    { at: 'e4', from: 'e3', exits: [{ to: 'torino', n: 'TORINO', km: 66 }, { to: 'e5', n: 'RAVENNA', km: 39 }] },
+    { at: 'e5', from: 'e4', exits: [{ to: 'ravenna', n: 'RAVENNA', km: 39 }, { to: 'ancona', n: 'ANCONA', km: 44 }] },
+    { at: 'm1', from: 'w1', exits: [{ to: 'siena', n: 'SIENA', km: 34 }, { to: 'm2', n: 'PISA', km: 12 }] },
+    { at: 'm2', from: 'm1', exits: [{ to: 'pisa', n: 'PISA', km: 12 }, { to: 'm3', n: 'FIRENZE', km: 19 }] },
+    { at: 'm3', from: 'm2', exits: [{ to: 'firenze', n: 'FIRENZE', km: 19 }, { to: 'pienza', n: 'PIENZA', km: 9 }] },
   ];
   for (const sd of SIGN_DEFS) {
     const lines = sd.exits.map((e) => ({ n: e.n, km: e.km, side: sideFor(sd.from, sd.at, e.to) }));
@@ -399,18 +464,22 @@ export function buildNightRomeMap(parent) {
 
   // --- Sackgassen: Barriere + Schild, dahinter ein kleiner dunkler Wald.
   const barrierTex = barrierTexture();
-  const DEADEND_KEYS = ['siena', 'pisa', 'firenze', 'bologna', 'ancona', 'napoli', 'venezia', 'genova', 'torino', 'ravenna'];
-  // Eingehende Strasse je Sackgasse (fuer die Ausrichtung der Barriere)
-  const DEADEND_FROM = {
-    siena: 'L1', pisa: 'LR', firenze: 'LRR', bologna: 'C1', ancona: 'D1',
-    napoli: 'R1', venezia: 'RR', genova: 'RRR', torino: 'C2', ravenna: 'C2',
-  };
-  const deadEnds = DEADEND_KEYS.map((k) => {
-    const [x, z] = P[k];
-    const from = P[DEADEND_FROM[k]];
-    const h = Math.atan2(x - from[0], z - from[1]);
+  const DEADENDS = [
+    { n: 'napoli', from: 'e1' }, { n: 'venezia', from: 'e2' },
+    { n: 'genova', from: 'e3' }, { n: 'torino', from: 'e4' },
+    { n: 'ravenna', from: 'e5' }, { n: 'ancona', from: 'e5' },
+    { n: 'siena', from: 'm1' }, { n: 'pisa', from: 'm2' },
+    { n: 'firenze', from: 'm3' }, { n: 'pienza', from: 'm3' },
+    { n: 'lucca', from: 'w2' },
+    { n: 'modena', from: 'w3' }, { n: 'volterra', from: 'w4' },
+    { n: 'grosseto', from: 'w5' }, { n: 'orvieto', from: 'w6' },
+    { n: 'arezzo', from: 'w7' }, { n: 'ferrara', from: 'w8' },
+  ];
+  const deadEnds = DEADENDS.map(({ n, from }) => {
+    const [x, z] = P[n];
+    const h = headingBetween(from, n);
     const fx = Math.sin(h), fz = Math.cos(h);
-    const bx = x - fx * 3.5, bz = z - fz * 3.5; // Barreiraufstellung vor dem Ende
+    const bx = x - fx * 3.5, bz = z - fz * 3.5; // Barriere vor dem Strassenende
     const board = new THREE.Mesh(
       new THREE.PlaneGeometry(4.4, 0.9),
       new THREE.MeshStandardMaterial({ map: barrierTex, roughness: 0.85, side: THREE.DoubleSide })
@@ -424,15 +493,15 @@ export function buildNightRomeMap(parent) {
       group.add(post);
     }
     colliders.push({ x: bx, z: bz, r: 1.6 });
-    return { name: k, x: P[k][0], z: P[k][1] };
+    return { name: n, x, z, from };
   });
 
-  // --- Zypressen-und-Baum-Wald: dichtes Gestruez zufaellig ueber die Karte,
+  // --- Zypressen-und-Baum-Wald: dichtes Gestruez zufaellig ueber die Huegel,
   // aber 9 m Abstand zu jeder Strasse. Wer abseits abkuerzt, kollidiert
   // staendig mit den dunklen Gestalten - gruesst von Francesco.
   const cypressMat = new THREE.MeshStandardMaterial({ color: 0x152a1c, roughness: 1 });
   const trunkMat = new THREE.MeshStandardMaterial({ color: 0x2b2116, roughness: 1 });
-  const addTree = (x, z) => {
+  function addTree(x, z) {
     const s = 0.75 + rand() * 0.7;
     const tree = new THREE.Group();
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * s, 0.2 * s, 1.2 * s, 6), trunkMat);
@@ -449,26 +518,31 @@ export function buildNightRomeMap(parent) {
       crown.castShadow = true;
       tree.add(trunk, crown);
     }
-    tree.position.set(x, 0, z);
+    tree.position.set(x, hill(x, z), z); // auf dem Huegel, nicht drin
     group.add(tree);
     colliders.push({ x, z, r: 0.75 * s });
-  };
-  const inBounds = (x, z) => Math.abs(x) < half - 14 && Math.abs(z) < half - 14;
+  }
+  function inBounds(x, z) { return Math.abs(x) < half - 14 && Math.abs(z) < half - 14; }
   {
     let placed = 0;
-    for (let tries = 0; tries < 2400 && placed < 420; tries++) {
+    for (let tries = 0; tries < 2400 && placed < 440; tries++) {
       const x = (rand() * 2 - 1) * (half - 20);
       const z = (rand() * 2 - 1) * (half - 20);
       if (!inBounds(x, z) || distToRoads(x, z) < 9) continue;
       addTree(x, z);
       placed++;
     }
-    // Wald-Gruppchen an den Sackgassen-Enden (Fall, dass der Weg muede endet)
+    // Wald-Grueppchen hinter den Sackgassen-Barrieren: Die Strasse endet im
+    // Dunkeln zwischen dunklen Gestalten (in Anfahrtsrichtung weiter).
     for (const d of deadEnds) {
+      const h = headingBetween(d.from, d.name);
+      const fx = Math.sin(h), fz = Math.cos(h);
       for (let k = 0; k < 5; k++) {
-        const x = d.x + (rand() * 2 - 1) * 7;
-        const z = d.z + 6 + rand() * 7;
-        if (distToRoads(x, z) >= 6 && inBounds(x, z)) addTree(x, z);
+        const t = 5 + rand() * 8;
+        const ox = (rand() * 2 - 1) * 6;
+        const tx = d.x + fx * t - fz * ox;
+        const tz = d.z + fz * t + fx * ox;
+        if (distToRoads(tx, tz) >= 6 && inBounds(tx, tz)) addTree(tx, tz);
       }
     }
   }
@@ -484,13 +558,13 @@ export function buildNightRomeMap(parent) {
   }
 
   // --- Rom: Vorplatz mit warmem Licht, "ROMA"-Stadttor und stylisiertes
-  // Kolosseum dahinter - das einzige leuchtende Ziel in der Ferne (derweil
-  // Nebel es frueh verschluckt).
+  // Kolosseum dahinter - das einzige leuchtende Ziel der Nacht (derweil
+  // Nebel es frueh verschluckt). Der Platz ist im hill()-Gelaende bewusst
+  // rundum abgeflacht.
   const stoneMat = new THREE.MeshStandardMaterial({ color: 0x8a7f6e, roughness: 0.9 });
   const windowMat = new THREE.MeshStandardMaterial({ color: 0x2a2013, emissive: 0xff9d4a, emissiveIntensity: 0.9, roughness: 0.8 });
   {
     const [rx, rz] = P.rome;
-    // Platz
     const plaza = new THREE.Mesh(new THREE.CircleGeometry(18, 26), new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: 0.95 }));
     plaza.rotation.x = -Math.PI / 2;
     plaza.position.set(rx, 0.05, rz);
@@ -536,10 +610,10 @@ export function buildNightRomeMap(parent) {
     beam.position.set(P.gate[0], 6.2, gateZ);
     group.add(beam);
 
-    // Kolosseum, stilisiert: zwei Ringwaende mit leuchtenden "Fensterbögen",
-    // dahinter am Platz-Nordrand
+    // Kolosseum, stilisiert: zwei Ringwaende mit leuchtenden "Fenstern" am
+    // Nordrand des Platzes (nahe genug, um im abgeflachten Gelaende zu stehen)
     const colR = 10;
-    const colZ = rz - 26;
+    const colZ = rz - 20;
     for (const [r, hgt] of [[colR, 5.6], [colR - 3.2, 4.2]]) {
       const wall = new THREE.Mesh(
         new THREE.CylinderGeometry(r, r, hgt, 28, 1, true),
@@ -557,8 +631,7 @@ export function buildNightRomeMap(parent) {
       win.rotation.y = a;
       group.add(win);
     }
-    // grobe Kollisionsscheiben fuer den Kolosseum-Ring
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 6; i++) { // grobe Kollisionsscheiben fuer den Ring
       const a = (i / 6) * Math.PI * 2;
       colliders.push({ x: rx + Math.sin(a) * (colR - 1.5), z: colZ + Math.cos(a) * (colR - 1.5), r: 2.5 });
     }
@@ -569,24 +642,24 @@ export function buildNightRomeMap(parent) {
   // richtig abbiegt. Reihenfolge ist monoton (Ueberspringen erlaubt).
   const mid = (a, b) => ({ x: (P[a][0] + P[b][0]) / 2, z: (P[a][1] + P[b][1]) / 2 });
   const waypoints = [
-    { ...mid('A', 'L1'), label: 'Erste Gabel – links nach ROMA!' },
-    { ...mid('L1', 'LR'), label: 'Weiter geradeaus Richtung Rom …' },
-    { ...mid('LR', 'LRR'), label: 'Rom kommt näher – das Schild sagt so.' },
-    { ...mid('LRR', 'C1'), label: 'Noch ein Kaffee, dann Rom!' },
-    { ...mid('C1', 'D1'), label: 'Unverdrossen: nur 2 Gabeln noch.' },
-    { ...mid('D1', 'gate'), label: 'Da vorn: die Lichter von Rom!' },
-    { x: P.gate[0], z: P.gate[1], label: 'Durch das Stadttor!' },
+    { ...mid('f1', 'w1'), label: 'Erste Gabel: links nach ROMA!' },
+    { ...mid('w1', 'w2'), label: 'Serpentine geschafft – Rom rückt näher!' },
+    { ...mid('w2', 'w3'), label: 'Kurve 3 – der Espresso-Horner wird öfter!' },
+    { ...mid('w3', 'w4'), label: 'Halbzeit auf kurvigem Pfad!' },
+    { ...mid('w4', 'w5'), label: 'Fuenf Gabeln ueberlebt!' },
+    { ...mid('w5', 'w6'), label: 'Noch drei Kurven bis zum Tor!' },
+    { ...mid('w6', 'w7'), label: 'Zwei Gabeln noch – Espresso-Luft!' },
+    { ...mid('w7', 'w8'), label: 'Letzte Serpentine vor Rom!' },
+    { x: P.gate[0], z: P.gate[1], label: 'Da: das ROMA-Stadttor!' },
   ];
 
-  // --- Spawn: auf der Startstrasse, Blick nach Norden (zum ersten Abzweig).
-  const spawn = { x: P.start[0], z: P.start[1] - 10, heading: headingBetween('start', 'A') };
+  // --- Spawn: auf der Startstrasse, Blick nach Norden (zur ersten Gabel).
+  const spawn = { x: P.start[0], z: P.start[1] - 10, heading: headingBetween('start', 'f1') };
 
   // --- Wegenetz fuer den naechtlichen Verkehr (NetworkTraffic in
   // roadtraffic.js): ALLE Strassen, BEIDE Richtungen, zufaellige Abbieger.
   // Die Kante gate->rome bleibt dem Verkehr erspart - der Platz vor dem
   // Kolosseum ist Hans' grosse Buehne, die Autos verschwinden am Stadttor.
-  // An Enden ohne Ausfahrt (Sackgassen, Strassenanfang, Tor) verschwinden
-  // die Autos und erscheinen woanders auf dem Netz neu.
   const networkEdges = ROADS
     .filter(([a, b]) => !(a === 'gate' && b === 'rome'))
     .map(([from, to]) => ({ from, to }));

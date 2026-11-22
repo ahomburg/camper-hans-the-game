@@ -199,17 +199,23 @@ Beim Erreichen des Zieltempos wird Hans **geblitzt** (Vollbild-Flash + Shutter-S
 `cameraShutter` in `src/audio.js`); das Auto fährt noch ~2,5 s weiter, erst dann
 erscheint der Erfolgs-Screen.
 - **Kapitel 3 – Nachts nach Rom**: Hans fährt bei stockfinsterer Nacht durch ein
-Wegenetz voller Abzweigungen nach Rom – das Fahrlicht ist kaputt! An jeder Gabel
-steht ein hölzerner Wegweiser; nur der richtige zeigt „ROMA“ mit abnehmenden
-Kilometern, alle falschen Abzweigungen enden in zehn benannten Sackgassen
-(Siena, Pisa, Neapel …) mit rot-weißer Barriere. Die Karte (`src/nightrome.js`,
-Lazy Load) schaltet die gesamte Szene auf Nacht (Sterne, Mond, dichter Nebel,
+Wegenetz voller Abzweigungen nach Rom – das Fahrlicht ist kaputt! Die Karte
+(`src/nightrome.js`, Lazy Load) ist **hügelig** (weiche Sinus-Hügel bis ~14 m,
+nahe den Straßen, um Rom und am Rand abgeflacht – Straßen bleiben fahrflach)
+und **serpentinös**: An **neun Gabeln in Folge** muss Hans für ROMA wirklich
+abbiegen (links/rechts im Wechsel – jeder „geradeaus"-Ausgang ist eine Falle),
+erst danach kommt das „ROMA“-Stadttor. An jeder Gabel steht ein hölzerner
+Wegweiser; nur der richtige zeigt „ROMA“ mit abnehmenden Kilometern, alle
+falschen Abzweigungen enden in **17 benannten Sackgassen** (Siena, Pisa,
+Modena, Neapel, Venedig …) mit rot-weißer Barriere. Dazu zwei Irrwege-Bäume
+(Ost und West) mit weiteren acht Gabeln für echte Navigationskunst. Die Karte
+schaltet die gesamte Szene auf Nacht (Sterne, Mond, dichter Nebel,
 `applyMapAtmosphere` in `src/main.js`); ein dichter Zypressenwald verhindert
 Abkürzungen querfeldein, Reflektoren am Straßenrand leuchten schwach im Dunkeln.
 In der **Werkstatt** kann Hans eine **Taschenlampe** kaufen (60 🪙, bleibt über
 Sitzungen gespeichert, Schlüssel `camperHansFlashlight`): ein enger, kurzer
 Spotlight-Strahl am Fahrerfenster, der nur wenige Meter vorausleuchtet.
-Der Fortschrittsbalken (8 Punkte) füllt sich pro richtiger Abzweigung, Toasts
+Der Fortschrittsbalken (10 Punkte) füllt sich pro richtiger Abzweigung, Toasts
 melden Sackgassen und Wegpunkte, geschafft ist das Kapitel auf dem erleuchteten
 Platz von Rom (Kolosseum-Silhouette hinter dem „ROMA“-Stadttor).
 **Nächtlicher Verkehr**: 14× Mercedes, Käfer und Ente (die GLB-Vorlagen aus
@@ -252,16 +258,18 @@ Mittellinie abkommt, verliert das Kapitel. Fahrdynamik pro Map einstellbar
 (`tuning`): Auf der Huegelland-Map darf der Van bis ~36 m/s (129,6 km/h)
 rennen (Stadt-Default: 30 m/s = 108 km/h), damit das Ziel 120 km/h erreichbar ist
 (accel 18 -> 120 km/h nach ~5 s / ~122 m Vollgas).
-- **Nacht-Rom-Map (nur Kapitel 3, `src/nightrome.js`)**: dunkles Italien mit
-~420 Zypressen/Bäumen (9 m Abstand zu allen Straßen – querfeldein wird es
-teuer), Wegenetz aus 22 geraden Segmenten mit 10 Gabeln und 10 Sackgassen,
-Wegweisern mit ←/↑/→-Pfeilen (Richtung automatisch aus der Geometrie berechnet),
-Reflektoren am Straßenrand, Weltgrenze aus dunkler Baumreihe. Am Ende der
-richtigen Route: „ROMA“-Stadttor, erleuchteter Platz mit Laternen (PointLights)
-und stilisiertem Kolosseum. Die Map trägt `night: true`; `applyMapAtmosphere`
-in `src/main.js` verdunkelt dafür Himmel, Nebel, Hemisphären- und Sonnen-/Mond-
-Licht und stellt beim Wechsel auf Tag-Maps alles zurück. Fahrdynamik:
-max. 24 m/s (86 km/h) – bei Nacht gilt Rücksicht statt Rekordfahrt.
+- **Nacht-Rom-Map (nur Kapitel 3, `src/nightrome.js`)**: dunkles, hügeliges
+Italien mit ~440 Zypressen/Bäumen (9 m Abstand zu allen Straßen – querfeldein
+wird es teuer) auf weichen Sinus-Hügeln (nahe Straßen, um den Rom-Platz und am
+Rand abgeflacht), Wegenetz aus 36 begehbaren Segmenten mit 17 Gabeln und
+17 Sackgassen, Wegweisern mit ←/↑/→-Pfeilen (Richtung automatisch aus der
+Geometrie berechnet), Reflektoren am Straßenrand, Weltgrenze aus dunkler
+Baumreihe. Am Ende der Serpentinen-Route: „ROMA“-Stadttor, erleuchteter Platz
+mit Laternen (PointLights) und stilisiertem Kolosseum. Die Map trägt
+`night: true`; `applyMapAtmosphere` in `src/main.js` verdunkelt dafür Himmel,
+Nebel, Hemisphären- und Sonnen-/Mond-Licht und stellt beim Wechsel auf Tag-Maps
+alles zurück. Fahrdynamik: max. 24 m/s (86 km/h) – bei Nacht gilt Rücksicht
+statt Rekordfahrt.
 
 ## Technik
 

@@ -142,12 +142,12 @@ export function createArcLapChapter(arc, traffic, { target = 10, startTraffic = 
 // erreicht. Die Map liegt in ctx.map, und ctx.flashlight verrät, ob die
 // Taschenlampe gekauft ist (main.js reicht es im update-ctx durch).
 
-export function createRomeNightChapter({ target = 8, wpRadius = 14, romeRadius = 15, deadendRadius = 12 } = {}) {
-  const state = { wpIdx: 0, deadSeen: new Set() };
+export function createRomeNightChapter({ target = 10, wpRadius = 14, romeRadius = 15, deadendRadius = 12 } = {}) {
+  const state = { wpIdx: 0, deadSeen: new Set(), synced: false };
   return new Chapter({
     id: 'romnacht',
     title: 'Kapitel 3: Nachts nach Rom',
-    desc: 'Finde bei stockfinsterer Nacht den Weg nach Rom – das Fahrlicht ist kaputt!',
+    desc: 'Stockdunkle Serpentinen durchs Hügelland: Finde den Weg nach Rom – das Fahrlicht ist kaputt!',
     story: `<p>„Hans!” flüstert Liesel um drei Uhr nachts, „wacht endlich auf! Der Espresso in Rom wartet nicht – aber mach zuerst das Licht an!”</p>
       <p>Hans klickt. Klickt nochmal. Nichts. „Ähem … das Licht ist kaputt, Schatz.” – Stille. Dann, mit zusammengekniffenen Augen: „Dann kauf eine <strong>Taschenlampe</strong> in der Werkstatt – die leuchtet zwar nur ein Stueckchen, aber besser als Blindflug! Und nun: gib GAS, aber lies die Wegweiser!”</p>`,
     target,
@@ -155,6 +155,14 @@ export function createRomeNightChapter({ target = 8, wpRadius = 14, romeRadius =
       const m = ctx.map;
       const { car } = ctx;
       if (!m || !m.waypoints) return;
+
+      // Ziel automatisch an die Map anpassen: Jeder Wegpunkt zaehlt einen
+      // Punkt, die Ankunft in Rom das letzte (fuller Balken = feiernd in Rom).
+      // So bleibt das Kapitel unempfindlich, wenn die Map um Gabeln waechst.
+      if (!state.synced) {
+        state.synced = true;
+        c.target = Math.max(c.target, m.waypoints.length + 1);
+      }
 
       // Wegpunkte: monoton weiterzaehlen (auch Ueberspringen erlaubt, wer
       // querfeldein abkuerzt, verpasst dafuer die Zwischenpunkte nicht doppelt).
@@ -190,6 +198,7 @@ export function createRomeNightChapter({ target = 8, wpRadius = 14, romeRadius =
     onReset() {
       state.wpIdx = 0;
       state.deadSeen = new Set();
+      state.synced = false; // Ziel beim naechsten Start erneut mit der Map abgleichen
     },
   });
 }
