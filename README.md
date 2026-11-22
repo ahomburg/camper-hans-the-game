@@ -70,6 +70,13 @@ Annäherungsgeschwindigkeit entlang der Stoßnormalen (`crashPenalty()` in
 | 16 m/s | C'est la cata! | 30 🪙 |
 | Frontal (30 m/s) | C'est la cata! | max. 45 🪙 |
 
+**Italienische Manieren (nur Kapitel 3)**: In der Nacht nach Rom wird die
+Crash-Kategorie freundlich-italienisch gerufen – ein Knall gehört halt zum
+süßen Leben: *Un graffio, no problema!* (Lackschaden) · *Ahi ahi, ammacchi!*
+(Blechschaden) · *Mamma mia!* (Crash!) · **Che disastro! Che spettacolo!**
+(C'est la cata). Kosten und System bleiben unverändert (`crashTierLabel` in
+`src/main.js`).
+
 Die Kasse geht nie unter 0. Das Scheitern eines Kapitels kostet keine Münzen –
 auch der Kupplungsabriss des Wohnwagens wird nicht zusätzlich berechnet
 (de facto zahlt man nur für Crashs, die man selbst fährt). Der Verkehr fährt
@@ -207,7 +214,9 @@ abbiegen (links/rechts im Wechsel – jeder „geradeaus"-Ausgang ist eine Falle
 erst danach kommt das „ROMA“-Stadttor. An jeder Gabel steht ein hölzerner
 Wegweiser; nur der richtige zeigt „ROMA“ mit abnehmenden Kilometern, alle
 falschen Abzweigungen enden in **17 benannten Sackgassen** (Siena, Pisa,
-Modena, Neapel, Venedig …) mit rot-weißer Barriere. Dazu zwei Irrwege-Bäume
+Modena, Neapel, Venedig …). Die Sackgassen haben **keine Absperrung**: Die
+Straße schmälert sich dort einfach, wird zum sandigen Pfad und verschwindet
+sanft im Gras – nur dunkler Wald dahinter. Dazu zwei Irrwege-Bäume
 (Ost und West) mit weiteren acht Gabeln für echte Navigationskunst. Die Karte
 schaltet die gesamte Szene auf Nacht (Sterne, Mond, dichter Nebel,
 `applyMapAtmosphere` in `src/main.js`); ein dichter Zypressenwald verhindert
@@ -224,7 +233,9 @@ Richtungen (Rechtsverkehr über den Spurversatz), an jeder Gabel zufällig
 (`NetworkTraffic` in `src/roadtraffic.js`, `night: true`). Sie bremsen
 rücksichtig hinter Hans, hupen nachts selbstverständlich nicht – und
 **verschwinden an jedem Ende ohne Ausfahrt** (Sackgassen, Straßenanfang,
-ROMA-Tor) kurz vor der Barriere, um irgendwo anders im Netz neu zu erscheinen.
+ROMA-Tor) fahren die Autos die auslaufende Straße ganz hinaus und
+verschwinden dort, wo der Weg im Gras endet – um irgendwo anders im Netz neu
+zu erscheinen.
 Die **Ente** fährt übrigens mit einem **kaputten Scheinwerfer**: links bleibt
 dunkel, nur rechts leuchtet. Sichtbar sind die Autos nachts vor allem an den
 leuchtenden Scheinwerferpunkten, Lichtkegeln (~12 m, additiv) und roten

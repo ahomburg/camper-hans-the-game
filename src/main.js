@@ -500,6 +500,20 @@ function earn(n, label) {
   renderCoins();
 }
 
+// Kapitel 3 (Nachts nach Rom): In Italien gehoert ein Crash zur Lebensfreude -
+// die Crash-Kategorien werden dort freundlich-italienisch gerufen (nur im
+// Nacht-Level; im Rest bleibt Hans' Schul-Franzoesisch "C'EST LA CATA!"). Ein
+// Knall um drei Uhr nachts ist halt auch nur ein Aperitivo.
+const ITALIAN_CRASH_TIERS = {
+  'Lackschaden': 'Un graffio, no problema!',
+  'Blechschaden': 'Ahi ahi, ammacchi!',
+  'Crash!': 'Mamma mia!',
+  "C'EST LA CATA!": 'Che disastro! Che spettacolo!',
+};
+function crashTierLabel(tier) {
+  return (activeMap && activeMap.night && ITALIAN_CRASH_TIERS[tier]) || tier;
+}
+
 // Ein Crash: Funken + Truemmer am Aufprallpunkt, Kamera-Wackeln, roter
 // Rand-Blitz, Crash-Banner mit Reparaturkosten - und die Kasse zahlt.
 // Mehrere Treffer im selben Aufprall (z.B. zwei Autos gleichzeitig) sind
@@ -518,11 +532,12 @@ function handleCrash(info, free = false) {
     banner = `💥 ${info.banner || 'Crash!'}`;
   } else {
     const { coins, tier } = crashPenalty(info.closing);
+    const tierLabel = crashTierLabel(tier); // Kapitel 3: freundliches Italienisch
     wallet.deduct(coins);
     runCoins -= coins;
     runRepairs += coins;
-    popCoin(-coins, tier);
-    banner = `💥 ${tier} −${coins} 🪙`;
+    popCoin(-coins, tierLabel);
+    banner = `💥 ${tierLabel} −${coins} 🪙`;
   }
   renderCoins();
 
@@ -979,11 +994,12 @@ chapters.on('progress', (q) => {
   renderChapter();
 });
 
-// Kapitel 3: Hans ist in einer Sackgasse gelandet (Barriere "SACKGASSE"),
-// freundlicher Hinweis zum Wenden - kostet kein Kapitel, nur Nerven.
+// Kapitel 3: Hans ist in einer Sackgasse gelandet - die Strasse ist dort
+// einfach ausgelaufen und im Gras verschwunden; freundlicher Hinweis zum
+// Wenden - kostet kein Kapitel, nur Nerven.
 chapters.on('deadend', (q) => {
   if (activeChapter === q && state === 'playing') {
-    showToast('🚧 Sackgasse! Hier wird Hans nicht nach Rom kommen – wenden!');
+    showToast('🛣️ Fine della strada! Hier läuft die Straße ins Nichts – wenden!');
   }
 });
 

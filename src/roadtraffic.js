@@ -367,9 +367,11 @@ export class RoadTraffic {
 // ueber das GESAMTE Wegenetz: Alle Segmente, BEIDE Richtungen (Rechtsverkehr
 // ueber den Spurversatz), und an jeder Gabel entscheidet das Auto zufaellig
 // (keine Wendemanoever, solange es eine Weiterfahrt gibt). Erreicht es ein
-// ENDE OHNE AUSFAHRT - die Sackgassen mit ihren Barrieren, aber auch der
-// Strassenanfang oder das korrekte ROMA-Stadttor - verschwindet es kurz vor
-// der Barriere und erscheint irgendwo anders auf dem Netz neu. Wie bei
+// ENDE OHNE AUSFAHRT - die Sackgassen, deren Strassen einfach auslaufen und
+// im Gras verschwinden, aber auch der Strassenanfang oder das korrekte
+// ROMA-Stadttor - faehrt das Auto den auslaufenden Zipfel ganz hinaus,
+// verschwindet dort und erscheint irgendwo anders auf dem Netz neu (so wie
+// die Strasse). Wie bei
 // RoadTraffic gilt auch hier: kein Hupen, Ruecksicht hinter Hans, Crashs
 // laufen ueber onCrash in die Reisekasse. Nachts sind die Autos mit den
 // Scheinwerfern/Ruecklichtern aus attachNightLights unterwegs - die Ente
@@ -492,13 +494,14 @@ export class NetworkTraffic {
   }
 
   // Fuehrt die aktuelle Fahrt auf ein Ende ohne Weiterfahrt (Sackgasse,
-  // Strassenanfang, ROMA-Stadttor)? Dann verschwindet das Auto dort ~5.5 m
-  // vor dem Knoten - direkt an der rot-weissen Barriere.
+  // Strassenanfang, ROMA-Stadttor)? Dort laeuft die Strasse ohne Absperrung
+  // einfach aus (siehe nightrome.js) - das Auto faehrt den schmalen Zipfel
+  // ganz hinaus und verschwindet erst dort, wo der Weg im Gras endet.
   updateEnd(car) {
     const edge = this.edges[car.edge];
     const endNode = car.dir > 0 ? edge.to : edge.from;
     car.terminal = this.adj[endNode].length <= 1;
-    car.endD = car.terminal ? Math.max(2, edge.len - 5.5) : edge.len;
+    car.endD = car.terminal ? Math.max(2, edge.len - 2) : edge.len;
   }
 
   pointAlong(edge, dir, d) {

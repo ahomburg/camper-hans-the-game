@@ -71,29 +71,6 @@ function signTexture(lines) {
   return makeTexture(cnv);
 }
 
-// Rot-weiss gestreifte Barriere mit "SACKGASSE"-Schriftzug (fuer das Ende
-// jeder Sackgasse).
-function barrierTexture() {
-  const W = 512, H = 96;
-  const cnv = document.createElement('canvas');
-  cnv.width = W; cnv.height = H;
-  const g = cnv.getContext('2d');
-  g.fillStyle = '#cfd2d6';
-  g.fillRect(0, 0, W, H);
-  g.fillStyle = '#c23b2e';
-  for (let x = -H; x < W + H; x += 64) {
-    g.beginPath();
-    g.moveTo(x, 0); g.lineTo(x + 32, 0); g.lineTo(x + 32 + H, H); g.lineTo(x + H, H);
-    g.closePath(); g.fill();
-  }
-  g.fillStyle = '#10131a';
-  g.font = 'bold 44px "Trebuchet MS", Verdana, sans-serif';
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.fillText('SACKGASSE', W / 2, H / 2 + 2);
-  return makeTexture(cnv);
-}
-
 // "ROMA"-Balken ueber dem Stadttor am Ende der richtigen Route.
 function romaNovaTexture() {
   const W = 512, H = 128;
@@ -173,6 +150,16 @@ export function buildNightRomeMap(parent) {
     arezzo: [-84, -80],
     ferrara: [2, -150],
   };
+  // Die 17 Sackgassen-Enden: Dort steht KEINE Absperrung - die Strasse
+  // schmaelt sich einfach und verschwindet sanft im Gras (siehe
+  // addRoadFade), dahinter wartet nur noch dunkler Wald. Auch der
+  // Nachtweg-Verkehr faehrt hinaus und verschwindet dort.
+  const DEADEND_KEYS = [
+    'napoli', 'venezia', 'genova', 'torino', 'ravenna', 'ancona',
+    'siena', 'pisa', 'firenze', 'pienza', 'lucca',
+    'modena', 'volterra', 'grosseto', 'orvieto', 'arezzo', 'ferrara',
+  ];
+  const DEADSET = new Set(DEADEND_KEYS);
   const ROADS = [
     ['start', 'f1', 11],
     ['f1', 'w1', 10], ['f1', 'e1', 10],
@@ -196,8 +183,7 @@ export function buildNightRomeMap(parent) {
   ];
 
   const segs = ROADS.map(([a, b, w]) => {
-    const A = P[a], B = P[b];
-    return { a: A, b: B, w };
+    return { ka: a, kb: b, a: P[a], b: P[b], w };
   });
 
   // Abstand Punkt -> Strassenabschnitt (fuer Huegel-Abflachung, Baeume und
@@ -341,16 +327,74 @@ export function buildNightRomeMap(parent) {
   const dashMat = new THREE.MeshStandardMaterial({ color: 0xb9a13a, roughness: 0.8 });
   const reflectorPts = [];
 
+  // --- Strassen, die "einfach auslaufen": In den Sackgassen steht keine
+  // Absperrung. Der Asphalt schmaelt sich ab ~26 m vor dem Ende, wird zum
+  // sandigen Pfad und verschwindet dann ganz im Gras (Alphagradient in der
+  // Textur). Gesamter Auslauf: 34 m, davon ragen ~8 m ueber den Knoten.
+  const FADE_BEFORE = 26; // asphaltierte Strasse endet so weit vor dem Knoten
+  const FADE_AFTER = 8;    // der fast unsichtbare Zipfel reicht noch hierueber hinaus
+  const fadeTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = 32; c.height = 128;
+    const g = c.getContext('2d');
+    const grad = g.createLinearGradient(0, 0, 0, 128); // oben (v=1) = Asphalt
+    grad.addColorStop(0, 'rgba(43,46,51,1)');     // Asphalt
+    grad.addColorStop(0.45, 'rgba(88,76,62,0.85)'); // abgenutzter Schotter
+    grad.addColorStop(0.8, 'rgba(64,58,40,0.35)');  // ausfransender Pfad
+    grad.addColorStop(1, 'rgba(44,60,34,0)');        // Gras, verschwunden
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 32, 128);
+    return makeTexture(c);
+  })();
+  const fadeMat = new THREE.MeshStandardMaterial({
+    map: fadeTex, transparent: true, depthWrite: false,
+    roughness: 0.95, side: THREE.DoubleSide,
+  });
+  // Trapez von voller Breite (vorn, am Asphalt) zu einem schmalen Zipfel
+  // (hinten, im Gras entlang der Fahrtrichtung h) - der Alphagradient der
+  // Textur macht den Rest.
+  function addRoadFade(x0, z0, h, w) {
+    const dx = Math.sin(h), dz = Math.cos(h);
+    const nlx = Math.cos(h), nlz = -Math.sin(h); // Normale links
+    const total = FADE_BEFORE + FADE_AFTER;
+    const w0 = w * 0.5 * 0.96; // vorn fast volle Breite (deckt den Asphalt-Übergang)
+    const w1 = w * 0.09;        // hinten nur ein schmaler Pfad
+    const px = [x0 + nlx * w0, x0 - nlx * w0];
+    const pz = [z0 + nlz * w0, z0 - nlz * w0];
+    const qx = [x0 + dx * total + nlx * w1, x0 + dx * total - nlx * w1];
+    const qz = [z0 + dz * total + nlz * w1, z0 + dz * total - nlz * w1];
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute([
+      px[0], 0.045, pz[0],
+      px[1], 0.045, pz[1],
+      qx[0], 0.01, qz[0],
+      qx[1], 0.01, qz[1],
+    ], 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute([1, 1, 0, 1, 1, 0, 0, 0], 2));
+    geo.setIndex([0, 2, 1, 1, 2, 3]);
+    const mesh = new THREE.Mesh(geo, fadeMat);
+    mesh.receiveShadow = true;
+    group.add(mesh);
+  }
+
   for (const s of segs) {
-    addQuad(s.a, s.b, s.w, 0.04, roadMat);
-    addQuad(s.a, s.b, 0.24, 0.05, edgeMat, (s.w / 2 - 0.45), false);
-    addQuad(s.a, s.b, 0.24, 0.05, edgeMat, -(s.w / 2 - 0.45), false);
-    const dx = s.b[0] - s.a[0], dz = s.b[1] - s.a[1];
-    const len = Math.hypot(dx, dz);
-    const ux = dx / len, uz = dz / len;
-    const h = Math.atan2(dx, dz);
-    const nlx = Math.cos(h), nlz = -Math.sin(h);
-    for (let t = 4; t < len - 4; t += 7) { // gelbe Mittelstriche
+    const dx0 = s.b[0] - s.a[0], dz0 = s.b[1] - s.a[1];
+    const len = Math.hypot(dx0, dz0);
+    const ux = dx0 / len, uz = dz0 / len;
+    const h = Math.atan2(dx0, dz0);
+    const nlx = Math.cos(h), nlz = -Math.sin(h); // Normale links der Richtung
+    // Auslaufen an Sackgassen-Enden: Asphalt endet frueher, dafuer schmiegt
+    // sich der Fade-Zipfel noch ein Stueck ins Gras.
+    const fadeA = DEADSET.has(s.ka) ? FADE_BEFORE : 0;
+    const fadeB = DEADSET.has(s.kb) ? FADE_BEFORE : 0;
+    const a2 = [s.a[0] + ux * fadeA, s.a[1] + uz * fadeA];
+    const b2 = [s.b[0] - ux * fadeB, s.b[1] - uz * fadeB];
+    addQuad(a2, b2, s.w, 0.04, roadMat);
+    addQuad(a2, b2, 0.24, 0.05, edgeMat, (s.w / 2 - 0.45), false);
+    addQuad(a2, b2, 0.24, 0.05, edgeMat, -(s.w / 2 - 0.45), false);
+    if (fadeA > 0) addRoadFade(s.a[0] + ux * fadeA, s.a[1] + uz * fadeA, h + Math.PI, s.w);
+    if (fadeB > 0) addRoadFade(s.b[0] - ux * fadeB, s.b[1] - uz * fadeB, h, s.w);
+    for (let t = 4 + fadeA; t < len - 4 - fadeB; t += 7) { // gelbe Mittelstriche
       const m = addQuad(
         [s.a[0] + ux * t, s.a[1] + uz * t],
         [s.a[0] + ux * (t + 1.6), s.a[1] + uz * (t + 1.6)],
@@ -358,7 +402,7 @@ export function buildNightRomeMap(parent) {
       );
       m.receiveShadow = false;
     }
-    for (let t = 5; t < len - 2; t += 12) { // Reflektoren ("Katzenaugen")
+    for (let t = 5 + fadeA; t < len - 2 - fadeB; t += 12) { // Reflektoren
       for (const side of [-1, 1]) {
         reflectorPts.push(
           s.a[0] + ux * t + nlx * side * (s.w / 2 - 0.35),
@@ -462,39 +506,21 @@ export function buildNightRomeMap(parent) {
     addSignpost(P[sd.at][0], P[sd.at][1], headingBetween(sd.from, sd.at), lines);
   }
 
-  // --- Sackgassen: Barriere + Schild, dahinter ein kleiner dunkler Wald.
-  const barrierTex = barrierTexture();
-  const DEADENDS = [
-    { n: 'napoli', from: 'e1' }, { n: 'venezia', from: 'e2' },
-    { n: 'genova', from: 'e3' }, { n: 'torino', from: 'e4' },
-    { n: 'ravenna', from: 'e5' }, { n: 'ancona', from: 'e5' },
-    { n: 'siena', from: 'm1' }, { n: 'pisa', from: 'm2' },
-    { n: 'firenze', from: 'm3' }, { n: 'pienza', from: 'm3' },
-    { n: 'lucca', from: 'w2' },
-    { n: 'modena', from: 'w3' }, { n: 'volterra', from: 'w4' },
-    { n: 'grosseto', from: 'w5' }, { n: 'orvieto', from: 'w6' },
-    { n: 'arezzo', from: 'w7' }, { n: 'ferrara', from: 'w8' },
-  ];
-  const deadEnds = DEADENDS.map(({ n, from }) => {
+  // --- Sackgassen: KEINE Absperrung - die Strasse laeuft einfach aus und
+  // verschwindet im Gras (siehe addRoadFade oben). Dahinter wartet nur
+  // dunkler Wald; auch der Nachtweg-Verkehr faehrt hinaus und verschwindet.
+  // Fuer Toasts/Kapitel-Logik bleiben die Enden als Punkte registriert.
+  const deadEnds = DEADEND_KEYS.map((n) => {
     const [x, z] = P[n];
-    const h = headingBetween(from, n);
-    const fx = Math.sin(h), fz = Math.cos(h);
-    const bx = x - fx * 3.5, bz = z - fz * 3.5; // Barriere vor dem Strassenende
-    const board = new THREE.Mesh(
-      new THREE.PlaneGeometry(4.4, 0.9),
-      new THREE.MeshStandardMaterial({ map: barrierTex, roughness: 0.85, side: THREE.DoubleSide })
-    );
-    board.position.set(bx, 1.0, bz);
-    board.rotation.y = h + Math.PI;
-    group.add(board);
-    for (const side of [-1, 1]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 1.3, 8), poleMat);
-      post.position.set(bx - fz * side * 2.1, 0.65, bz + fx * side * 2.1);
-      group.add(post);
-    }
-    colliders.push({ x: bx, z: bz, r: 1.6 });
-    return { name: n, x, z, from };
+    return { name: n, x, z };
   });
+  // Eingehende Strasse je Sackgasse (fuer den Wald dahinter)
+  const DEADEND_FROM = {
+    napoli: 'e1', venezia: 'e2', genova: 'e3', torino: 'e4',
+    ravenna: 'e5', ancona: 'e5', siena: 'm1', pisa: 'm2',
+    firenze: 'm3', pienza: 'm3', lucca: 'w2', modena: 'w3',
+    volterra: 'w4', grosseto: 'w5', orvieto: 'w6', arezzo: 'w7', ferrara: 'w8',
+  };
 
   // --- Zypressen-und-Baum-Wald: dichtes Gestruez zufaellig ueber die Huegel,
   // aber 9 m Abstand zu jeder Strasse. Wer abseits abkuerzt, kollidiert
@@ -532,14 +558,16 @@ export function buildNightRomeMap(parent) {
       addTree(x, z);
       placed++;
     }
-    // Wald-Grueppchen hinter den Sackgassen-Barrieren: Die Strasse endet im
-    // Dunkeln zwischen dunklen Gestalten (in Anfahrtsrichtung weiter).
+    // Wald-Grueppchen hinter den ENDEN: Die Strasse laeuft im Dunkeln ins
+    // Nichts, dahinter steht dichter Wald - die Baeume sitzen seitlich
+    // versetzt, damit der schmale Auslauf-Pfad nicht zugewachsen ist.
     for (const d of deadEnds) {
-      const h = headingBetween(d.from, d.name);
+      const h = headingBetween(DEADEND_FROM[d.name], d.name);
       const fx = Math.sin(h), fz = Math.cos(h);
       for (let k = 0; k < 5; k++) {
         const t = 5 + rand() * 8;
-        const ox = (rand() * 2 - 1) * 6;
+        let ox = (rand() * 2 - 1) * 6;
+        if (Math.abs(ox) < 2.5) ox = Math.sign(ox || 1) * (2.5 + rand() * 1.2); // Pfad frei halten
         const tx = d.x + fx * t - fz * ox;
         const tz = d.z + fz * t + fx * ox;
         if (distToRoads(tx, tz) >= 6 && inBounds(tx, tz)) addTree(tx, tz);
