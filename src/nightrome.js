@@ -12,8 +12,10 @@
 // Ausfahrten sind alle Fallen in Sackgassen). Rund um die Route lugen zwei
 // Irrwege-Baeume (Ost und West) mit nochmal drei bzw. fuenf Gabeln und
 // insgesamt 17 benannten Sackgassen (Siena, Pisa, Neapel, Venedig ...).
-// An jeder Gabel steht ein Holzschild; nur der richtige zeigt "ROMA" mit
-// abnehmenden Kilometern - lesbar freilich nur mit Taschenlampe.
+// An jeder Gabel steht ein Holzschild - aber darauf steht NUR UNSINN:
+// erfundene Nonsense-Orte (AL DENTE, MOZZARELLA, MAMMA MIA ...) mit
+// willkuerlichen Kilometern. KEIN Schild sagt "ROMA" - den Weg muss Hans
+// wirklich suchen (lesbar uebrigens nur mit Taschenlampe).
 //
 // Die Physik des Vans ist 2D (y = 0), deshalb liegen alle Strassen flach auf
 // y ~ 0; die Huegel heben nur das GRUEN an (nahe der Strassen abgeflacht).
@@ -43,8 +45,10 @@ function makeTexture(cnv) {
 }
 
 // Textur fuer ein Holz-Wegeschild mit einer Zeile je Abzweigung. Jede Zeile:
-// "← ROMA 96 km" bzw. "NAPOLI 205 km →" - der Pfeil zeigt die Richtung
-// relativ zum kommenden Hans (links / geradeaus / rechts).
+// "← VAL TRUFFA 12 km" bzw. "MOZZARELLA 205 km →" - der Pfeil zeigt die
+// Richtung relativ zum kommenden Hans (links / geradeaus / rechts). KEIN
+// Schild nennt "ROMA": Die Ortsnamen sind frei erfundener Nonsense, die
+// Kilometer willkuerlich - Hilfe bietet nur der Fortschrittsbalken.
 function signTexture(lines) {
   const W = 512;
   const LH = 72;
@@ -437,9 +441,9 @@ export function buildNightRomeMap(parent) {
 
   // --- Wegweiser an den Gabeln: Holzschild mit einer Zeile je Ausfahrt. Die
   // Pfeil-Richtung wird aus der Geometrie berechnet ("links" der Anfahrt =
-  // Kreuzprodukt-Anzeichen). Am richtigen Weg steht immer "ROMA" mit
-  // abnehmenden Kilometern - im Dunkeln muss Hans mit der Taschenlampe nah
-  // genug rangehen, um zu lesen.
+  // Kreuzprodukt-Anzeichen). Auf den Schildern steht NUR UNSINN (siehe
+  // SIGN_DEFS weiter unten) - im Dunkeln muss Hans mit der Taschenlampe nah
+  // genug rangehen, um ihn wenigstens zu geniessen.
   const poleMat = new THREE.MeshStandardMaterial({ color: 0x4a3826, roughness: 0.95 });
   const addSignpost = (x, z, headingIn, lines) => {
     const fx = Math.sin(headingIn), fz = Math.cos(headingIn);
@@ -478,31 +482,51 @@ export function buildNightRomeMap(parent) {
   const headingBetween = (from, to) =>
     Math.atan2(P[to][0] - P[from][0], P[to][1] - P[from][1]);
 
-  // Schild-Definitionen: at = Gabel-Knoten, from = Anfahrt, exits = je
-  // Ausfahrt { name, km } (km = die auf dem Schild behauptete Restentfernung
-  // - auf der ROMA-Route wird es spuerbar weniger mit jeder Gabel).
-  const ROMA_KM = { f1: 140, w1: 108, w2: 92, w3: 74, w4: 58, w5: 44, w6: 30, w7: 18, w8: 6 };
+  // Schild-Definitionen: at = Gabel-Knoten, from = Anfahrt, exits = die
+  // abgehenden Strassen. Auf den Holzschildern steht KEIN "ROMA" - nur
+  // erfundener UNSINN mit willkuerlichen Kilometern (SIGNSIGN_NAMES). Hans
+  // muss den Weg also wirklich suchen: Der Balken im HUD und die
+  // Sackgassen-Toats sind seine einzigen Wegweiser.
   const SIGN_DEFS = [
-    { at: 'f1', from: 'start', exits: [{ to: 'w1', n: 'ROMA', km: ROMA_KM.f1 }, { to: 'e1', n: 'NAPOLI', km: 205 }] },
-    { at: 'w1', from: 'f1', exits: [{ to: 'w2', n: 'ROMA', km: ROMA_KM.w1 }, { to: 'm1', n: 'SIENA', km: 34 }] },
-    { at: 'w2', from: 'w1', exits: [{ to: 'w3', n: 'ROMA', km: ROMA_KM.w2 }, { to: 'lucca', n: 'LUCCA', km: 27 }] },
-    { at: 'w3', from: 'w2', exits: [{ to: 'w4', n: 'ROMA', km: ROMA_KM.w3 }, { to: 'modena', n: 'MODENA', km: 61 }] },
-    { at: 'w4', from: 'w3', exits: [{ to: 'w5', n: 'ROMA', km: ROMA_KM.w4 }, { to: 'volterra', n: 'VOLTERRA', km: 18 }] },
-    { at: 'w5', from: 'w4', exits: [{ to: 'w6', n: 'ROMA', km: ROMA_KM.w5 }, { to: 'grosseto', n: 'GROSSETO', km: 24 }] },
-    { at: 'w6', from: 'w5', exits: [{ to: 'w7', n: 'ROMA', km: ROMA_KM.w6 }, { to: 'orvieto', n: 'ORVIETO', km: 41 }] },
-    { at: 'w7', from: 'w6', exits: [{ to: 'w8', n: 'ROMA', km: ROMA_KM.w7 }, { to: 'arezzo', n: 'AREZZO', km: 52 }] },
-    { at: 'w8', from: 'w7', exits: [{ to: 'gate', n: 'ROMA', km: ROMA_KM.w8 }, { to: 'ferrara', n: 'FERRARA', km: 33 }] },
-    { at: 'e1', from: 'f1', exits: [{ to: 'napoli', n: 'NAPOLI', km: 205 }, { to: 'e2', n: 'VENEZIA', km: 38 }] },
-    { at: 'e2', from: 'e1', exits: [{ to: 'venezia', n: 'VENEZIA', km: 38 }, { to: 'e3', n: 'GENOVA', km: 87 }] },
-    { at: 'e3', from: 'e2', exits: [{ to: 'genova', n: 'GENOVA', km: 87 }, { to: 'e4', n: 'TORINO', km: 66 }] },
-    { at: 'e4', from: 'e3', exits: [{ to: 'torino', n: 'TORINO', km: 66 }, { to: 'e5', n: 'RAVENNA', km: 39 }] },
-    { at: 'e5', from: 'e4', exits: [{ to: 'ravenna', n: 'RAVENNA', km: 39 }, { to: 'ancona', n: 'ANCONA', km: 44 }] },
-    { at: 'm1', from: 'w1', exits: [{ to: 'siena', n: 'SIENA', km: 34 }, { to: 'm2', n: 'PISA', km: 12 }] },
-    { at: 'm2', from: 'm1', exits: [{ to: 'pisa', n: 'PISA', km: 12 }, { to: 'm3', n: 'FIRENZE', km: 19 }] },
-    { at: 'm3', from: 'm2', exits: [{ to: 'firenze', n: 'FIRENZE', km: 19 }, { to: 'pienza', n: 'PIENZA', km: 9 }] },
+    { at: 'f1', from: 'start', exits: ['w1', 'e1'] },
+    { at: 'w1', from: 'f1', exits: ['w2', 'm1'] },
+    { at: 'w2', from: 'w1', exits: ['w3', 'lucca'] },
+    { at: 'w3', from: 'w2', exits: ['w4', 'modena'] },
+    { at: 'w4', from: 'w3', exits: ['w5', 'volterra'] },
+    { at: 'w5', from: 'w4', exits: ['w6', 'grosseto'] },
+    { at: 'w6', from: 'w5', exits: ['w7', 'orvieto'] },
+    { at: 'w7', from: 'w6', exits: ['w8', 'arezzo'] },
+    { at: 'w8', from: 'w7', exits: ['gate', 'ferrara'] },
+    { at: 'e1', from: 'f1', exits: ['napoli', 'e2'] },
+    { at: 'e2', from: 'e1', exits: ['venezia', 'e3'] },
+    { at: 'e3', from: 'e2', exits: ['genova', 'e4'] },
+    { at: 'e4', from: 'e3', exits: ['torino', 'e5'] },
+    { at: 'e5', from: 'e4', exits: ['ravenna', 'ancona'] },
+    { at: 'm1', from: 'w1', exits: ['siena', 'm2'] },
+    { at: 'm2', from: 'm1', exits: ['pisa', 'm3'] },
+    { at: 'm3', from: 'm2', exits: ['firenze', 'pienza'] },
   ];
+  // Unsinnstaedte fuer die Schilder: toskanische Kuechenpoesie statt Rom.
+  // Die Kilometerangaben sind ebenso erfunden (Misch-Reihe), damit aus
+  // ab- oder aufwaertslaufenden Zahlen niemand den Weg abliest.
+  const SIGN_NAMES = [
+    'AL DENTE', 'POMODORO', 'TIRAMISU', 'MOZZARELLA', 'GORGONZOLA',
+    'CANELLONI', 'VINO SANTO', 'PER BACCO', 'MAMMA MIA', 'VAL TRUFFA',
+    'CIPOLLINA', 'SAN GNOCCHI', 'SALAME', 'FONTANELLA', 'BARIOLA', 'OSTRICA',
+  ];
+  const SIGN_KM = [7, 205, 12, 44, 19, 99, 27, 33, 55, 9, 71, 21, 82, 48, 63, 39];
+  let signNo = 0;
+  const nextNonsense = () => {
+    const n = SIGN_NAMES[signNo % SIGN_NAMES.length];
+    const km = SIGN_KM[(signNo * 3 + 5) % SIGN_KM.length];
+    signNo++;
+    return { n, km };
+  };
   for (const sd of SIGN_DEFS) {
-    const lines = sd.exits.map((e) => ({ n: e.n, km: e.km, side: sideFor(sd.from, sd.at, e.to) }));
+    const lines = sd.exits.map((to) => {
+      const { n, km } = nextNonsense();
+      return { n, km, side: sideFor(sd.from, sd.at, to) };
+    });
     addSignpost(P[sd.at][0], P[sd.at][1], headingBetween(sd.from, sd.at), lines);
   }
 
@@ -670,15 +694,15 @@ export function buildNightRomeMap(parent) {
   // richtig abbiegt. Reihenfolge ist monoton (Ueberspringen erlaubt).
   const mid = (a, b) => ({ x: (P[a][0] + P[b][0]) / 2, z: (P[a][1] + P[b][1]) / 2 });
   const waypoints = [
-    { ...mid('f1', 'w1'), label: 'Erste Gabel: links nach ROMA!' },
-    { ...mid('w1', 'w2'), label: 'Serpentine geschafft – Rom rückt näher!' },
-    { ...mid('w2', 'w3'), label: 'Kurve 3 – der Espresso-Horner wird öfter!' },
+    { ...mid('f1', 'w1'), label: 'Erste Gabel richtig geraten!' },
+    { ...mid('w1', 'w2'), label: 'Zweite Gabel richtig – die Schilder logen eh!' },
+    { ...mid('w2', 'w3'), label: 'Kurve 3 richtig – weiter dem Gefuehl nach!' },
     { ...mid('w3', 'w4'), label: 'Halbzeit auf kurvigem Pfad!' },
-    { ...mid('w4', 'w5'), label: 'Fuenf Gabeln ueberlebt!' },
+    { ...mid('w4', 'w5'), label: 'Fuenf Gabeln richtig – gut geraten, Hans!' },
     { ...mid('w5', 'w6'), label: 'Noch drei Kurven bis zum Tor!' },
     { ...mid('w6', 'w7'), label: 'Zwei Gabeln noch – Espresso-Luft!' },
     { ...mid('w7', 'w8'), label: 'Letzte Serpentine vor Rom!' },
-    { x: P.gate[0], z: P.gate[1], label: 'Da: das ROMA-Stadttor!' },
+    { x: P.gate[0], z: P.gate[1], label: 'Da leuchtet es: das ROMA-Stadttor!' },
   ];
 
   // --- Spawn: auf der Startstrasse, Blick nach Norden (zur ersten Gabel).

@@ -212,7 +212,10 @@ nahe den Straßen, um Rom und am Rand abgeflacht – Straßen bleiben fahrflach)
 und **serpentinös**: An **neun Gabeln in Folge** muss Hans für ROMA wirklich
 abbiegen (links/rechts im Wechsel – jeder „geradeaus"-Ausgang ist eine Falle),
 erst danach kommt das „ROMA“-Stadttor. An jeder Gabel steht ein hölzerner
-Wegweiser; nur der richtige zeigt „ROMA“ mit abnehmenden Kilometern, alle
+Wegweiser – aber **kein Schild sagt „ROMA“**: Darauf steht nur erfundener
+Unsinn („AL DENTE 205 km“, „MOZZARELLA 12 km →“, „VAL TRUFFA“ …) mit
+willkürlichen Kilometern. Orientieren muss sich Hans per Ausschlussverfahren,
+Fortschrittsbalken und Sackgassen-Toasts. Alle
 falschen Abzweigungen enden in **17 benannten Sackgassen** (Siena, Pisa,
 Modena, Neapel, Venedig …). Die Sackgassen haben **keine Absperrung**: Die
 Straße schmälert sich dort einfach, wird zum sandigen Pfad und verschwindet
@@ -274,7 +277,8 @@ Italien mit ~440 Zypressen/Bäumen (9 m Abstand zu allen Straßen – querfeldei
 wird es teuer) auf weichen Sinus-Hügeln (nahe Straßen, um den Rom-Platz und am
 Rand abgeflacht), Wegenetz aus 36 begehbaren Segmenten mit 17 Gabeln und
 17 Sackgassen, Wegweisern mit ←/↑/→-Pfeilen (Richtung automatisch aus der
-Geometrie berechnet), Reflektoren am Straßenrand, Weltgrenze aus dunkler
+Geometrie berechnet) und erfundenen Orts-Namen samt willkürlichen Kilometern
+– KEIN Schild nennt „ROMA“ – Reflektoren am Straßenrand, Weltgrenze aus dunkler
 Baumreihe. Am Ende der Serpentinen-Route: „ROMA“-Stadttor, erleuchteter Platz
 mit Laternen (PointLights) und stilisiertem Kolosseum. Die Map trägt
 `night: true`; `applyMapAtmosphere` in `src/main.js` verdunkelt dafür Himmel,

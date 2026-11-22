@@ -149,7 +149,7 @@ export function createRomeNightChapter({ target = 10, wpRadius = 14, romeRadius 
     title: 'Kapitel 3: Nachts nach Rom',
     desc: 'Stockdunkle Serpentinen durchs Hügelland: Finde den Weg nach Rom – das Fahrlicht ist kaputt!',
     story: `<p>„Hans!” flüstert Liesel um drei Uhr nachts, „wacht endlich auf! Der Espresso in Rom wartet nicht – aber mach zuerst das Licht an!”</p>
-      <p>Hans klickt. Klickt nochmal. Nichts. „Ähem … das Licht ist kaputt, Schatz.” – Stille. Dann, mit zusammengekniffenen Augen: „Dann kauf eine <strong>Taschenlampe</strong> in der Werkstatt – die leuchtet zwar nur ein Stueckchen, aber besser als Blindflug! Und nun: gib GAS, aber lies die Wegweiser!”</p>`,
+      <p>Hans klickt. Klickt nochmal. Nichts. „Ähem … das Licht ist kaputt, Schatz.” – Stille. Dann, mit zusammengekniffenen Augen: „Dann kauf eine <strong>Taschenlampe</strong> in der Werkstatt – die leuchtet zwar nur ein Stueckchen, aber besser als Blindflug! Und nun: gib GAS! Aber glaube KEINEM Schild – da steht nur Unsinn drauf, glaub mir …”</p>`,
     target,
     update(dt, ctx, mgr, c) {
       const m = ctx.map;
